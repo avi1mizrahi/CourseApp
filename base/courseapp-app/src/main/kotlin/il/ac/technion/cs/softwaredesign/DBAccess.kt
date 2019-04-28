@@ -3,11 +3,6 @@ package il.ac.technion.cs.softwaredesign
 import java.nio.charset.Charset
 
 
-// TODO
-public var DB : DBAccess = DBAccess()
-
-////
-
 
 open class DBAccess {
 
@@ -39,7 +34,7 @@ open class DBAccess {
      */
     private fun convertKeyToByteArray(key: Array<out String>) : ByteArray? {
         if (key.any( {s -> containsIllegalChars(s)} ))
-            return null; // TODO use exceptions?
+            return null // TODO use exceptions?
 
         return key.joinToString("/").toByteArray(encoding)
     }
@@ -53,10 +48,17 @@ open class DBAccess {
     }
 
 
+    /**
+     *  remove a key-value from the DB
+     */
     public fun delete_string(vararg key: String) {
         write_string(*key, value=null)
     }
 
+    /**
+     *  read a value from the DB.
+     *  @param key: list of strings, will be delimited by "/"
+     */
     public fun read_string(vararg key: String) : String? {
         var keyBytes: ByteArray = convertKeyToByteArray(key) ?: return null
 
@@ -68,6 +70,11 @@ open class DBAccess {
     }
 
 
+    /**
+     *  write a value to the DB.
+     *  @param key: list of strings, will be delimited by "/"
+     *  @param value: value to write, null to delete the key.
+     */
     public fun write_string(vararg key: String, value: String?) {
         var keyBytes: ByteArray = convertKeyToByteArray(key) ?: return
 

@@ -1,5 +1,11 @@
 package il.ac.technion.cs.softwaredesign
 
+import il.ac.technion.cs.softwaredesign.dataTypes.Token
+import il.ac.technion.cs.softwaredesign.dataTypes.User
+import java.lang.IllegalArgumentException
+import kotlin.random.Random
+
+
 /**
  * This is the class implementing CourseApp, a course discussion group system.
  *
@@ -8,7 +14,23 @@ package il.ac.technion.cs.softwaredesign
  * Currently specified:
  * + User authentication.
  */
-class CourseApp {
+class CourseApp (DB: DBAccess) {
+
+    private var DB: DBAccess = DB
+
+
+    private fun generateToken() : Token
+    {
+        var out = ""
+        repeat(32)
+        {
+            out += Character.toChars(Random.nextInt(Character.getNumericValue('a'), Character.getNumericValue('z')))
+        }
+        return Token(DB, out)
+    }
+
+
+
     /**
      * Log in a user identified by [username] and [password], returning an authentication token that can be used in
      * future calls. If this username did not previously log in to the system, it will be automatically registered with
@@ -22,7 +44,36 @@ class CourseApp {
      * @throws IllegalArgumentException If the password does not match the username, or the user is already logged in.
      * @return An authentication token to be used in other calls.
      */
-    fun login(username: String, password: String): String = TODO("Implement me!")
+    fun login(username: String, password: String) : String
+    {
+        var u = User(DB, username)
+
+        // See if the user exists and create it if it doesn't
+        if (!u.exists())
+        {
+            u.setPassword(password)
+        }
+        // Else, verify the plaintext password and that the user isn't logged in
+        else
+        {
+            if (u.getPassword() != password)
+                throw IllegalArgumentException()
+
+            if (u.isLoggedIn())
+                throw IllegalArgumentException()
+        }
+
+
+        var t = generateToken()
+
+        // Set Token to point to user and User to point to token.
+        u.setCurrentToken(t)
+        t.setUser(u)
+        //
+
+        return t.getString()
+
+    }
 
     /**
      * Log out the user with this authentication [token]. The [token] will be invalidated and can not be used for future
@@ -32,7 +83,25 @@ class CourseApp {
      *
      * @throws IllegalArgumentException If the auth [token] is invalid.
      */
-    fun logout(token: String): Unit = TODO("Implement me!")
+    fun logout(token: String): Unit
+    {
+        var t = Token(DB, token)
+
+        if (!t.exists()) {
+            throw IllegalArgumentException()
+        }
+
+
+        var u = t.getUser()!! // User has to exist, we just checked
+
+        // User must have a token and it must be this token
+        assert(u.getCurrentToken()!!.getString() == token)
+
+
+        t.remove()
+        u.removeCurrentToken()
+    }
+
 
     /**
      * Indicate the status of [username] in the application.
@@ -45,5 +114,18 @@ class CourseApp {
      * @return True if [username] exists and is logged in, false if it exists and is not logged in, and null if it does
      * not exist.
      */
-    fun isUserLoggedIn(token: String, username: String): Boolean? = TODO("Implement me!")
+    fun isUserLoggedIn(token: String, username: String): Boolean?
+    {
+        // Confirm that token belongs to any user
+        var t = Token(DB, token)
+        if (!t.exists()) {
+            throw IllegalArgumentException()
+        }
+
+        var u = User(DB, username)
+        if (!u.exists())
+            return null
+
+        return u.isLoggedIn()
+    }
 }

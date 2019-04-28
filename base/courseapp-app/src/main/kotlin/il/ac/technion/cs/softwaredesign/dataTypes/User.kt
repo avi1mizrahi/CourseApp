@@ -1,13 +1,13 @@
 package il.ac.technion.cs.softwaredesign.dataTypes
 
 
-// TODO discuss how to implement this
-import il.ac.technion.cs.softwaredesign.DB
-///
+import il.ac.technion.cs.softwaredesign.DBAccess
 
 
-class User(name: String) {
+
+class User(DB: DBAccess, name: String) {
     private var name: String = name
+    private var DB: DBAccess = DB
 
     public fun getName() : String {
         return this.name
@@ -17,11 +17,17 @@ class User(name: String) {
     public fun exists() : Boolean {
         return DB.read_string("users", name, "password") != null
     }
-    public fun getCurrentToken() : String? {
-        return DB.read_string("users", name, "token")
+
+    public fun isLoggedIn() : Boolean {
+        return DB.read_string("users", name, "token") != null
     }
-    public fun setCurrentToken(token: String) {
-        DB.write_string("users", name, "token", value=token)
+    public fun getCurrentToken() : Token? {
+        val token = DB.read_string("users", name, "token") ?: return null
+
+        return Token(DB, token)
+    }
+    public fun setCurrentToken(token: Token) {
+        DB.write_string("users", name, "token", value=token.getString())
     }
     public fun removeCurrentToken() {
         DB.delete_string("users", name, "token")
