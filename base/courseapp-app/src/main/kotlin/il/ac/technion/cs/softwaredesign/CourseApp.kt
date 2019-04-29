@@ -14,9 +14,12 @@ import kotlin.random.Random
  * Currently specified:
  * + User authentication.
  */
-class CourseApp (DB: DBAccess) {
+class CourseApp (DB: DBAccess = DBAccess()) {
 
     private var DB: DBAccess = DB
+
+    private fun tokenFactory(str: String) = Token(DB, str)
+    private fun userFactory(str: String) = User(DB, str)
 
 
     private fun generateToken() : Token
@@ -26,7 +29,7 @@ class CourseApp (DB: DBAccess) {
         {
             out += Character.toChars(Random.nextInt(Character.getNumericValue('a'), Character.getNumericValue('z')))
         }
-        return Token(DB, out)
+        return tokenFactory(out)
     }
 
 
@@ -46,7 +49,7 @@ class CourseApp (DB: DBAccess) {
      */
     fun login(username: String, password: String) : String
     {
-        var u = User(DB, username)
+        var u = userFactory(username)
 
         // See if the user exists and create it if it doesn't
         if (!u.exists())
@@ -85,7 +88,7 @@ class CourseApp (DB: DBAccess) {
      */
     fun logout(token: String): Unit
     {
-        var t = Token(DB, token)
+        var t = tokenFactory(token)
 
         if (!t.exists()) {
             throw IllegalArgumentException()
@@ -117,12 +120,12 @@ class CourseApp (DB: DBAccess) {
     fun isUserLoggedIn(token: String, username: String): Boolean?
     {
         // Confirm that token belongs to any user
-        var t = Token(DB, token)
+        var t = tokenFactory(token)
         if (!t.exists()) {
             throw IllegalArgumentException()
         }
 
-        var u = User(DB, username)
+        var u = userFactory(username)
         if (!u.exists())
             return null
 
