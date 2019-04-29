@@ -6,31 +6,13 @@ import java.nio.charset.Charset
 
 open class DBAccess {
 
-    // TODO figure out if ASCII is good enough
     protected var encoding: Charset = Charsets.UTF_8
-    // constant [0x00] array.
-    private var nullEntry = ByteArray(1) {0}
-
-    //
-    private var illeaglchars = arrayOf('/', '\u0000')
-
-    /**
-     * Returns true if any of the chars are illegal
-     */
-    private fun containsIllegalChars(str: String) : Boolean
-    {
-        if (str.any { c -> illeaglchars.contains(c)})
-            return true
-
-        return false
-    }
 
     /**
      *  verifies that the string does not contain illegal chars and converts it to a bytearray
      */
-    private fun convertKeyToByteArray(key: Array<out String>) : ByteArray? {
-        if (key.any { s -> containsIllegalChars(s)})
-            return null // TODO use exceptions?
+    private fun convertKeyToByteArray(key: Array<out String>) : ByteArray {
+        // TODO handle slashes later
 
         return key.joinToString("/").toByteArray(encoding)
     }
@@ -38,9 +20,9 @@ open class DBAccess {
 
     private fun convertValueToByteArray(value: String?) : ByteArray {
         if (value == null)
-            return nullEntry
+            return "0".toByteArray(encoding)
 
-        return value.toByteArray(encoding)
+        return ("1$value").toByteArray(encoding)
     }
 
 
@@ -56,13 +38,13 @@ open class DBAccess {
      *  @param key: list of strings, will be delimited by "/"
      */
     public fun readString(vararg key: String) : String? {
-        var keyBytes: ByteArray = convertKeyToByteArray(key) ?: return null
+        val keyBytes: ByteArray = convertKeyToByteArray(key)
+        val res = this.read(keyBytes) ?: return null
+        val outstr = res.toString(encoding)
 
-        var res = this.read(keyBytes)
-        if (res == null || res.contentEquals(nullEntry))
-            return null
-
-        return res.toString(encoding)
+        if (outstr.startsWith("0"))
+            return null;
+        return outstr.removeRange(0, 1)
     }
 
 
