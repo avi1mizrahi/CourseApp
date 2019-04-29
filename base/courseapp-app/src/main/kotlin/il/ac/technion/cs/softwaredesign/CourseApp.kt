@@ -27,7 +27,7 @@ class CourseApp (DB: DBAccess = DBAccess()) {
         var out = ""
         repeat(32)
         {
-            out += Character.toChars(Random.nextInt(Character.getNumericValue('a'), Character.getNumericValue('z')))
+            out += Character.toString(Random.nextInt('a'.toInt(), 'z'.toInt() + 1))
         }
         return tokenFactory(out)
     }
