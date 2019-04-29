@@ -22,7 +22,7 @@ class CourseAppTest {
     private val courseApp = CourseApp(MockDBAccess())
 
     @Test
-    fun `test invalid tokens throwing`(){
+    fun `throw on invalid tokens`(){
         assertThrows<IllegalArgumentException> {
             runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn("a", "any") }
         }
@@ -33,7 +33,7 @@ class CourseAppTest {
     }
 
     @Test
-    fun `basic double login`(){
+    fun `login after logout`(){
         // log in and log out
         val oldtoken = courseApp.login("name", "pass")
         courseApp.logout(oldtoken)
@@ -48,7 +48,11 @@ class CourseAppTest {
 
     @Test
     fun `throws when already logged in`() {
-        assert(false) { "TODO" }
+        courseApp.login("someone", "123")
+
+        assertThrows<IllegalArgumentException> {
+            runWithTimeout(Duration.ofSeconds(10)) { courseApp.login("someone", "123") }
+        }
     }
 
     @Test
@@ -78,8 +82,6 @@ class CourseAppTest {
     fun `User is logged out after log out`() {
         val token1 = courseApp.login("name1", "pass")
         val token2 = courseApp.login("name2", "pass")
-
-
 
         assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
                 present(isTrue))
