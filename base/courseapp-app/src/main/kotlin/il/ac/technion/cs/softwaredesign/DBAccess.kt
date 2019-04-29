@@ -9,7 +9,7 @@ open class DBAccess {
     // TODO figure out if ASCII is good enough
     protected var encoding: Charset = Charsets.US_ASCII
     // constant [0x00] array.
-    private var NullEntry = ByteArray(1, {x -> 0})
+    private var nullEntry = ByteArray(1) {0}
 
     //
     private var illeaglchars = arrayOf('/', '\u0000')
@@ -19,11 +19,11 @@ open class DBAccess {
      */
     private fun containsIllegalChars(str: String) : Boolean
     {
-        if (str.any( {c -> illeaglchars.contains(c)} ))
+        if (str.any { c -> illeaglchars.contains(c)})
             return true
 
         // TODO change if we change encoding
-        if (str.any( { c -> c > '\u0128'} ))
+        if (str.any { c -> c > '\u0128'})
             return true
 
         return false
@@ -33,7 +33,7 @@ open class DBAccess {
      *  verifies that the string does not contain illegal chars and converts it to a bytearray
      */
     private fun convertKeyToByteArray(key: Array<out String>) : ByteArray? {
-        if (key.any( {s -> containsIllegalChars(s)} ))
+        if (key.any { s -> containsIllegalChars(s)})
             return null // TODO use exceptions?
 
         return key.joinToString("/").toByteArray(encoding)
@@ -42,7 +42,7 @@ open class DBAccess {
 
     private fun convertValueToByteArray(value: String?) : ByteArray {
         if (value == null)
-            return NullEntry
+            return nullEntry
 
         return value.toByteArray(encoding)
     }
@@ -51,19 +51,19 @@ open class DBAccess {
     /**
      *  remove a key-value from the DB
      */
-    public fun delete_string(vararg key: String) {
-        write_string(*key, value=null)
+    public fun deleteString(vararg key: String) {
+        writeString(*key, value=null)
     }
 
     /**
      *  read a value from the DB.
      *  @param key: list of strings, will be delimited by "/"
      */
-    public fun read_string(vararg key: String) : String? {
+    public fun readString(vararg key: String) : String? {
         var keyBytes: ByteArray = convertKeyToByteArray(key) ?: return null
 
         var res = this.read(keyBytes)
-        if (res == null || res.contentEquals(NullEntry))
+        if (res == null || res.contentEquals(nullEntry))
             return null
 
         return res.toString(encoding)
@@ -75,7 +75,7 @@ open class DBAccess {
      *  @param key: list of strings, will be delimited by "/"
      *  @param value: value to write, null to delete the key.
      */
-    public fun write_string(vararg key: String, value: String?) {
+    public fun writeString(vararg key: String, value: String?) {
         var keyBytes: ByteArray = convertKeyToByteArray(key) ?: return
 
         var valueBytes = convertValueToByteArray(value)

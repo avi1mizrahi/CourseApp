@@ -14,9 +14,7 @@ import kotlin.random.Random
  * Currently specified:
  * + User authentication.
  */
-class CourseApp (DB: DBAccess = DBAccess()) {
-
-    private var DB: DBAccess = DB
+class CourseApp (private var DB: DBAccess = DBAccess()) {
 
     private fun tokenFactory(str: String) = Token(DB, str)
     private fun userFactory(str: String) = User(DB, str)
@@ -49,7 +47,7 @@ class CourseApp (DB: DBAccess = DBAccess()) {
      */
     fun login(username: String, password: String) : String
     {
-        var u = userFactory(username)
+        val u = userFactory(username)
 
         // See if the user exists and create it if it doesn't
         if (!u.exists())
@@ -67,7 +65,7 @@ class CourseApp (DB: DBAccess = DBAccess()) {
         }
 
 
-        var t = generateToken()
+        val t = generateToken()
 
         // Set Token to point to user and User to point to token.
         u.setCurrentToken(t)
@@ -86,16 +84,15 @@ class CourseApp (DB: DBAccess = DBAccess()) {
      *
      * @throws IllegalArgumentException If the auth [token] is invalid.
      */
-    fun logout(token: String): Unit
-    {
-        var t = tokenFactory(token)
+    fun logout(token: String) {
+        val t = tokenFactory(token)
 
         if (!t.exists()) {
             throw IllegalArgumentException()
         }
 
 
-        var u = t.getUser()!! // User has to exist, we just checked
+        val u = t.getUser()!! // User has to exist, we just checked
 
         // User must have a token and it must be this token
         assert(u.getCurrentToken()!!.getString() == token)
@@ -120,12 +117,12 @@ class CourseApp (DB: DBAccess = DBAccess()) {
     fun isUserLoggedIn(token: String, username: String): Boolean?
     {
         // Confirm that token belongs to any user
-        var t = tokenFactory(token)
+        val t = tokenFactory(token)
         if (!t.exists()) {
             throw IllegalArgumentException()
         }
 
-        var u = userFactory(username)
+        val u = userFactory(username)
         if (!u.exists())
             return null
 
