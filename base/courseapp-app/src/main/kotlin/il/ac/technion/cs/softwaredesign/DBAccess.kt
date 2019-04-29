@@ -7,7 +7,7 @@ import java.nio.charset.Charset
 open class DBAccess {
 
     // TODO figure out if ASCII is good enough
-    protected var encoding: Charset = Charsets.US_ASCII
+    protected var encoding: Charset = Charsets.UTF_8
     // constant [0x00] array.
     private var nullEntry = ByteArray(1) {0}
 
@@ -20,10 +20,6 @@ open class DBAccess {
     private fun containsIllegalChars(str: String) : Boolean
     {
         if (str.any { c -> illeaglchars.contains(c)})
-            return true
-
-        // TODO change if we change encoding
-        if (str.any { c -> c > '\u0128'})
             return true
 
         return false
