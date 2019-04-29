@@ -30,7 +30,6 @@ class CourseAppTest {
         assertThrows<IllegalArgumentException> {
             runWithTimeout(Duration.ofSeconds(10)) { courseApp.logout("a") }
         }
-
     }
 
     @Test
@@ -42,20 +41,15 @@ class CourseAppTest {
         // log in again
         val newtoken = courseApp.login("name", "pass")
 
-
-        // old token fails - not required
-//        assertThrows<IllegalArgumentException> {
-//            runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(oldtoken, "name") }
-//        }
-
         // new token works
         assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(newtoken, "name") },
                 present(isTrue))
-
-
-
     }
 
+    @Test
+    fun `throws when already logged in`() {
+        assert(false) { "TODO" }
+    }
 
     @Test
     fun `password check`() {
@@ -103,16 +97,4 @@ class CourseAppTest {
 
         assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token1, "name2") }, absent())
     }
-
-    @Test
-    fun `foo`()
-    {
-        var out : String = ""
-        repeat(32)
-        {
-            out += Character.toString(Random.nextInt('a'.toInt(), 'z'.toInt() + 1))
-        }
-        print(out)
-    }
-
 }
