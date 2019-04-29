@@ -29,15 +29,15 @@ open class DBAccess {
     /**
      *  remove a key-value from the DB
      */
-    public fun deleteString(vararg key: String) {
-        writeString(*key, value=null)
+    public fun delete(vararg key: String) {
+        write(*key, value=null)
     }
 
     /**
      *  read a value from the DB.
      *  @param key: list of strings, will be delimited by "/"
      */
-    public fun readString(vararg key: String) : String? {
+    public fun read(vararg key: String) : String? {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
         val res = this.read(keyBytes) ?: return null
         val outstr = res.toString(encoding)
@@ -53,7 +53,7 @@ open class DBAccess {
      *  @param key: list of strings, will be delimited by "/"
      *  @param value: value to write, null to delete the key.
      */
-    public fun writeString(vararg key: String, value: String?) {
+    public fun write(vararg key: String, value: String?) {
         var keyBytes: ByteArray = convertKeyToByteArray(key) ?: return
 
         var valueBytes = convertValueToByteArray(value)

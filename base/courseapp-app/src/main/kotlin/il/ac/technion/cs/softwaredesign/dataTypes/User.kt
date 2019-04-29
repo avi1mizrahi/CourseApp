@@ -15,29 +15,29 @@ class User(DB: DBAccess, name: String) {
 
     // TODO Can we eliminate the duplicate ("users", name) part?
     public fun exists() : Boolean {
-        return DB.readString("users", name, "password") != null
+        return DB.read("users", name, "password") != null
     }
 
     public fun isLoggedIn() : Boolean {
-        return DB.readString("users", name, "token") != null
+        return DB.read("users", name, "token") != null
     }
     public fun getCurrentToken() : Token? {
-        val token = DB.readString("users", name, "token") ?: return null
+        val token = DB.read("users", name, "token") ?: return null
 
         return Token(DB, token)
     }
     public fun setCurrentToken(token: Token) {
-        DB.writeString("users", name, "token", value=token.getString())
+        DB.write("users", name, "token", value=token.getString())
     }
     public fun removeCurrentToken() {
-        DB.deleteString("users", name, "token")
+        DB.delete("users", name, "token")
     }
 
     public fun getPassword() : String? {
-        return DB.readString("users", name, "password")
+        return DB.read("users", name, "password")
     }
     public fun setPassword(pass: String) {
-        DB.writeString("users", name, "password", value=pass)
+        DB.write("users", name, "password", value=pass)
     }
 
 }

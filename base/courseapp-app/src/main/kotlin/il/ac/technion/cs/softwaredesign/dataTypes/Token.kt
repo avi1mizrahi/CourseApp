@@ -9,19 +9,19 @@ class Token(private var DB: DBAccess, private var token: String) {
     }
 
     public fun exists() : Boolean {
-        return DB.readString("tokens", token) != null
+        return DB.read("tokens", token) != null
     }
 
     public fun remove() {
-        DB.writeString("tokens", token, value=null)
+        DB.write("tokens", token, value=null)
     }
 
     public fun setUser(user: User)  {
-        DB.writeString("tokens", token, value=user.getName())
+        DB.write("tokens", token, value=user.getName())
     }
 
     public fun getUser() : User? {
-        val name = DB.readString("tokens", token) ?: return null
+        val name = DB.read("tokens", token) ?: return null
         return User(DB, name)
     }
 
