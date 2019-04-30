@@ -7,9 +7,14 @@ import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.CourseApp
 import il.ac.technion.cs.softwaredesign.CourseAppInitializer
 import il.ac.technion.cs.softwaredesign.KeyValueStore
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration
+
 
 class CourseAppTest {
 
@@ -19,7 +24,18 @@ class CourseAppTest {
         courseAppInitializer.setup()
     }
 
-    private val courseApp = CourseApp(KeyValueStore(MockStorage()))
+    private val map = HashMap<List<String>, String>()
+    private val keyValueStore = mockk<KeyValueStore>()
+    private val courseApp = CourseApp(keyValueStore)
+    private val keySlot = slot<List<String>>()
+    private val valSlot = slot<String>()
+
+    @BeforeEach
+    fun before() {
+        every { keyValueStore.read(key = capture(keySlot)) } answers { map[keySlot.captured] }
+        every { keyValueStore.write(key = capture(keySlot), value = capture(valSlot)) } answers { map[keySlot.captured] = valSlot.captured }
+        every { keyValueStore.delete(key = capture(keySlot)) } answers { map.remove(keySlot.captured) }
+    }
 
     @Test
     fun `after login, a user is logged in`() {
