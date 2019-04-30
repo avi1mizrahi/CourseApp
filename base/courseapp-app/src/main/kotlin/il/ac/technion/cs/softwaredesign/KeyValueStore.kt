@@ -5,32 +5,11 @@ interface Storage {
     fun write(key: ByteArray, value: ByteArray)
 }
 
-class DBAccess(private val storage: Storage) {
-
-    private val encoding = Charsets.UTF_8
-
-    /**
-     *  verifies that the string does not contain illegal chars and converts it to a bytearray
-     */
-    private fun convertKeyToByteArray(key: Array<out String>) : ByteArray {
-        // TODO handle slashes later
-
-        return key.joinToString("/").toByteArray(encoding)
-    }
-
-
-    private fun convertValueToByteArray(value: String?) : ByteArray {
-        if (value == null)
-            return "0".toByteArray(encoding)
-
-        return ("1$value").toByteArray(encoding)
-    }
-
-
+class KeyValueStore(private val storage: Storage) {
     /**
      *  remove a key-value from the DB
      */
-    public fun delete(vararg key: String) {
+    fun delete(vararg key: String) {
         write(*key, value=null)
     }
 
@@ -38,7 +17,7 @@ class DBAccess(private val storage: Storage) {
      *  read a value from the DB.
      *  @param key: list of strings, will be delimited by "/"
      */
-    public fun read(vararg key: String) : String? {
+    fun read(vararg key: String) : String? {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
         val res = storage.read(keyBytes) ?: return null
         val outstr = res.toString(encoding)
@@ -54,10 +33,28 @@ class DBAccess(private val storage: Storage) {
      *  @param key: list of strings, will be delimited by "/"
      *  @param value: value to write, null to delete the key.
      */
-    public fun write(vararg key: String, value: String?) {
+    fun write(vararg key: String, value: String?) {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
 
         val valueBytes = convertValueToByteArray(value)
         storage.write(keyBytes, valueBytes)
     }
+}
+
+internal val encoding = Charsets.UTF_8
+
+private fun convertValueToByteArray(value: String?) : ByteArray {
+    if (value == null)
+        return "0".toByteArray(encoding)
+
+    return ("1$value").toByteArray(encoding)
+}
+
+/**
+ *  verifies that the string does not contain illegal chars and converts it to a ByteArray
+ */
+private fun convertKeyToByteArray(key: Array<out String>) : ByteArray {
+    // TODO handle slashes later
+
+    return key.joinToString("/").toByteArray(encoding)
 }

@@ -1,9 +1,9 @@
 package il.ac.technion.cs.softwaredesign.dataTypes
 
-import il.ac.technion.cs.softwaredesign.DBAccess
+import il.ac.technion.cs.softwaredesign.KeyValueStore
 
 
-class Token(private var DB: DBAccess, private var token: String) {
+class Token(private var DB: KeyValueStore, private var token: String) {
     public fun getString() : String{
         return token
     }

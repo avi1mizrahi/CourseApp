@@ -1,13 +1,11 @@
 package il.ac.technion.cs.softwaredesign.dataTypes
 
 
-import il.ac.technion.cs.softwaredesign.DBAccess
+import il.ac.technion.cs.softwaredesign.KeyValueStore
 
 
 
-class User(DB: DBAccess, name: String) {
-    private var name: String = name
-    private var DB: DBAccess = DB
+class User(private var DB: KeyValueStore, private var name: String) {
 
     public fun getName() : String {
         return this.name

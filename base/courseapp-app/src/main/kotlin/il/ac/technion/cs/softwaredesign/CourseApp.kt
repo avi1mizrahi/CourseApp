@@ -23,7 +23,7 @@ class StaffStorage : Storage {
  * Currently specified:
  * + User authentication.
  */
-class CourseApp (private var DB: DBAccess = DBAccess(StaffStorage())) {
+class CourseApp (private var DB: KeyValueStore = KeyValueStore(StaffStorage())) {
 
     private fun tokenFactory(str: String) = Token(DB, str)
     private fun userFactory(str: String) = User(DB, str)
