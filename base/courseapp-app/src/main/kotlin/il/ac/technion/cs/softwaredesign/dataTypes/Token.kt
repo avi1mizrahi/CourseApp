@@ -13,7 +13,7 @@ class Token(private var DB: KeyValueStore, private var token: String) {
     }
 
     fun remove() {
-        DB.write("tokens", token, value=null)
+        DB.delete("tokens", token)
     }
 
     fun setUser(user: User)  {

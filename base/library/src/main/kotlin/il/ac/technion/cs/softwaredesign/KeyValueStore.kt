@@ -5,12 +5,17 @@ interface Storage {
     fun write(key: ByteArray, value: ByteArray)
 }
 
+private val encoding = Charsets.UTF_8
+
+private const val nullEntryPrefix = "0"
+private const val validEntryPrefix = "1"
+
 class KeyValueStore(private val storage: Storage) {
     /**
      *  remove a key-value from the DB
      */
     fun delete(vararg key: String) {
-        write(*key, value=null)
+        storage.write(convertKeyToByteArray(key), nullEntryPrefix.toByteArray(encoding))
     }
 
     /**
@@ -22,7 +27,7 @@ class KeyValueStore(private val storage: Storage) {
         val res = storage.read(keyBytes) ?: return null
         val outstr = res.toString(encoding)
 
-        if (outstr.startsWith("0"))
+        if (outstr.startsWith(nullEntryPrefix))
             return null
         return outstr.removeRange(0, 1)
     }
@@ -31,9 +36,9 @@ class KeyValueStore(private val storage: Storage) {
     /**
      *  write a value to the DB.
      *  @param key: list of strings, will be delimited by "/"
-     *  @param value: value to write, null to delete the key.
+     *  @param value: value to write
      */
-    fun write(vararg key: String, value: String?) {
+    fun write(vararg key: String, value: String) {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
 
         val valueBytes = convertValueToByteArray(value)
@@ -41,13 +46,8 @@ class KeyValueStore(private val storage: Storage) {
     }
 }
 
-internal val encoding = Charsets.UTF_8
-
-private fun convertValueToByteArray(value: String?) : ByteArray {
-    if (value == null)
-        return "0".toByteArray(encoding)
-
-    return ("1$value").toByteArray(encoding)
+private fun convertValueToByteArray(value: String) : ByteArray {
+    return "$validEntryPrefix$value".toByteArray(encoding)
 }
 
 /**
@@ -55,6 +55,5 @@ private fun convertValueToByteArray(value: String?) : ByteArray {
  */
 private fun convertKeyToByteArray(key: Array<out String>) : ByteArray {
     // TODO handle slashes later
-
     return key.joinToString("/").toByteArray(encoding)
 }
