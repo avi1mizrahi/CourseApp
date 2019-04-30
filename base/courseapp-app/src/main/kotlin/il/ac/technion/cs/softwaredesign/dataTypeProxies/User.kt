@@ -1,4 +1,4 @@
-package il.ac.technion.cs.softwaredesign.dataTypes
+package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
@@ -7,7 +7,7 @@ private const val USERS_IDENTIFIER = "users"
 private const val PASSWORD_IDENTIFIER = "password"
 private const val TOKEN_IDENTIFIER = "token"
 
-class User(private val DB: KeyValueStore, private var name: String) {
+class User(private val DB: KeyValueStore, private val name: String) {
 
     fun getName() : String {
         return this.name

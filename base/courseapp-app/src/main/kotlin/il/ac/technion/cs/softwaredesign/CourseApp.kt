@@ -1,7 +1,7 @@
 package il.ac.technion.cs.softwaredesign
 
-import il.ac.technion.cs.softwaredesign.dataTypes.Token
-import il.ac.technion.cs.softwaredesign.dataTypes.User
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.Token
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.User
 import java.lang.IllegalArgumentException
 import kotlin.random.Random
 

@@ -1,11 +1,11 @@
-package il.ac.technion.cs.softwaredesign.dataTypes
+package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
 
 
 private const val TOKENS_IDENTIFIER = "tokens"
 
-class Token(private var DB: KeyValueStore, private var token: String) {
+class Token(private val DB: KeyValueStore, private val token: String) {
     fun getString() : String{
         return token
     }
