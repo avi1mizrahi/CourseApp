@@ -4,23 +4,23 @@ import il.ac.technion.cs.softwaredesign.KeyValueStore
 
 
 class Token(private var DB: KeyValueStore, private var token: String) {
-    public fun getString() : String{
+    fun getString() : String{
         return token
     }
 
-    public fun exists() : Boolean {
+    fun exists() : Boolean {
         return DB.read("tokens", token) != null
     }
 
-    public fun remove() {
+    fun remove() {
         DB.write("tokens", token, value=null)
     }
 
-    public fun setUser(user: User)  {
+    fun setUser(user: User)  {
         DB.write("tokens", token, value=user.getName())
     }
 
-    public fun getUser() : User? {
+    fun getUser() : User? {
         val name = DB.read("tokens", token) ?: return null
         return User(DB, name)
     }

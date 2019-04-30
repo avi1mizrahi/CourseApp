@@ -18,7 +18,7 @@ class KeyValueStore(private val storage: Storage) {
      *  @param key: list of strings, will be delimited by "/"
      */
     fun read(vararg key: String) : String? {
-        val keyBytes: ByteArray = convertKeyToByteArray(key)
+        val keyBytes = convertKeyToByteArray(key)
         val res = storage.read(keyBytes) ?: return null
         val outstr = res.toString(encoding)
 
