@@ -6,6 +6,7 @@ import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.CourseApp
 import il.ac.technion.cs.softwaredesign.CourseAppInitializer
+import il.ac.technion.cs.softwaredesign.DBAccess
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration
@@ -18,7 +19,7 @@ class CourseAppTest {
         courseAppInitializer.setup()
     }
 
-    private val courseApp = CourseApp(MockDBAccess())
+    private val courseApp = CourseApp(DBAccess(MockStorage()))
 
     @Test
     fun `after login, a user is logged in`() {

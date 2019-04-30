@@ -1,16 +1,18 @@
 package il.ac.technion.cs.softwaredesign.tests
 
-import il.ac.technion.cs.softwaredesign.DBAccess
+import il.ac.technion.cs.softwaredesign.Storage
 
-class MockDBAccess : DBAccess() {
+class MockStorage : Storage {
+    private val encoding = Charsets.UTF_8
 
     // TODO don't know if we can do map with ByteArray as key, it hashes/compares the pointer and not the contents.
     private val keyvalDB = HashMap<String, ByteArray>()
-    protected override fun read(key: ByteArray): ByteArray? {
+
+    override fun read(key: ByteArray): ByteArray? {
         return keyvalDB[key.toString(encoding)]
     }
 
-    protected override fun write(key: ByteArray, value: ByteArray) {
+    override fun write(key: ByteArray, value: ByteArray) {
         keyvalDB[key.toString(encoding)] = value
     }
 }

@@ -5,6 +5,15 @@ import il.ac.technion.cs.softwaredesign.dataTypes.User
 import java.lang.IllegalArgumentException
 import kotlin.random.Random
 
+class StaffStorage : Storage {
+    override fun read(key: ByteArray): ByteArray? {
+        return il.ac.technion.cs.softwaredesign.storage.read(key)
+    }
+
+    override fun write(key: ByteArray, value: ByteArray) {
+        il.ac.technion.cs.softwaredesign.storage.write(key, value)
+    }
+}
 
 /**
  * This is the class implementing CourseApp, a course discussion group system.
@@ -14,7 +23,7 @@ import kotlin.random.Random
  * Currently specified:
  * + User authentication.
  */
-class CourseApp (private var DB: DBAccess = DBAccess()) {
+class CourseApp (private var DB: DBAccess = DBAccess(StaffStorage())) {
 
     private fun tokenFactory(str: String) = Token(DB, str)
     private fun userFactory(str: String) = User(DB, str)
