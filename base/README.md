@@ -1,22 +1,25 @@
 # CourseApp: Assignment 0
 
 ## Authors
-* Firstname McLastname, ID number
-* Firstnamey Lastnameson, ID number
+* Alon Tavor, 307915561
+* Avi Mizrahi, 200668945
 
 ## Notes
 
 ### Implementation Summary
-Short summary of your implementation, including data structures used, design choices made, and
-a short tour of the class hierarchy you created.
+We choose to build the stack with 3 layers:
+1. storage - a persistent storage with a raw interface (as you supplied)
+2. KeyValueStore - higher level persistent map
+3. CourseApp - the business logic
+
+CourseApp stores persistent data by URIs, 
+for that we created a proxy classes (Token/User) so we can query the storage easily.
 
 ### Testing Summary
-Short summary describing the ways you chose to test your code.
+we tested each of the layer and stubbed it's underlying layer.
 
 ### Difficulties
-Please list any technological difficulties you had while working on this assignment, especially
-with the tools used: Kotlin, JUnit, MockK, and Gradle.
+the most difficult issue is to work with string encodings and escaping, no one deserve that :)
 
 ### Feedback
-Put any feedback you may have for this assignment here. This **will** be read by the course staff,
-and may influence future assignments!
+It will be nice to leave the bits and bytes behind
