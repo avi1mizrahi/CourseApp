@@ -3,9 +3,11 @@ package il.ac.technion.cs.softwaredesign.dataTypes
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
 
+private const val USERS_IDENTIFIER = "users"
+private const val PASSWORD_IDENTIFIER = "password"
+private const val TOKEN_IDENTIFIER = "token"
 
-
-class User(private var DB: KeyValueStore, private var name: String) {
+class User(private val DB: KeyValueStore, private var name: String) {
 
     fun getName() : String {
         return this.name
@@ -13,33 +15,33 @@ class User(private var DB: KeyValueStore, private var name: String) {
 
     // TODO Can we eliminate the duplicate ("users", name) part?
     fun exists() : Boolean {
-        return DB.read("users", name, "password") != null
+        return DB.read(USERS_IDENTIFIER, name, PASSWORD_IDENTIFIER) != null
     }
 
     fun isLoggedIn() : Boolean {
-        return DB.read("users", name, "token") != null
+        return DB.read(USERS_IDENTIFIER, name, TOKEN_IDENTIFIER) != null
     }
 
     fun getCurrentToken() : Token? {
-        val token = DB.read("users", name, "token") ?: return null
+        val token = DB.read(USERS_IDENTIFIER, name, TOKEN_IDENTIFIER) ?: return null
 
         return Token(DB, token)
     }
 
     fun setCurrentToken(token: Token) {
-        DB.write("users", name, "token", value=token.getString())
+        DB.write(USERS_IDENTIFIER, name, TOKEN_IDENTIFIER, value=token.getString())
     }
 
     fun removeCurrentToken() {
-        DB.delete("users", name, "token")
+        DB.delete(USERS_IDENTIFIER, name, TOKEN_IDENTIFIER)
     }
 
     fun getPassword() : String? {
-        return DB.read("users", name, "password")
+        return DB.read(USERS_IDENTIFIER, name, PASSWORD_IDENTIFIER)
     }
 
     fun setPassword(pass: String) {
-        DB.write("users", name, "password", value=pass)
+        DB.write(USERS_IDENTIFIER, name, PASSWORD_IDENTIFIER, value=pass)
     }
 
 }
