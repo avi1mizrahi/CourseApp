@@ -1,8 +1,23 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.Storage
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+
+class MockStorage : Storage {
+    private val encoding = Charsets.UTF_8
+
+    private val keyvalDB = HashMap<String, ByteArray>()
+
+    override fun read(key: ByteArray): ByteArray? {
+        return keyvalDB[key.toString(encoding)]
+    }
+
+    override fun write(key: ByteArray, value: ByteArray) {
+        keyvalDB[key.toString(encoding)] = value
+    }
+}
 
 internal class KeyValueStoreTest {
 
@@ -88,4 +103,16 @@ internal class KeyValueStoreTest {
         assertNull(ret)
     }
 
+    @Test
+    fun `data should be stored persistently`() {
+        keyValueStore.write("lo lo", value = "hi")
+        keyValueStore.write("lo", "lo", value = "why")
+        val newKVwithOldStorage = KeyValueStore(storage)
+
+        val ret1 = newKVwithOldStorage.read("lo", "lo")
+        val ret2 = newKVwithOldStorage.read("lo lo")
+
+        assertEquals("why", ret1)
+        assertEquals("hi", ret2)
+    }
 }
