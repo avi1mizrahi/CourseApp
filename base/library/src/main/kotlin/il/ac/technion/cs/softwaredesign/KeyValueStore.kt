@@ -14,7 +14,7 @@ class KeyValueStore(private val storage: Storage) {
     /**
      *  remove a key-value from the DB
      */
-    fun delete(vararg key: String) {
+    fun delete(key: List<String>) {
         storage.write(convertKeyToByteArray(key), nullEntryPrefix.toByteArray(encoding))
     }
 
@@ -22,7 +22,7 @@ class KeyValueStore(private val storage: Storage) {
      *  read a value from the DB.
      *  @param key: list of strings, will be delimited by "/"
      */
-    fun read(vararg key: String) : String? {
+    fun read(key: List<String>) : String? {
         val keyBytes = convertKeyToByteArray(key)
         val res = storage.read(keyBytes) ?: return null
         val outstr = res.toString(encoding)
@@ -38,7 +38,7 @@ class KeyValueStore(private val storage: Storage) {
      *  @param key: list of strings, will be delimited by "/"
      *  @param value: value to write
      */
-    fun write(vararg key: String, value: String) {
+    fun write(key: List<String>, value: String) {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
 
         val valueBytes = convertValueToByteArray(value)
@@ -53,7 +53,7 @@ private fun convertValueToByteArray(value: String) : ByteArray {
 /**
  *  verifies that the string does not contain illegal chars and converts it to a ByteArray
  */
-private fun convertKeyToByteArray(key: Array<out String>) : ByteArray {
+private fun convertKeyToByteArray(key: List<out String>) : ByteArray {
     // TODO handle slashes later
     return key.joinToString("/").toByteArray(encoding)
 }

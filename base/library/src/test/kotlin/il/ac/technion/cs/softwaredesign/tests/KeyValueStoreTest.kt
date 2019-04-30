@@ -26,31 +26,31 @@ internal class KeyValueStoreTest {
 
     @Test
     fun `read the written`() {
-        keyValueStore.write("hi", value = "bye")
+        keyValueStore.write(listOf("hi"), value = "bye")
 
-        val ret = keyValueStore.read("hi")
+        val ret = keyValueStore.read(listOf("hi"))
 
         assertEquals("bye", ret)
     }
 
     @Test
     fun `override entry returns last value`() {
-        keyValueStore.write("hi", value = "bye")
-        keyValueStore.write("hi", value = "hi")
-        keyValueStore.write("hi", value = "guy")
+        keyValueStore.write(listOf("hi"), value = "bye")
+        keyValueStore.write(listOf("hi"), value = "hi")
+        keyValueStore.write(listOf("hi"), value = "guy")
 
-        val ret = keyValueStore.read("hi")
+        val ret = keyValueStore.read(listOf("hi"))
 
         assertEquals("guy", ret)
     }
 
     @Test
     fun `keys and values doesn't collide`() {
-        keyValueStore.write("hi", value = "bye")
-        keyValueStore.write("bye", value = "hi")
+        keyValueStore.write(listOf("hi"), value = "bye")
+        keyValueStore.write(listOf("bye"), value = "hi")
 
-        val ret1 = keyValueStore.read("hi")
-        val ret2 = keyValueStore.read("bye")
+        val ret1 = keyValueStore.read(listOf("hi" ))
+        val ret2 = keyValueStore.read(listOf("bye"))
 
         assertEquals("bye", ret1)
         assertEquals("hi", ret2)
@@ -58,59 +58,59 @@ internal class KeyValueStoreTest {
 
     @Test
     fun `non-deleted key stays intact`() {
-        keyValueStore.write("hi", value = "bye")
-        keyValueStore.write("bye", value = "hi")
+        keyValueStore.write(listOf("hi" ), value = "bye")
+        keyValueStore.write(listOf("bye"), value = "hi")
 
-        keyValueStore.delete("bye")
-        val ret = keyValueStore.read("hi")
+        keyValueStore.delete(listOf("bye"))
+        val ret = keyValueStore.read(listOf("hi"))
 
         assertEquals("bye", ret)
     }
 
     @Test
     fun `deleted key is read as null`() {
-        keyValueStore.write("bye", "hi", value = "hi")
-        keyValueStore.delete("bye", "hi")
+        keyValueStore.write(listOf("bye", "hi"), value = "hi")
+        keyValueStore.delete(listOf("bye", "hi"))
 
-        val ret = keyValueStore.read("bye", "hi")
+        val ret = keyValueStore.read(listOf("bye", "hi"))
 
         assertNull(ret)
     }
 
     @Test
     fun `deleted key can be rewritten`() {
-        keyValueStore.write("bye", "hi", value = "hi")
-        keyValueStore.delete("bye", "hi")
-        keyValueStore.write("bye", "hi", value = "hi")
+        keyValueStore.write(listOf("bye", "hi"), value = "hi")
+        keyValueStore.delete(listOf("bye", "hi"))
+        keyValueStore.write(listOf("bye", "hi"), value = "hi")
 
-        val ret = keyValueStore.read("bye", "hi")
+        val ret = keyValueStore.read(listOf("bye", "hi"))
 
         assertEquals("hi", ret)
     }
 
     @Test
     fun `null returned when reading non-exist key`() {
-        val ret = keyValueStore.read("hi", "bye")
+        val ret = keyValueStore.read(listOf("hi", "bye"))
 
         assertNull(ret)
     }
 
     @Test
     fun `null returned when reading non-exist key and there is another`() {
-        keyValueStore.write("lo lo", value = "hi")
-        val ret = keyValueStore.read("hi")
+        keyValueStore.write(listOf("lo lo"), value = "hi")
+        val ret = keyValueStore.read(listOf("hi"))
 
         assertNull(ret)
     }
 
     @Test
     fun `data should be stored persistently`() {
-        keyValueStore.write("lo lo", value = "hi")
-        keyValueStore.write("lo", "lo", value = "why")
+        keyValueStore.write(listOf("lo lo"), value = "hi")
+        keyValueStore.write(listOf("lo", "lo"), value = "why")
         val newKVwithOldStorage = KeyValueStore(storage)
 
-        val ret1 = newKVwithOldStorage.read("lo", "lo")
-        val ret2 = newKVwithOldStorage.read("lo lo")
+        val ret1 = newKVwithOldStorage.read(listOf("lo", "lo"))
+        val ret2 = newKVwithOldStorage.read(listOf("lo lo"))
 
         assertEquals("why", ret1)
         assertEquals("hi", ret2)

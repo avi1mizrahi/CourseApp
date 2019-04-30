@@ -11,19 +11,19 @@ class Token(private val DB: KeyValueStore, private val token: String) {
     }
 
     fun exists() : Boolean {
-        return DB.read(TOKENS_IDENTIFIER, token) != null
+        return DB.read(listOf(TOKENS_IDENTIFIER, token)) != null
     }
 
     fun remove() {
-        DB.delete(TOKENS_IDENTIFIER, token)
+        DB.delete(listOf(TOKENS_IDENTIFIER, token))
     }
 
     fun setUser(user: User)  {
-        DB.write(TOKENS_IDENTIFIER, token, value=user.getName())
+        DB.write(listOf(TOKENS_IDENTIFIER, token), value=user.getName())
     }
 
     fun getUser() : User? {
-        val name = DB.read(TOKENS_IDENTIFIER, token) ?: return null
+        val name = DB.read(listOf(TOKENS_IDENTIFIER, token)) ?: return null
         return User(DB, name)
     }
 
