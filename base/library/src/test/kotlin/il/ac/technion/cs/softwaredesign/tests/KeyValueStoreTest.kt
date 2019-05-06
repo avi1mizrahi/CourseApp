@@ -115,4 +115,35 @@ internal class KeyValueStoreTest {
         assertEquals("why", ret1)
         assertEquals("hi", ret2)
     }
+
+    @Test
+    fun `empty string doesnt cause issues`() {
+        keyValueStore.write(listOf("a"), value = "")
+        val newKVwithOldStorage = KeyValueStore(storage)
+
+        val ret1 = newKVwithOldStorage.read(listOf("a"))
+
+        assertEquals("", ret1)
+    }
+
+
+    @Test
+    fun `read int32 returns 0 if key doesn't exist`(){
+        val newKVwithOldStorage = KeyValueStore(storage)
+
+        val ret1 = newKVwithOldStorage.read_int32(listOf("a"))
+
+        assertEquals(0, ret1)
+    }
+
+    @Test
+    fun `write and read int32`(){
+        keyValueStore.write_int32(listOf("a"), value = 25)
+        val newKVwithOldStorage = KeyValueStore(storage)
+
+
+        val ret1 = newKVwithOldStorage.read_int32(listOf("a"))
+
+        assertEquals(25, ret1)
+    }
 }
