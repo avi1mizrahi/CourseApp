@@ -4,7 +4,7 @@ val hamkrestVersion = "1.7.0.0"
 val mockkVersion = "1.9.3.kotlin12"
 
 dependencies {
-    compile("il.ac.technion.cs.softwaredesign:primitive-storage-layer:1.0")
+    compile("il.ac.technion.cs.softwaredesign:primitive-storage-layer:1.1")
 
     testCompile("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testCompile("org.junit.jupiter:junit-jupiter-params:$junitVersion")
