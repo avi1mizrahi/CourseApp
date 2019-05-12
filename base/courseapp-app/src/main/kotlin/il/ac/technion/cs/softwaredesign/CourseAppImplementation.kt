@@ -77,10 +77,10 @@ class CourseAppImplementation (private var DB : KeyValueStore) : CourseApp {
                 else
                 {
                         if (u.getPassword() != password)
-                                throw IllegalArgumentException()
+                                throw NoSuchEntityException()
 
                         if (u.isLoggedIn())
-                                throw IllegalArgumentException()
+                                throw UserAlreadyLoggedInException()
                 }
 
 
@@ -107,7 +107,7 @@ class CourseAppImplementation (private var DB : KeyValueStore) : CourseApp {
                 val t = tokenFactory(token)
 
                 if (!t.exists()) {
-                        throw IllegalArgumentException()
+                        throw InvalidTokenException()
                 }
 
 
@@ -138,7 +138,7 @@ class CourseAppImplementation (private var DB : KeyValueStore) : CourseApp {
                 // Confirm that token belongs to any user
                 val t = tokenFactory(token)
                 if (!t.exists()) {
-                        throw IllegalArgumentException()
+                        throw InvalidTokenException()
                 }
 
                 val u = userFactory(username)

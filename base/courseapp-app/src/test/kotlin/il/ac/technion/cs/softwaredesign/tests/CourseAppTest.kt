@@ -5,6 +5,9 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
+import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
+import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -52,18 +55,18 @@ class CourseAppTest {
 
         courseApp.logout(token)
 
-        assertThrows<IllegalArgumentException> {
+        assertThrows<InvalidTokenException> {
             runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token, "matan") }
         }
     }
 
     @Test
     fun `throw on invalid tokens`(){
-        assertThrows<IllegalArgumentException> {
+        assertThrows<InvalidTokenException> {
             runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn("a", "any") }
         }
 
-        assertThrows<IllegalArgumentException> {
+        assertThrows<InvalidTokenException> {
             runWithTimeout(Duration.ofSeconds(10)) { courseApp.logout("a") }
         }
     }
@@ -86,17 +89,17 @@ class CourseAppTest {
     fun `throws when already logged in`() {
         courseApp.login("someone", "123")
 
-        assertThrows<IllegalArgumentException> {
+        assertThrows<UserAlreadyLoggedInException> {
             runWithTimeout(Duration.ofSeconds(10)) { courseApp.login("someone", "123") }
         }
     }
 
     @Test
-    fun `password check`() {
+    fun `bad password throws nosuchEntity`() {
         val oldtoken = courseApp.login("name", "pass")
         courseApp.logout(oldtoken)
 
-        assertThrows<IllegalArgumentException> {
+        assertThrows<NoSuchEntityException> {
             runWithTimeout(Duration.ofSeconds(10)) { courseApp.login("name", "badpass") }
         }
     }
