@@ -1,18 +1,16 @@
 package il.ac.technion.cs.softwaredesign
 
 import java.nio.ByteBuffer
+import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 
-interface Storage {
-    fun read(key: ByteArray): ByteArray?
-    fun write(key: ByteArray, value: ByteArray)
-}
+
 
 private val encoding = Charsets.UTF_8
 
 private const val nullEntryPrefix = "0"
 private const val validEntryPrefix = "1"
 
-class KeyValueStore(private val storage: Storage) {
+class KeyValueStore(private val storage: SecureStorage) {
     /**
      *  remove a key-value from the DB
      */

@@ -4,9 +4,7 @@ import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
-import il.ac.technion.cs.softwaredesign.CourseApp
-import il.ac.technion.cs.softwaredesign.CourseAppInitializer
-import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.*
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -18,15 +16,15 @@ import java.time.Duration
 
 class CourseAppTest {
 
-    private val courseAppInitializer = CourseAppInitializer()
+    // val courseAppInitializer = CourseAppInitializer() // TODO
 
     init {
-        courseAppInitializer.setup()
+        //courseAppInitializer.setup()
     }
 
     private val map = HashMap<List<String>, String>()
     private val keyValueStore = mockk<KeyValueStore>()
-    private val courseApp = CourseApp(keyValueStore)
+    private val courseApp = CourseAppImplementation(keyValueStore)
     private val keySlot = slot<List<String>>()
     private val valSlot = slot<String>()
 

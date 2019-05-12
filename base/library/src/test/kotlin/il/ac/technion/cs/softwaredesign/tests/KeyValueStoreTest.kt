@@ -1,11 +1,12 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
-import il.ac.technion.cs.softwaredesign.Storage
+import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
-class MockStorage : Storage {
+
+class MockStorage : SecureStorage {
     private val encoding = Charsets.UTF_8
 
     private val keyvalDB = HashMap<String, ByteArray>()
