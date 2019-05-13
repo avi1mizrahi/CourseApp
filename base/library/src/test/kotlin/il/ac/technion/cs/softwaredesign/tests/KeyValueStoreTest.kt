@@ -129,12 +129,12 @@ internal class KeyValueStoreTest {
 
 
     @Test
-    fun `read int32 returns 0 if key doesn't exist`(){
+    fun `read int32 returns null if key doesn't exist`(){
         val newKVwithOldStorage = KeyValueStore(storage)
 
         val ret1 = newKVwithOldStorage.read_int32(listOf("a"))
 
-        assertEquals(0, ret1)
+        assertEquals(null, ret1)
     }
 
     @Test

@@ -20,16 +20,19 @@ private const val COUNT_IDENTIFIER = "count"
 private const val FIRST_IDENTIFIER = "first"
 private const val PREVIOUS_IDENTIFIER = "previous"
 private const val NEXT_IDENTIFIER = "next"
-private const val NULL_NODE_ID = -1
 
 class Set(private val DB: KeyValueStore, private val TreeName : String) {
+
+    init {
+        setCount(0)
+    }
 
     fun exists(id: Int) : Boolean {
         return DB.read(listOf(TreeName, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)) != null
     }
 
     fun count() : Int {
-        return DB.read_int32(listOf(TreeName, COUNT_IDENTIFIER))
+        return DB.read_int32(listOf(TreeName, COUNT_IDENTIFIER))!!
     }
 
     fun add(id: Int) {
@@ -42,17 +45,17 @@ class Set(private val DB: KeyValueStore, private val TreeName : String) {
         if (currentCount == 0)
         {
             setFirst(id)
-            setNext(id, NULL_NODE_ID)
-            setPrevious(id, NULL_NODE_ID)
+            setNext(id, null)
+            setPrevious(id, null)
         }
         else
         {
             val oldFirst = getFirst()
             setFirst(id)
             setNext(id, oldFirst)
-            setPrevious(id, NULL_NODE_ID)
+            setPrevious(id, null)
 
-            setPrevious(oldFirst, id)
+            if (oldFirst != null) setPrevious(oldFirst, id)
         }
 
 
@@ -70,7 +73,7 @@ class Set(private val DB: KeyValueStore, private val TreeName : String) {
         val next = getNext(id)
 
         // Update previous or first.
-        if (prev == NULL_NODE_ID) {// id was the first node, update first
+        if (prev == null) {// id was the first node, update first
             setFirst(next)
         }
         else { // there is a previous node
@@ -78,7 +81,7 @@ class Set(private val DB: KeyValueStore, private val TreeName : String) {
         }
 
         // Update next to point to previous if exists
-        if (next != NULL_NODE_ID) {
+        if (next != null) {
             setPrevious(next, prev)
         }
 
@@ -91,7 +94,7 @@ class Set(private val DB: KeyValueStore, private val TreeName : String) {
         var out = ArrayList<Int>()
 
         var current = getFirst()
-        while (current != NULL_NODE_ID)
+        while (current != null)
         {
             out.add(current)
             current = getNext(current)
@@ -105,20 +108,20 @@ class Set(private val DB: KeyValueStore, private val TreeName : String) {
         DB.write_int32(listOf(TreeName, COUNT_IDENTIFIER), count)
     }
 
-    private fun setNext(id : Int, next : Int)
+    private fun setNext(id : Int, next : Int?)
     {
         DB.write_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER), next)
     }
-    private fun getNext(id : Int) : Int
+    private fun getNext(id : Int) : Int?
     {
         return DB.read_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
     }
 
-    private fun setPrevious(id : Int, prev : Int)
+    private fun setPrevious(id : Int, prev : Int?)
     {
         DB.write_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER), prev)
     }
-    private fun getPrevious(id : Int) : Int
+    private fun getPrevious(id : Int) : Int?
     {
         return DB.read_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
     }
@@ -134,11 +137,11 @@ class Set(private val DB: KeyValueStore, private val TreeName : String) {
     }
 
 
-    private fun getFirst() : Int {
+    private fun getFirst() : Int? {
         return DB.read_int32(listOf(TreeName, FIRST_IDENTIFIER))
     }
 
-    private fun setFirst(id : Int){
+    private fun setFirst(id : Int?){
         DB.write_int32(listOf(TreeName, FIRST_IDENTIFIER), id)
     }
 

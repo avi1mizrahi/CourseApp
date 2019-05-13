@@ -29,11 +29,18 @@ class CourseAppTest {
         //courseAppInitializer.setup()
     }
 
-    private val map = HashMap<List<String>, String>()
+
     private val keyValueStore= mockk<KeyValueStore>()
     private lateinit var courseApp : CourseApp
+
+    private val map = HashMap<List<String>, String>()
     private val keySlot = slot<List<String>>()
     private val valSlot = slot<String>()
+
+    private val mapInt = HashMap<List<String>, Int>()
+    private val keySlotInt = slot<List<String>>()
+    private val valSlotInt = slot<Int>()
+
 
     @BeforeEach
     fun before() {
@@ -41,16 +48,27 @@ class CourseAppTest {
         // Inject the created mocked KeyValueStore instance to a new CourseApp
         class CourseAppModuleMock : CourseAppModule() {
             override fun configure() {
-                super.configure()
+                bind<CourseApp>().to<CourseAppImpl>()
                 bind<KeyValueStore>().toInstance(keyValueStore)
             }
         }
         val injector = Guice.createInjector(CourseAppModuleMock())
-        courseApp = injector.getInstance()
 
+        every { keyValueStore.read_int32(key = capture(keySlotInt)) } answers { mapInt[keySlotInt.captured] }
+        every { keyValueStore.write_int32(key = capture(keySlotInt), value = capture(valSlotInt)) } answers { mapInt[keySlotInt.captured] = valSlotInt.captured }
+        every { keyValueStore.delete_int32(key = capture(keySlotInt)) } answers { mapInt.remove(keySlotInt.captured) }
         every { keyValueStore.read(key = capture(keySlot)) } answers { map[keySlot.captured] }
         every { keyValueStore.write(key = capture(keySlot), value = capture(valSlot)) } answers { map[keySlot.captured] = valSlot.captured }
         every { keyValueStore.delete(key = capture(keySlot)) } answers { map.remove(keySlot.captured) }
+
+        // The instance needs to be created after the mock is configured!
+        courseApp = injector.getInstance()
+
+    }
+
+    @Test
+    fun `Empty test`() {
+
     }
 
     @Test

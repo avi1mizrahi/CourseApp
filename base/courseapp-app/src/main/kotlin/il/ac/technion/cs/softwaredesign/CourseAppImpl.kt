@@ -1,25 +1,9 @@
 package il.ac.technion.cs.softwaredesign
 
 import com.google.inject.Inject
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.Token
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.User
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.exceptions.*
-import il.ac.technion.cs.softwaredesign.storage.SecureStorage
-import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
-import java.lang.IllegalArgumentException
-import kotlin.random.Random
 
-
-
-//class StaffStorage : Storage {
-//        override fun read(key: ByteArray): ByteArray? {
-//                return il.ac.technion.cs.softwaredesign.storage.read(key)
-//        }
-//
-//        override fun write(key: ByteArray, value: ByteArray) {
-//                il.ac.technion.cs.softwaredesign.storage.write(key, value)
-//        }
-//}
 
 /**
  * This is the class implementing CourseApp, a course discussion group system.
@@ -31,26 +15,10 @@ import kotlin.random.Random
  */
 
 
-class CourseAppImpl : CourseApp {
+class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
 
-    @Inject
-    private lateinit var DB : KeyValueStore
-
-    private fun tokenFactory(str: String) = Token(DB, str)
-    private fun userFactory(str: String) = User(DB, str)
-
-
-
-    private fun generateToken() : Token
-    {
-        var out = ""
-        repeat(32)
-        {
-            out += Character.toString(Random.nextInt('a'.toInt(), 'z'.toInt() + 1))
-        }
-        return tokenFactory(out)
-    }
-
+    private var userManager = UserManager(DB)
+    private var tokenManager = TokenManager(DB)
 
 
     /**
@@ -71,16 +39,13 @@ class CourseAppImpl : CourseApp {
      */
     override fun login(username: String, password: String) : String
     {
-        val u = userFactory(username)
+        var u = userManager.getUserByName(username)
 
-        // See if the user exists and create it if it doesn't
-        if (!u.exists())
-        {
-            u.setPassword(password)
+        // User does not exist
+        if (u == null) {
+            u = userManager.createUser(username, password)
         }
-        // Else, verify the plaintext password and that the user isn't logged in
-        else
-        {
+        else {
             if (u.getPassword() != password)
                 throw NoSuchEntityException()
 
@@ -89,13 +54,7 @@ class CourseAppImpl : CourseApp {
         }
 
 
-        val t = generateToken()
-
-        // Set Token to point to user and User to point to token.
-        u.setCurrentToken(t)
-        t.setUser(u)
-        //
-
+        val t = tokenManager.generateNewToken(u)
         return t.getString()
 
     }
@@ -109,12 +68,7 @@ class CourseAppImpl : CourseApp {
      * @throws InvalidTokenException If the auth [token] is invalid.
      */
     override fun logout(token: String) {
-        val t = tokenFactory(token)
-
-        if (!t.exists()) {
-            throw InvalidTokenException()
-        }
-
+        val t = tokenManager.getTokenByString(token) ?: throw InvalidTokenException()
 
         val u = t.getUser()!! // User has to exist, we just checked
 
@@ -141,15 +95,8 @@ class CourseAppImpl : CourseApp {
     override fun isUserLoggedIn(token: String, username: String): Boolean?
     {
         // Confirm that token belongs to any user
-        val t = tokenFactory(token)
-        if (!t.exists()) {
-            throw InvalidTokenException()
-        }
-
-        val u = userFactory(username)
-        if (!u.exists())
-            return null
-
+        tokenManager.getTokenByString(token) ?: throw InvalidTokenException()
+        val u = userManager.getUserByName(username) ?: return null
         return u.isLoggedIn()
     }
 
