@@ -1,5 +1,8 @@
 package il.ac.technion.cs.softwaredesign.tests
 
+import com.authzee.kotlinguice4.KotlinModule
+import com.authzee.kotlinguice4.getInstance
+import com.google.inject.Guice
 import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
@@ -8,6 +11,7 @@ import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
+import il.ac.technion.cs.softwaredesign.storage.SecureStorageModule
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -26,13 +30,24 @@ class CourseAppTest {
     }
 
     private val map = HashMap<List<String>, String>()
-    private val keyValueStore = mockk<KeyValueStore>()
-    private val courseApp = CourseAppImplementation(keyValueStore)
+    private val keyValueStore= mockk<KeyValueStore>()
+    private lateinit var courseApp : CourseApp
     private val keySlot = slot<List<String>>()
     private val valSlot = slot<String>()
 
     @BeforeEach
     fun before() {
+
+        // Inject the created mocked KeyValueStore instance to a new CourseApp
+        class CourseAppModuleMock : CourseAppModule() {
+            override fun configure() {
+                super.configure()
+                bind<KeyValueStore>().toInstance(keyValueStore)
+            }
+        }
+        val injector = Guice.createInjector(CourseAppModuleMock())
+        courseApp = injector.getInstance()
+
         every { keyValueStore.read(key = capture(keySlot)) } answers { map[keySlot.captured] }
         every { keyValueStore.write(key = capture(keySlot), value = capture(valSlot)) } answers { map[keySlot.captured] = valSlot.captured }
         every { keyValueStore.delete(key = capture(keySlot)) } answers { map.remove(keySlot.captured) }
