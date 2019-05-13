@@ -101,7 +101,7 @@ class User(private val DB: KeyValueStore, private val id: Int) {
         DB.write(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER), value=token.getString())
     }
 
-    fun removeCurrentToken() {
+    fun removeToken() {
         DB.delete(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER))
     }
 

@@ -24,6 +24,16 @@ class TokenManager(private val DB: KeyValueStore) {
         return t
     }
 
+    fun removeTokenLink(t: Token){
+        val u = t.getUser()!! // User has to exist, we just checked
+
+        // User must have a token and it must be this token
+        assert(u.getCurrentToken()!!.getString() == t.getString())
+
+        t.remove()
+        u.removeToken()
+    }
+
     fun getTokenByString(str : String) : Token? {
         if (exists(str))
             return Token(DB, str)

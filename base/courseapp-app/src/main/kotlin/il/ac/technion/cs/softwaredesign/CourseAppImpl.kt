@@ -56,7 +56,6 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
 
         val t = tokenManager.generateNewToken(u)
         return t.getString()
-
     }
 
     /**
@@ -69,15 +68,7 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
      */
     override fun logout(token: String) {
         val t = tokenManager.getTokenByString(token) ?: throw InvalidTokenException()
-
-        val u = t.getUser()!! // User has to exist, we just checked
-
-        // User must have a token and it must be this token
-        assert(u.getCurrentToken()!!.getString() == token)
-
-
-        t.remove()
-        u.removeCurrentToken()
+        tokenManager.removeTokenLink(t)
     }
 
 
