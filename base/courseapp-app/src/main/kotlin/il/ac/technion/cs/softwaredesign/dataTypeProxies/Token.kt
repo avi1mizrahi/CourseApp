@@ -7,12 +7,10 @@ import kotlin.random.Random
 private const val TOKENS_IDENTIFIER = "tokens"
 
 class TokenManager(private val DB: KeyValueStore) {
-    private fun generateToken() : String
-    {
+    private fun generateToken() : String {
         var out = ""
-        repeat(32)
-        {
-            out += Character.toString(Random.nextInt('a'.toInt(), 'z'.toInt() + 1))
+        repeat(32) {
+            out += Random.nextInt('a'.toInt(), 'z'.toInt() + 1).toChar()
         }
         return out
     }
