@@ -1,14 +1,13 @@
 package il.ac.technion.cs.softwaredesign
 
+import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import java.nio.ByteBuffer
-import il.ac.technion.cs.softwaredesign.storage.*
 
 
 private val encoding = Charsets.UTF_8
 
 private const val deletedInt32 = ""
-private const val nullEntryPrefix = "0"
-private const val validEntryPrefix = "1"
+private const val validEntrySuffix = 1.toByte()
 
 
 class KeyValueStore(private val storage: SecureStorage) {
@@ -16,7 +15,7 @@ class KeyValueStore(private val storage: SecureStorage) {
      *  remove a key-value from the DB
      */
     fun delete(key: List<String>) {
-        storage.write(convertKeyToByteArray(key), nullEntryPrefix.toByteArray(encoding))
+        storage.write(convertKeyToByteArray(key), ByteArray(0))
     }
 
     // Write a 1 byte
@@ -31,11 +30,9 @@ class KeyValueStore(private val storage: SecureStorage) {
     fun read(key: List<String>) : String? {
         val keyBytes = convertKeyToByteArray(key)
         val res = storage.read(keyBytes) ?: return null
-        val outstr = res.toString(encoding)
+        if (res.isEmpty()) return null
 
-        if (outstr.startsWith(nullEntryPrefix))
-            return null
-        return outstr.removeRange(0, 1)
+        return res.dropLast(1).toByteArray().toString(encoding)
     }
 
     /**
@@ -64,7 +61,7 @@ class KeyValueStore(private val storage: SecureStorage) {
      */
     fun write(key: List<String>, value: String) {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
-        val valueBytes = convertValueToByteArray(value)
+        val valueBytes = convertValueToByteArray(value) + validEntrySuffix
         storage.write(keyBytes, valueBytes)
     }
 
@@ -93,7 +90,7 @@ class KeyValueStore(private val storage: SecureStorage) {
 }
 
 private fun convertValueToByteArray(value: String) : ByteArray {
-    return "$validEntryPrefix$value".toByteArray(encoding)
+    return value.toByteArray(encoding)
 }
 
 /**
