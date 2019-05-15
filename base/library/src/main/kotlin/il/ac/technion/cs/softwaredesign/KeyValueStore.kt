@@ -1,6 +1,9 @@
 package il.ac.technion.cs.softwaredesign
 
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
+import kotlinx.serialization.SerialId
+import kotlinx.serialization.protobuf.ProtoBuf
+import kotlinx.serialization.Serializable
 import java.nio.ByteBuffer
 
 
@@ -23,27 +26,27 @@ interface KeyValueStore {
 
     /**
      *  read a value from the DB.
-     *  @param key: list of strings, will be delimited by "/"
+     *  @param key: list of strings
      */
     fun read(key: List<String>) : String?
 
     /**
      *  read an int32 from the DB.
-     *  @param key: list of strings, will be delimited by "/"
+     *  @param key: list of strings
      *  @return value as int, or -1 if doesn't exist
      */
     fun readInt32(key: List<String>) : Int?
 
     /**
      *  write a value to the DB.
-     *  @param key: list of strings, will be delimited by "/"
+     *  @param key: list of strings
      *  @param value: value to write
      */
     fun write(key: List<String>, value: String)
 
     /**
      *  write an int32 to the DB.
-     *  @param key: list of strings, will be delimited by "/"
+     *  @param key: list of strings
      */
     fun writeInt32(key: List<String>, value: Int?)
 }
@@ -106,10 +109,10 @@ private fun convertValueToByteArray(value: String) : ByteArray {
     return value.toByteArray(encoding)
 }
 
-/**
- *  verifies that the string does not contain illegal chars and converts it to a ByteArray
- */
+@Serializable
+private data class Key(@SerialId(1) val c: List<String>)
+
+
 private fun convertKeyToByteArray(key: List<String>) : ByteArray {
-    // TODO handle slashes later
-    return key.joinToString("/").toByteArray(encoding)
+    return ProtoBuf.dump(Key.serializer(), Key(key))
 }
