@@ -2,8 +2,8 @@ package il.ac.technion.cs.softwaredesign
 
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import kotlinx.serialization.SerialId
-import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.protobuf.ProtoBuf
 import java.nio.ByteBuffer
 
 
@@ -28,14 +28,14 @@ interface KeyValueStore {
      *  read a value from the DB.
      *  @param key: list of strings
      */
-    fun read(key: List<String>) : String?
+    fun read(key: List<String>): String?
 
     /**
      *  read an int32 from the DB.
      *  @param key: list of strings
      *  @return value as int, or -1 if doesn't exist
      */
-    fun readInt32(key: List<String>) : Int?
+    fun readInt32(key: List<String>): Int?
 
     /**
      *  write a value to the DB.
@@ -61,18 +61,15 @@ class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
         storage.write(convertKeyToByteArray(key), deletedInt32.toByteArray(encoding))
     }
 
-    override fun read(key: List<String>) : String? {
-        val keyBytes = convertKeyToByteArray(key)
-        val res = storage.read(keyBytes) ?: return null
+    override fun read(key: List<String>): String? {
+        val res = storage.read(convertKeyToByteArray(key)) ?: return null
         if (res.isEmpty()) return null
 
         return res.dropLast(1).toByteArray().toString(encoding)
     }
 
-    override fun readInt32(key: List<String>) : Int?
-    {
-        val keyBytes = convertKeyToByteArray(key)
-        val res = storage.read(keyBytes) ?: return null
+    override fun readInt32(key: List<String>): Int? {
+        val res = storage.read(convertKeyToByteArray(key)) ?: return null
 
         if (res.size == deletedInt32.length) return null // this is a deleted entry
 
@@ -83,36 +80,27 @@ class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
     }
 
     override fun write(key: List<String>, value: String) {
-        val keyBytes: ByteArray = convertKeyToByteArray(key)
-        val valueBytes = convertValueToByteArray(value) + validEntrySuffix
-        storage.write(keyBytes, valueBytes)
+        storage.write(convertKeyToByteArray(key), convertValueToByteArray(value))
     }
 
-    override fun writeInt32(key: List<String>, value: Int?)
-    {
-        val keyBytes: ByteArray = convertKeyToByteArray(key)
-
-        val write = value
-        if (write == null)
-        {
+    override fun writeInt32(key: List<String>, value: Int?) {
+        if (value == null) {
             storage.write(convertKeyToByteArray(key), deletedInt32.toByteArray(encoding))
-        }
-        else
-        {
-            val valueBytes = ByteBuffer.allocate(4).putInt(write).array()
-            storage.write(keyBytes, valueBytes)
+        } else {
+            val valueBytes = ByteBuffer.allocate(4).putInt(value).array()
+            storage.write(convertKeyToByteArray(key), valueBytes)
         }
     }
 }
 
-private fun convertValueToByteArray(value: String) : ByteArray {
-    return value.toByteArray(encoding)
+private fun convertValueToByteArray(value: String): ByteArray {
+    return value.toByteArray(encoding) + validEntrySuffix
 }
 
 @Serializable
 private data class Key(@SerialId(1) val c: List<String>)
 
 
-private fun convertKeyToByteArray(key: List<String>) : ByteArray {
+private fun convertKeyToByteArray(key: List<String>): ByteArray {
     return ProtoBuf.dump(Key.serializer(), Key(key))
 }
