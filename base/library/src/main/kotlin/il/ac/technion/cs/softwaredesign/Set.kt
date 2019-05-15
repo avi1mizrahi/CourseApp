@@ -1,39 +1,26 @@
 package il.ac.technion.cs.softwaredesign
 
-import il.ac.technion.cs.softwaredesign.KeyValueStore
-
 // A Linked list implementation that uses the key-value DB.
 // O(1) find, add, and remove.
 // Allow to getAll
 // finding is O(1) because the nodes are named after the keys!
 // Works as a set, no duplicates.
 
+//$ListName/Initialized -> bool
 //$ListName/Count -> int32
 //$ListName/First -> int32
 //$ListName/nodes/$id/Exists -> bool
 //$ListName/nodes/$id/Previous -> int32
 //$ListName/nodes/$id/Next -> int32
 
-private const val NODES_IDENTIFIER = "nodes"
-private const val EXISTS_IDENTIFIER = "exists"
-private const val COUNT_IDENTIFIER = "count"
-private const val FIRST_IDENTIFIER = "first"
+
+
 private const val PREVIOUS_IDENTIFIER = "previous"
 private const val NEXT_IDENTIFIER = "next"
+private const val FIRST_IDENTIFIER = "first"
 
-class Set(private val DB: KeyValueStore, private val TreeName : String) {
+class Set(private val DB: KeyValueStore, private val name : String) : DataStructure(DB, name) {
 
-    init {
-        setCount(0)
-    }
-
-    fun exists(id: Int) : Boolean {
-        return DB.read(listOf(TreeName, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)) != null
-    }
-
-    fun count() : Int {
-        return DB.read_int32(listOf(TreeName, COUNT_IDENTIFIER))!!
-    }
 
     fun add(id: Int) {
         if (exists(id)) return
@@ -103,46 +90,43 @@ class Set(private val DB: KeyValueStore, private val TreeName : String) {
     }
 
 
-    private fun setCount(count: Int)
+    fun setExists(id : Int)
     {
-        DB.write_int32(listOf(TreeName, COUNT_IDENTIFIER), count)
+        DB.write(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER), "")
+    }
+
+    fun unsetExists(id : Int)
+    {
+        DB.delete(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER))
+    }
+
+    override fun exists(id: Int) : Boolean {
+        return DB.read(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)) != null
     }
 
     private fun setNext(id : Int, next : Int?)
     {
-        DB.write_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER), next)
+        DB.write_int32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER), next)
     }
     private fun getNext(id : Int) : Int?
     {
-        return DB.read_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
+        return DB.read_int32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
     }
 
     private fun setPrevious(id : Int, prev : Int?)
     {
-        DB.write_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER), prev)
+        DB.write_int32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER), prev)
     }
     private fun getPrevious(id : Int) : Int?
     {
-        return DB.read_int32(listOf(TreeName, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
+        return DB.read_int32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
     }
-
-    private fun setExists(id : Int)
-    {
-        DB.write(listOf(TreeName, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER), "")
-    }
-
-    private fun unsetExists(id : Int)
-    {
-        DB.delete(listOf(TreeName, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER))
-    }
-
 
     private fun getFirst() : Int? {
-        return DB.read_int32(listOf(TreeName, FIRST_IDENTIFIER))
+        return DB.read_int32(listOf(name, FIRST_IDENTIFIER))
     }
 
     private fun setFirst(id : Int?){
-        DB.write_int32(listOf(TreeName, FIRST_IDENTIFIER), id)
+        DB.write_int32(listOf(name, FIRST_IDENTIFIER), id)
     }
-
 }
