@@ -211,20 +211,20 @@ class Heap(private val DB: KeyValueStore, private val name : String,
 
 
     private fun getObjectsNode(id: Int) : Int? {
-        return DB.read_int32(listOf(name, OBJECTS_IDENTIFIER, id.toString()))
+        return DB.readInt32(listOf(name, OBJECTS_IDENTIFIER, id.toString()))
     }
     private fun setObjectsNode(id: Int, index: Int){
-        DB.write_int32(listOf(name, OBJECTS_IDENTIFIER, id.toString()), index)
+        DB.writeInt32(listOf(name, OBJECTS_IDENTIFIER, id.toString()), index)
     }
     private fun deleteObjectsNode(id: Int){
-        DB.delete_int32(listOf(name, OBJECTS_IDENTIFIER, id.toString()))
+        DB.deleteInt32(listOf(name, OBJECTS_IDENTIFIER, id.toString()))
     }
 
     private fun getNodesObject(index: Int) : Int? {
-        return DB.read_int32(listOf(name, NODES_IDENTIFIER, index.toString()))
+        return DB.readInt32(listOf(name, NODES_IDENTIFIER, index.toString()))
     }
     private fun setNodesObject(index: Int, id: Int) {
-        DB.write_int32(listOf(name, NODES_IDENTIFIER, index.toString()), id)
+        DB.writeInt32(listOf(name, NODES_IDENTIFIER, index.toString()), id)
     }
 
 
@@ -305,7 +305,7 @@ class Heap(private val DB: KeyValueStore, private val name : String,
         var query = ArrayList(PrimaryKeySource)
         query[query.indexOf("%s")] = id.toString()
 
-        return DB.read_int32(query)!!
+        return DB.readInt32(query)!!
 
     }
     private fun getSecondaryKey(id: Int) : String {

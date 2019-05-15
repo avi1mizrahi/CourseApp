@@ -1,6 +1,5 @@
 package il.ac.technion.cs.softwaredesign.tests
 
-import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
 import com.natpryce.hamkrest.absent
@@ -11,7 +10,6 @@ import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
-import il.ac.technion.cs.softwaredesign.storage.SecureStorageModule
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -54,9 +52,9 @@ class CourseAppTest {
         }
         val injector = Guice.createInjector(CourseAppModuleMock())
 
-        every { keyValueStore.read_int32(key = capture(keySlotInt)) } answers { mapInt[keySlotInt.captured] }
-        every { keyValueStore.write_int32(key = capture(keySlotInt), value = capture(valSlotInt)) } answers { mapInt[keySlotInt.captured] = valSlotInt.captured }
-        every { keyValueStore.delete_int32(key = capture(keySlotInt)) } answers { mapInt.remove(keySlotInt.captured) }
+        every { keyValueStore.readInt32(key = capture(keySlotInt)) } answers { mapInt[keySlotInt.captured] }
+        every { keyValueStore.writeInt32(key = capture(keySlotInt), value = capture(valSlotInt)) } answers { mapInt[keySlotInt.captured] = valSlotInt.captured }
+        every { keyValueStore.deleteInt32(key = capture(keySlotInt)) } answers { mapInt.remove(keySlotInt.captured) }
         every { keyValueStore.read(key = capture(keySlot)) } answers { map[keySlot.captured] }
         every { keyValueStore.write(key = capture(keySlot), value = capture(valSlot)) } answers { map[keySlot.captured] = valSlot.captured }
         every { keyValueStore.delete(key = capture(keySlot)) } answers { map.remove(keySlot.captured) }

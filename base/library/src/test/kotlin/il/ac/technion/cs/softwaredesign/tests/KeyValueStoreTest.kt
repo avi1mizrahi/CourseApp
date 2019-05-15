@@ -1,6 +1,6 @@
 package il.ac.technion.cs.softwaredesign.tests
 
-import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -23,7 +23,7 @@ class MockStorage : SecureStorage {
 internal class KeyValueStoreTest {
 
     private val storage = MockStorage()
-    private val keyValueStore = KeyValueStore(storage)
+    private val keyValueStore = KeyValueStoreImpl(storage)
 
     @Test
     fun `read the written`() {
@@ -108,7 +108,7 @@ internal class KeyValueStoreTest {
     fun `data should be stored persistently`() {
         keyValueStore.write(listOf("lo lo"), value = "hi")
         keyValueStore.write(listOf("lo", "lo"), value = "why")
-        val newKVwithOldStorage = KeyValueStore(storage)
+        val newKVwithOldStorage = KeyValueStoreImpl(storage)
 
         val ret1 = newKVwithOldStorage.read(listOf("lo", "lo"))
         val ret2 = newKVwithOldStorage.read(listOf("lo lo"))
@@ -120,7 +120,7 @@ internal class KeyValueStoreTest {
     @Test
     fun `empty string doesnt cause issues`() {
         keyValueStore.write(listOf("a"), value = "")
-        val newKVwithOldStorage = KeyValueStore(storage)
+        val newKVwithOldStorage = KeyValueStoreImpl(storage)
 
         val ret1 = newKVwithOldStorage.read(listOf("a"))
 
@@ -130,20 +130,20 @@ internal class KeyValueStoreTest {
 
     @Test
     fun `read int32 returns null if key doesn't exist`(){
-        val newKVwithOldStorage = KeyValueStore(storage)
+        val newKVwithOldStorage = KeyValueStoreImpl(storage)
 
-        val ret1 = newKVwithOldStorage.read_int32(listOf("a"))
+        val ret1 = newKVwithOldStorage.readInt32(listOf("a"))
 
         assertEquals(null, ret1)
     }
 
     @Test
     fun `write and read int32`(){
-        keyValueStore.write_int32(listOf("a"), value = 25)
-        val newKVwithOldStorage = KeyValueStore(storage)
+        keyValueStore.writeInt32(listOf("a"), value = 25)
+        val newKVwithOldStorage = KeyValueStoreImpl(storage)
 
 
-        val ret1 = newKVwithOldStorage.read_int32(listOf("a"))
+        val ret1 = newKVwithOldStorage.readInt32(listOf("a"))
 
         assertEquals(25, ret1)
     }

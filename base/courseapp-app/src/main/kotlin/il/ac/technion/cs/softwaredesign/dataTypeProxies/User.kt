@@ -23,8 +23,8 @@ class UserManager(private val DB: KeyValueStore)
 {
     init {
         // initialize user count
-        if (DB.read_int32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER)) == null)
-            DB.write_int32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER), 0)
+        if (DB.readInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER)) == null)
+            DB.writeInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER), 0)
 
 
     }
@@ -46,21 +46,21 @@ class UserManager(private val DB: KeyValueStore)
     }
 
     fun getUserCount(): Int {
-        return DB.read_int32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))!!
+        return DB.readInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))!!
     }
 
     fun incrementUserCount() {
-        DB.write_int32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER), getUserCount() + 1)
+        DB.writeInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER), getUserCount() + 1)
     }
 
     fun getUserByName(name: String): User? {
-        val id = DB.read_int32(listOf(NAMETOID_IDENTIFIER, name)) ?: return null
+        val id = DB.readInt32(listOf(NAMETOID_IDENTIFIER, name)) ?: return null
         return User(DB, id)
     }
 
 
     private fun addUserID(name: String, id: Int) {
-        DB.write_int32(listOf(NAMETOID_IDENTIFIER, name), id)
+        DB.writeInt32(listOf(NAMETOID_IDENTIFIER, name), id)
     }
 }
 

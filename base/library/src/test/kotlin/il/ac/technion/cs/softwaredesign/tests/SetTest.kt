@@ -1,6 +1,6 @@
 package il.ac.technion.cs.softwaredesign.tests
 
-import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
 import il.ac.technion.cs.softwaredesign.Set
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 internal class SetTest {
 
     private val storage = MockStorage()
-    private val keyValueStore = KeyValueStore(storage)
+    private val keyValueStore = KeyValueStoreImpl(storage)
     private val list = Set(keyValueStore, "test")
 
 

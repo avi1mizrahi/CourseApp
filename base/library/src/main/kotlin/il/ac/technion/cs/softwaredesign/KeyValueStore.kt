@@ -10,24 +10,55 @@ private const val deletedInt32 = ""
 private const val validEntrySuffix = 1.toByte()
 
 
-class KeyValueStore(private val storage: SecureStorage) {
+interface KeyValueStore {
     /**
      *  remove a key-value from the DB
      */
-    fun delete(key: List<String>) {
-        storage.write(convertKeyToByteArray(key), ByteArray(0))
-    }
+    fun delete(key: List<String>)
 
-    // Write a 1 byte
-    fun delete_int32(key: List<String>) {
-        storage.write(convertKeyToByteArray(key), deletedInt32.toByteArray(encoding))
-    }
+    /**
+     *  remove a key-value from the DB
+     */
+    fun deleteInt32(key: List<String>)
 
     /**
      *  read a value from the DB.
      *  @param key: list of strings, will be delimited by "/"
      */
-    fun read(key: List<String>) : String? {
+    fun read(key: List<String>) : String?
+
+    /**
+     *  read an int32 from the DB.
+     *  @param key: list of strings, will be delimited by "/"
+     *  @return value as int, or -1 if doesn't exist
+     */
+    fun readInt32(key: List<String>) : Int?
+
+    /**
+     *  write a value to the DB.
+     *  @param key: list of strings, will be delimited by "/"
+     *  @param value: value to write
+     */
+    fun write(key: List<String>, value: String)
+
+    /**
+     *  write an int32 to the DB.
+     *  @param key: list of strings, will be delimited by "/"
+     */
+    fun writeInt32(key: List<String>, value: Int?)
+}
+
+class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
+
+    override fun delete(key: List<String>) {
+        storage.write(convertKeyToByteArray(key), ByteArray(0))
+    }
+
+    override fun deleteInt32(key: List<String>) {
+        storage.write(convertKeyToByteArray(key), deletedInt32.toByteArray(encoding))
+    }
+
+    override fun read(key: List<String>) : String? {
         val keyBytes = convertKeyToByteArray(key)
         val res = storage.read(keyBytes) ?: return null
         if (res.isEmpty()) return null
@@ -35,12 +66,7 @@ class KeyValueStore(private val storage: SecureStorage) {
         return res.dropLast(1).toByteArray().toString(encoding)
     }
 
-    /**
-     *  read an int32 from the DB.
-     *  @param key: list of strings, will be delimited by "/"
-     *  @return value as int, or -1 if doesn't exist
-     */
-    fun read_int32(key: List<String>) : Int?
+    override fun readInt32(key: List<String>) : Int?
     {
         val keyBytes = convertKeyToByteArray(key)
         val res = storage.read(keyBytes) ?: return null
@@ -53,27 +79,17 @@ class KeyValueStore(private val storage: SecureStorage) {
         return ByteBuffer.wrap(res).int
     }
 
-
-    /**
-     *  write a value to the DB.
-     *  @param key: list of strings, will be delimited by "/"
-     *  @param value: value to write
-     */
-    fun write(key: List<String>, value: String) {
+    override fun write(key: List<String>, value: String) {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
         val valueBytes = convertValueToByteArray(value) + validEntrySuffix
         storage.write(keyBytes, valueBytes)
     }
 
-    /**
-     *  write an int32 to the DB.
-     *  @param key: list of strings, will be delimited by "/"
-     */
-    fun write_int32(key: List<String>, value: Int?)
+    override fun writeInt32(key: List<String>, value: Int?)
     {
         val keyBytes: ByteArray = convertKeyToByteArray(key)
 
-        var write = value
+        val write = value
         if (write == null)
         {
             storage.write(convertKeyToByteArray(key), deletedInt32.toByteArray(encoding))
@@ -83,10 +99,7 @@ class KeyValueStore(private val storage: SecureStorage) {
             val valueBytes = ByteBuffer.allocate(4).putInt(write).array()
             storage.write(keyBytes, valueBytes)
         }
-
     }
-
-
 }
 
 private fun convertValueToByteArray(value: String) : ByteArray {
@@ -96,7 +109,7 @@ private fun convertValueToByteArray(value: String) : ByteArray {
 /**
  *  verifies that the string does not contain illegal chars and converts it to a ByteArray
  */
-private fun convertKeyToByteArray(key: List<out String>) : ByteArray {
+private fun convertKeyToByteArray(key: List<String>) : ByteArray {
     // TODO handle slashes later
     return key.joinToString("/").toByteArray(encoding)
 }

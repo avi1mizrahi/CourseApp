@@ -1,16 +1,15 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.Heap
-import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
 
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
 class HeapTest {
     private val storage = MockStorage()
-    private val keyValueStore = KeyValueStore(storage)
+    private val keyValueStore = KeyValueStoreImpl(storage)
     private val heap = Heap(keyValueStore, "test", listOf("primary","%s"), listOf("secondary","%s"))
 
 
@@ -19,7 +18,7 @@ class HeapTest {
     @BeforeEach
     fun `Set up primary and secondary keys`() {
         for (i in 1..2048) {
-            keyValueStore.write_int32(listOf("primary", i.toString()), i / 10)
+            keyValueStore.writeInt32(listOf("primary", i.toString()), i / 10)
             keyValueStore.write(listOf("secondary", i.toString()), (i % 10).toString())
         }
     }

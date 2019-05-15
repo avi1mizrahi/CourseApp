@@ -106,27 +106,27 @@ class Set(private val DB: KeyValueStore, private val name : String) : DataStruct
 
     private fun setNext(id : Int, next : Int?)
     {
-        DB.write_int32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER), next)
+        DB.writeInt32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER), next)
     }
     private fun getNext(id : Int) : Int?
     {
-        return DB.read_int32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
+        return DB.readInt32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
     }
 
     private fun setPrevious(id : Int, prev : Int?)
     {
-        DB.write_int32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER), prev)
+        DB.writeInt32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER), prev)
     }
     private fun getPrevious(id : Int) : Int?
     {
-        return DB.read_int32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
+        return DB.readInt32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
     }
 
     private fun getFirst() : Int? {
-        return DB.read_int32(listOf(name, FIRST_IDENTIFIER))
+        return DB.readInt32(listOf(name, FIRST_IDENTIFIER))
     }
 
     private fun setFirst(id : Int?){
-        DB.write_int32(listOf(name, FIRST_IDENTIFIER), id)
+        DB.writeInt32(listOf(name, FIRST_IDENTIFIER), id)
     }
 }

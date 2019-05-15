@@ -39,7 +39,7 @@ class TokenManager(private val DB: KeyValueStore) {
     }
 
     fun exists(str : String) : Boolean {
-        return DB.read_int32(listOf(TOKENS_IDENTIFIER, str)) != null
+        return DB.readInt32(listOf(TOKENS_IDENTIFIER, str)) != null
     }
 
 }
@@ -50,15 +50,15 @@ class Token(private val DB: KeyValueStore, private val token: String) {
     }
 
     fun remove() {
-        DB.delete_int32(listOf(TOKENS_IDENTIFIER, token))
+        DB.deleteInt32(listOf(TOKENS_IDENTIFIER, token))
     }
 
     fun setUser(user: User)  {
-        DB.write_int32(listOf(TOKENS_IDENTIFIER, token), user.getID())
+        DB.writeInt32(listOf(TOKENS_IDENTIFIER, token), user.getID())
     }
 
     fun getUser() : User? {
-        val id = DB.read_int32(listOf(TOKENS_IDENTIFIER, token)) ?: return null
+        val id = DB.readInt32(listOf(TOKENS_IDENTIFIER, token)) ?: return null
         return User(DB, id)
     }
 

@@ -18,12 +18,12 @@ abstract class DataStructure(private val DB: KeyValueStore, private val name : S
 
     protected fun setCount(count: Int)
     {
-        DB.write_int32(listOf(name, COUNT_IDENTIFIER), count)
+        DB.writeInt32(listOf(name, COUNT_IDENTIFIER), count)
         cachedcount = count
     }
 
     fun count() : Int {
-        return DB.read_int32(listOf(name, COUNT_IDENTIFIER))!!
+        return DB.readInt32(listOf(name, COUNT_IDENTIFIER))!!
     }
 
     private fun initIfNotInitialized(){
