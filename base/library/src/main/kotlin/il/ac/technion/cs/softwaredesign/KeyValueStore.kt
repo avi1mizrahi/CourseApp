@@ -25,6 +25,14 @@ interface KeyValueStore {
 }
 
 
+class ScopedKeyValueStore(private val prefix: List<String>, private val parent: KeyValueStore) :
+        KeyValueStore {
+    override fun <V> getReference(key: List<String>,
+                                  serializer: Serializer<V>): KeyValueStore.DBObject<V> =
+            parent.getReference(prefix + key, serializer)
+}
+
+
 fun KeyValueStore.getIntReference(key: List<String>): KeyValueStore.DBObject<Int> =
         getReference(key, IntSerializer())
 
