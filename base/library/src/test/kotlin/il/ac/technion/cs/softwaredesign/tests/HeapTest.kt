@@ -2,6 +2,8 @@ package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.Heap
 import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
+import il.ac.technion.cs.softwaredesign.getIntReference
+import il.ac.technion.cs.softwaredesign.getStringReference
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

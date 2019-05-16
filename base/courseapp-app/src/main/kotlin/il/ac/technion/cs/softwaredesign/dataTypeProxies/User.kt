@@ -1,6 +1,8 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.getIntReference
+import il.ac.technion.cs.softwaredesign.getStringReference
 
 
 private const val USERSTATS_IDENTIFIER = "usersstats"

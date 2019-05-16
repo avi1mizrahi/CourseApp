@@ -1,6 +1,8 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
+import il.ac.technion.cs.softwaredesign.getIntReference
+import il.ac.technion.cs.softwaredesign.getStringReference
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test

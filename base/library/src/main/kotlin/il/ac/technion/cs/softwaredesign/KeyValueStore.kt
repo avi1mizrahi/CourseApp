@@ -4,10 +4,7 @@ import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import kotlinx.serialization.SerialId
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
-import java.nio.ByteBuffer
 
-
-private val encoding = Charsets.UTF_8
 
 private const val validEntrySuffix = 1.toByte()
 
@@ -16,7 +13,7 @@ interface KeyValueStore {
 
     interface DBObject<V> {
         fun write(value: V)
-        fun read() : V?
+        fun read(): V?
         fun delete()
     }
 
@@ -26,11 +23,7 @@ interface KeyValueStore {
         fun delete(key: String)
     }
 
-    interface DBInt : DBObject<Int>
-    fun getIntReference(key: List<String>) : DBInt
-
-    interface DBString : DBObject<String>
-    fun getStringReference(key: List<String>) : DBString
+    fun <V> getReference(key: List<String>, serializer: Serializer<V>): DBObject<V>
 
     interface DBIntMap : DBMap<Int>
     fun getIntMapReference(key: List<String>) : DBIntMap
@@ -39,7 +32,31 @@ interface KeyValueStore {
     fun getStringMapReference(key: List<String>) : DBStringMap
 }
 
+
+fun KeyValueStore.getIntReference(key: List<String>): KeyValueStore.DBObject<Int> =
+        getReference(key, IntSerializer())
+
+fun KeyValueStore.getStringReference(key: List<String>): KeyValueStore.DBObject<String> =
+        getReference(key, StringSerializer())
+
+
 class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
+    override fun <V> getReference(key: List<String>, serializer: Serializer<V>) =
+            Ref(key, serializer)
+
+    inner class Ref<V>(private val key: List<String>, private val serializer: Serializer<V>) :
+            KeyValueStore.DBObject<V> {
+        override fun write(value: V) =
+                storage.write(convertKeyToByteArray(key), serializer.dump(value) + validEntrySuffix)
+
+        override fun read(): V? =
+                storage.read(convertKeyToByteArray(key))
+                    ?.takeIf(ByteArray::isNotEmpty)
+                    ?.let { serializer.load(it.dropLast(1).toByteArray()) }
+
+        override fun delete() = storage.write(convertKeyToByteArray(key), ByteArray(0))
+    }
+
 
     private fun addlists(key : List<String>, k: String) : List<String> {
         val list = ArrayList<String>(key)
@@ -60,46 +77,10 @@ class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
         override fun read(k: String) : String? = getStringReference(addlists(key, k)).read()
         override fun delete(k: String) = getStringReference(addlists(key, k)).delete()
     }
-
-    override fun getIntReference(key: List<String>) = DBInt(key)
-    inner class DBInt(private val key: List<String>) : KeyValueStore.DBInt {
-        override fun write(value: Int) =
-                storage.write(convertKeyToByteArray(key), ByteBuffer.allocate(4).putInt(value).array())
-
-        override fun read() : Int? {
-            val res = storage.read(convertKeyToByteArray(key)) ?: return null
-
-            if (res.isEmpty()) return null // this is a deleted entry
-
-            // NOTE expecting keys of read_int32 to never conflict with the equivalent read string
-            assert(res.size == 4)
-
-            return ByteBuffer.wrap(res).int
-        }
-        override fun delete() = storage.write(convertKeyToByteArray(key), ByteArray(0))
-    }
-
-    override fun getStringReference(key: List<String>) = DBString(key)
-    inner class DBString(private val key: List<String>) : KeyValueStore.DBString {
-        override fun write(value: String) = storage.write(convertKeyToByteArray(key), convertValueToByteArray(value))
-        override fun read() : String? {
-            val res = storage.read(convertKeyToByteArray(key)) ?: return null
-            if (res.isEmpty()) return null
-
-            return res.dropLast(1).toByteArray().toString(encoding)
-        }
-        override fun delete() = storage.write(convertKeyToByteArray(key), ByteArray(0))
-    }
-
-}
-
-private fun convertValueToByteArray(value: String): ByteArray {
-    return value.toByteArray(encoding) + validEntrySuffix
 }
 
 @Serializable
 private data class Key(@SerialId(1) val c: List<String>)
-
 
 private fun convertKeyToByteArray(key: List<String>): ByteArray {
     return ProtoBuf.dump(Key.serializer(), Key(key))

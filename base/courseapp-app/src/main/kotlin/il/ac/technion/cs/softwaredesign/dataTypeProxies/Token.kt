@@ -1,6 +1,7 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.getIntReference
 import kotlin.random.Random
 
 
