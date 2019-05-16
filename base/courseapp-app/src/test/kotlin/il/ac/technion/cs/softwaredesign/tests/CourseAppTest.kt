@@ -10,30 +10,10 @@ import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
-import il.ac.technion.cs.softwaredesign.storage.SecureStorage
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.slot
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration
-
-
-// TODO remove this after fixing the mockk code
-class MockStorage : SecureStorage {
-    private val encoding = Charsets.UTF_8
-
-    private val keyvalDB = HashMap<String, ByteArray>()
-
-    override fun read(key: ByteArray): ByteArray? {
-        return keyvalDB[key.toString(encoding)]
-    }
-
-    override fun write(key: ByteArray, value: ByteArray) {
-        keyvalDB[key.toString(encoding)] = value
-    }
-}
 
 
 class CourseAppTest {
@@ -45,17 +25,8 @@ class CourseAppTest {
     }
 
 
-    private val keyValueStore = KeyValueStoreImpl(MockStorage())//mockk<KeyValueStore>()
+    private val keyValueStore = MockKeyValueStore()
     private lateinit var courseApp : CourseApp
-
-    private val map = HashMap<List<String>, String>()
-    private val keySlot = slot<List<String>>()
-    private val valSlot = slot<String>()
-
-    private val mapInt = HashMap<List<String>, Int>()
-    private val keySlotInt = slot<List<String>>()
-    private val valSlotInt = slot<Int>()
-
 
     @BeforeEach
     fun before() {
@@ -68,16 +39,6 @@ class CourseAppTest {
             }
         }
         val injector = Guice.createInjector(CourseAppModuleMock())
-
-
-
-        // TODO
-//        every { keyValueStore.readInt32(key = capture(keySlotInt)) } answers { mapInt[keySlotInt.captured] }
-//        every { keyValueStore.writeInt32(key = capture(keySlotInt), value = capture(valSlotInt)) } answers { mapInt[keySlotInt.captured] = valSlotInt.captured }
-//        every { keyValueStore.deleteInt32(key = capture(keySlotInt)) } answers { mapInt.remove(keySlotInt.captured) }
-//        every { keyValueStore.read(key = capture(keySlot)) } answers { map[keySlot.captured] }
-//        every { keyValueStore.write(key = capture(keySlot), value = capture(valSlot)) } answers { map[keySlot.captured] = valSlot.captured }
-//        every { keyValueStore.delete(key = capture(keySlot)) } answers { map.remove(keySlot.captured) }
 
         // The instance needs to be created after the mock is configured!
         courseApp = injector.getInstance()
