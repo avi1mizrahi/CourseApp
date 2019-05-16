@@ -21,7 +21,7 @@ private const val FIRST_IDENTIFIER = "first"
 
 class Set(private val DB: KeyValueStore, private val name : String) : DataStructure(DB, name) {
 
-    val first = DB.getIntReference(listOf(name, FIRST_IDENTIFIER))
+    private val first = DB.getIntReference(listOf(name, FIRST_IDENTIFIER))
 
     fun add(id: Int) {
         if (exists(id)) return
@@ -78,7 +78,7 @@ class Set(private val DB: KeyValueStore, private val name : String) : DataStruct
 
     fun getAll() : List<Int> {
 
-        var out = ArrayList<Int>()
+        val out = ArrayList<Int>()
 
         var current = getFirst()
         while (current != null)
@@ -90,12 +90,12 @@ class Set(private val DB: KeyValueStore, private val name : String) : DataStruct
     }
 
 
-    fun setExists(id : Int)
+    private fun setExists(id : Int)
     {
         DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).write("")
     }
 
-    fun unsetExists(id : Int)
+    private fun unsetExists(id : Int)
     {
         DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).delete()
     }

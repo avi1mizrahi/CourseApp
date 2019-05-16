@@ -58,7 +58,7 @@ class HeapTest {
         for (i in 1..3)
             heap.add(i)
 
-        var list = heap.getTop10()
+        val list = heap.getTop10()
 
 
         assert(list.size == 3)
@@ -72,7 +72,7 @@ class HeapTest {
     @Test
     fun `randomized entry with top10`() {
         repeat(5) {
-            var a = ArrayList<Int>()
+            val a = ArrayList<Int>()
             for (i in 1..256)
                 a.add(i)
 
@@ -83,7 +83,7 @@ class HeapTest {
             }
 
 
-            var res = heap.getTop10()
+            val res = heap.getTop10()
             assert(res.size == 10)
             for (i in 247..256)
                 assert(res[256 - i] == i)

@@ -20,7 +20,7 @@ class Heap(private val DB: KeyValueStore, name : String,
     fun add(id: Int) {
         assert(!exists(id))
 
-        val index = cachedcount
+        val index = cachedCount
         updateNode(index, id)
         setCount(index + 1)
         pushUp(index, id)
@@ -39,11 +39,11 @@ class Heap(private val DB: KeyValueStore, name : String,
             currentIndex = parentIndex
         }
 
-        val replacementNodeIndex = cachedcount - 1
+        val replacementNodeIndex = cachedCount - 1
         val replacementNodeID = getNodesObject(replacementNodeIndex)!!
 
         updateNode(0, replacementNodeID)
-        setCount(cachedcount - 1)
+        setCount(cachedCount - 1)
         pushDown(0, replacementNodeID)
 
 
@@ -52,7 +52,7 @@ class Heap(private val DB: KeyValueStore, name : String,
 
     fun getTop10() : List<Int> {
         val ret = ArrayList<Int>()
-        if (cachedcount == 0)
+        if (cachedCount == 0)
             return ret
 
         // Index -> ID
@@ -193,12 +193,12 @@ class Heap(private val DB: KeyValueStore, name : String,
 
     private fun getLeft(index : Int) : Int? {
         val left = index * 2 + 1
-        if (left >= cachedcount) return null
+        if (left >= cachedCount) return null
         return left
     }
     private fun getRight(index : Int) : Int? {
         val right = index * 2 + 2
-        if (right >= cachedcount) return null
+        if (right >= cachedCount) return null
         return right
     }
     private fun getParent(index : Int) : Int? {

@@ -7,25 +7,25 @@ private const val INITIALIZED_IDENTIFIER = "initialized"
 const val EXISTS_IDENTIFIER = "exists"
 const val NODES_IDENTIFIER = "nodes"
 
-abstract class DataStructure(private val DB: KeyValueStore, private val name : String) {
+abstract class DataStructure(DB: KeyValueStore, name : String) {
 
-    protected var isInitializd = DB.getStringReference(listOf(name, INITIALIZED_IDENTIFIER))
+    protected var isInitialized = DB.getStringReference(listOf(name, INITIALIZED_IDENTIFIER))
     protected var count = DB.getIntReference(listOf(name, COUNT_IDENTIFIER))
-    protected var cachedcount = -1
+    protected var cachedCount = -1
     init {
         initIfNotInitialized()
-        if (cachedcount == -1) cachedcount = count.read()!!
+        if (cachedCount == -1) cachedCount = count.read()!!
     }
 
     protected fun setCount(c: Int)
     {
         count.write(c)
-        cachedcount = c
+        cachedCount = c
     }
 
 
     fun count() : Int {
-        return cachedcount
+        return cachedCount
     }
 
     private fun initIfNotInitialized(){
@@ -36,11 +36,11 @@ abstract class DataStructure(private val DB: KeyValueStore, private val name : S
     }
 
     private fun getIsInitialized() : Boolean {
-        return isInitializd.read() != null
+        return isInitialized.read() != null
     }
 
     private fun setInitialized() {
-        isInitializd.write("")
+        isInitialized.write("")
     }
 
     abstract fun exists(id: Int) : Boolean
