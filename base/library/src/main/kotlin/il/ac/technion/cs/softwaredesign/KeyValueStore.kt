@@ -6,9 +6,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 
 
-private const val validEntrySuffix = 1.toByte()
-
-
 interface KeyValueStore {
 
     interface DBObject<V> {
@@ -17,19 +14,14 @@ interface KeyValueStore {
         fun delete()
     }
 
-    interface DBMap<V>{
-        fun write(key: String, value : V)
-        fun read(key: String) : V?
+    interface DBMap<V> {
+        fun write(key: String, value: V)
+        fun read(key: String): V?
         fun delete(key: String)
     }
 
     fun <V> getReference(key: List<String>, serializer: Serializer<V>): DBObject<V>
-
-    interface DBIntMap : DBMap<Int>
-    fun getIntMapReference(key: List<String>) : DBIntMap
-
-    interface DBStringMap : DBMap<String>
-    fun getStringMapReference(key: List<String>) : DBStringMap
+    fun <V> getMapReference(key: List<String>, serializer: Serializer<V>): DBMap<V>
 }
 
 
@@ -40,12 +32,20 @@ fun KeyValueStore.getStringReference(key: List<String>): KeyValueStore.DBObject<
         getReference(key, StringSerializer())
 
 
+fun KeyValueStore.getIntMapReference(key: List<String>): KeyValueStore.DBMap<Int> =
+        getMapReference(key, IntSerializer())
+
+
+private const val validEntrySuffix = 1.toByte()
+
 class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
-    override fun <V> getReference(key: List<String>, serializer: Serializer<V>) =
+    override fun <V> getReference(key: List<String>,
+                                  serializer: Serializer<V>): KeyValueStore.DBObject<V> =
             Ref(key, serializer)
 
-    inner class Ref<V>(private val key: List<String>, private val serializer: Serializer<V>) :
+    private inner class Ref<V>(private val key: List<String>, private val serializer: Serializer<V>) :
             KeyValueStore.DBObject<V> {
+
         override fun write(value: V) =
                 storage.write(convertKeyToByteArray(key), serializer.dump(value) + validEntrySuffix)
 
@@ -58,24 +58,25 @@ class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
     }
 
 
-    private fun addlists(key : List<String>, k: String) : List<String> {
-        val list = ArrayList<String>(key)
-        list.add(k)
-        return list
-    }
+    override fun <V> getMapReference(key: List<String>,
+                                     serializer: Serializer<V>): KeyValueStore.DBMap<V> =
+            DBMap(key, serializer)
 
-    override fun getIntMapReference(key: List<String>) : KeyValueStore.DBIntMap = DBIntMap(key)
-    inner class DBIntMap(private val key: List<String>) : KeyValueStore.DBIntMap {
-        override fun write(k: String, value : Int) = getIntReference(addlists(key, k)).write(value)
-        override fun read(k: String) : Int? = getIntReference(addlists(key, k)).read()
-        override fun delete(k: String) = getIntReference(addlists(key, k)).delete()
-    }
+    private inner class DBMap<V>(private val key: List<String>,
+                                 private val serializer: Serializer<V>) :
+            KeyValueStore.DBMap<V> {
 
-    override fun getStringMapReference(key: List<String>) : KeyValueStore.DBStringMap = DBStringMap(key)
-    inner class DBStringMap(private val key: List<String>) : KeyValueStore.DBStringMap {
-        override fun write(k: String, value : String) = getStringReference(addlists(key, k)).write(value)
-        override fun read(k: String) : String? = getStringReference(addlists(key, k)).read()
-        override fun delete(k: String) = getStringReference(addlists(key, k)).delete()
+        private fun concatKeys(pref: List<String>, key: String): List<String> =
+                pref.toMutableList().apply { add(key) }
+
+        override fun write(key: String, value: V) =
+                getReference(concatKeys(this.key, key), serializer).write(value)
+
+        override fun read(key: String): V? =
+                getReference(concatKeys(this.key, key), serializer).read()
+
+        override fun delete(key: String) =
+                getReference(concatKeys(this.key, key), serializer).delete()
     }
 }
 

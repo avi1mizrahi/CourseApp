@@ -1,6 +1,7 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.getIntMapReference
 import il.ac.technion.cs.softwaredesign.getIntReference
 import il.ac.technion.cs.softwaredesign.getStringReference
 
