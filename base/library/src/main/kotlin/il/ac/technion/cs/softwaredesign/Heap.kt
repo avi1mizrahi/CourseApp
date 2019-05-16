@@ -2,7 +2,7 @@ package il.ac.technion.cs.softwaredesign
 
 private const val OBJECTS_IDENTIFIER = "objects"
 
-class Heap(private val DB: KeyValueStore, private val name : String,
+class Heap(private val DB: KeyValueStore, name : String,
            private val PrimaryKeySource: List<String>, private val SecondaryKeySource: List<String>) :
         DataStructure(DB, name){
 
@@ -14,8 +14,8 @@ class Heap(private val DB: KeyValueStore, private val name : String,
 //Nodes are Implemented as an Array.
 
 
-    val IndexToIdMap = DB.getIntMapReference(listOf(name, NODES_IDENTIFIER))
-    val IdToIndexMap = DB.getIntMapReference(listOf(name, OBJECTS_IDENTIFIER))
+    private val indexToIdMap = DB.getIntMapReference(listOf(name, NODES_IDENTIFIER))
+    private val idToIndexMap = DB.getIntMapReference(listOf(name, OBJECTS_IDENTIFIER))
 
     fun add(id: Int) {
         assert(!exists(id))
@@ -39,8 +39,8 @@ class Heap(private val DB: KeyValueStore, private val name : String,
             currentIndex = parentIndex
         }
 
-        var replacementNodeIndex = cachedcount - 1
-        var replacementNodeID = getNodesObject(replacementNodeIndex)!!
+        val replacementNodeIndex = cachedcount - 1
+        val replacementNodeID = getNodesObject(replacementNodeIndex)!!
 
         updateNode(0, replacementNodeID)
         setCount(cachedcount - 1)
@@ -56,19 +56,19 @@ class Heap(private val DB: KeyValueStore, private val name : String,
             return ret
 
         // Index -> ID
-        var candidates = HashMap<Int, Int>()
+        val candidates = HashMap<Int, Int>()
         // ID -> Index
-        var candidatesReversed = HashMap<Int, Int>()
+        val candidatesReversed = HashMap<Int, Int>()
         // ID -> PrimaryKey, SecondaryKey
-        var keycache = HashMap<Int, Pair<Int, String>>()
+        val keycache = HashMap<Int, Pair<Int, String>>()
         fun addCandidate(index: Int?) {
             index ?: return
 
             if (candidates.containsKey(index)) return
 
-            var id = getNodesObject(index)!!
-            var p = getPrimaryKey(id)
-            var s = getSecondaryKey(id)
+            val id = getNodesObject(index)!!
+            val p = getPrimaryKey(id)
+            val s = getSecondaryKey(id)
 
             candidates[index] = id
             candidatesReversed[id] = index
@@ -88,7 +88,7 @@ class Heap(private val DB: KeyValueStore, private val name : String,
                 return ret
 
             // Find largest out of candidates
-            val maxentry = keycache.maxWith(Comparator({p1,p2 -> comparePair(p1.value,p2.value)}))!!
+            val maxentry = keycache.maxWith(Comparator { p1, p2 -> comparePair(p1.value, p2.value)})!!
             val maxid = maxentry.key
             val maxindex = candidatesReversed[maxid]!!
 
@@ -106,11 +106,11 @@ class Heap(private val DB: KeyValueStore, private val name : String,
 
     }
 
-    fun IDIncremented(id : Int) {
+    fun idIncremented(id : Int) {
         pushUp(getObjectsNode(id)!!, id)
     }
 
-    fun IDDecremented(id : Int) {
+    fun idDecremented(id : Int) {
         pushDown(getObjectsNode(id)!!, id)
     }
 
@@ -123,8 +123,8 @@ class Heap(private val DB: KeyValueStore, private val name : String,
         var currentIndex = index
 
         while (true) {
-            var leftIndex = getLeft(currentIndex)
-            var rightIndex = getRight(currentIndex)
+            val leftIndex = getLeft(currentIndex)
+            val rightIndex = getRight(currentIndex)
             var leftID: Int? = null
             var rightID: Int? = null
 
@@ -136,7 +136,7 @@ class Heap(private val DB: KeyValueStore, private val name : String,
             var swapwithID : Int? = null
 
             if (leftIndex != null && rightIndex != null) {
-                var largest = findLargest(primary, secondary, leftID!!, rightID!!)
+                val largest = findLargest(primary, secondary, leftID!!, rightID!!)
                 if (largest == 1) return // parent bigger than both sons
                 if (largest == 2) {
                     swapwithIndex = leftIndex
@@ -192,12 +192,12 @@ class Heap(private val DB: KeyValueStore, private val name : String,
 
 
     private fun getLeft(index : Int) : Int? {
-        var left = index * 2 + 1
+        val left = index * 2 + 1
         if (left >= cachedcount) return null
         return left
     }
     private fun getRight(index : Int) : Int? {
-        var right = index * 2 + 2
+        val right = index * 2 + 2
         if (right >= cachedcount) return null
         return right
     }
@@ -214,20 +214,20 @@ class Heap(private val DB: KeyValueStore, private val name : String,
 
 
     private fun getObjectsNode(id: Int) : Int? {
-        return IdToIndexMap.read(id.toString())
+        return idToIndexMap.read(id.toString())
     }
     private fun setObjectsNode(id: Int, index: Int){
-        IdToIndexMap.write(id.toString(), index)
+        idToIndexMap.write(id.toString(), index)
     }
     private fun deleteObjectsNode(id: Int){
-        IdToIndexMap.delete(id.toString())
+        idToIndexMap.delete(id.toString())
     }
 
     private fun getNodesObject(index: Int) : Int? {
-        return IndexToIdMap.read(index.toString())
+        return indexToIdMap.read(index.toString())
     }
     private fun setNodesObject(index: Int, id: Int) {
-        IndexToIdMap.write(index.toString(), id)
+        indexToIdMap.write(index.toString(), id)
     }
 
 
@@ -241,10 +241,10 @@ class Heap(private val DB: KeyValueStore, private val name : String,
     // find largest between 3 keys. First key is provided and keys of id1,id2 keys will be fetched as needed.
     // secondary keys will only be fetched if needed
     private fun findLargest(p1 : Int, s1 : String, id2 : Int, id3 : Int) : Int {
-        var p2 = getPrimaryKey(id2)
-        var p3 = getPrimaryKey(id3)
+        val p2 = getPrimaryKey(id2)
+        val p3 = getPrimaryKey(id3)
         var s2 : String? = null
-        var s3 : String? = null
+        lateinit var s3 : String
 
 
         var res = isPrimaryKeyLarger(p1, p2)
@@ -305,14 +305,14 @@ class Heap(private val DB: KeyValueStore, private val name : String,
 
     // TODO
     private fun getPrimaryKey(id: Int) : Int {
-        var query = ArrayList(PrimaryKeySource)
+        val query = ArrayList(PrimaryKeySource)
         query[query.indexOf("%s")] = id.toString()
 
         return DB.getIntReference(query).read()!!
 
     }
     private fun getSecondaryKey(id: Int) : String {
-        var query = ArrayList(SecondaryKeySource)
+        val query = ArrayList(SecondaryKeySource)
         query[query.indexOf("%s")] = id.toString()
         return DB.getStringReference(query).read()!!
     }

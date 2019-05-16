@@ -30,7 +30,7 @@ class HeapTest {
             heap.add(i)
 
         keyValueStore.getIntReference(listOf("primary", "50")).write(50000)
-        heap.IDIncremented(50)
+        heap.idIncremented(50)
 
         assert(heap.getTop10()[0] == 50)
     }
@@ -41,7 +41,7 @@ class HeapTest {
             heap.add(i)
 
         keyValueStore.getIntReference(listOf("primary", "256")).write(0)
-        heap.IDDecremented(256)
+        heap.idDecremented(256)
 
         assert(heap.getTop10()[0] == 255)
     }
