@@ -25,33 +25,42 @@ internal class KeyValueStoreTest {
     private val storage = MockStorage()
     private val keyValueStore = KeyValueStoreImpl(storage)
 
+    private val string1 = keyValueStore.getStringReference(listOf("string1"))
+    private val string2 = keyValueStore.getStringReference(listOf("string2"))
+
+
+    private val int1 = keyValueStore.getIntReference(listOf("int1"))
+
+
+    // TODO add tests for map
+
     @Test
     fun `read the written`() {
-        keyValueStore.write(listOf("hi"), value = "bye")
+        string1.write("bye")
 
-        val ret = keyValueStore.read(listOf("hi"))
+
+        val ret = string1.read()
 
         assertEquals("bye", ret)
     }
 
     @Test
     fun `override entry returns last value`() {
-        keyValueStore.write(listOf("hi"), value = "bye")
-        keyValueStore.write(listOf("hi"), value = "hi")
-        keyValueStore.write(listOf("hi"), value = "guy")
+        string1.write("bye")
+        string1.write("guy")
 
-        val ret = keyValueStore.read(listOf("hi"))
+        val ret = string1.read()
 
         assertEquals("guy", ret)
     }
 
     @Test
     fun `keys and values doesn't collide`() {
-        keyValueStore.write(listOf("hi"), value = "bye")
-        keyValueStore.write(listOf("bye"), value = "hi")
+        string1.write("bye")
+        string2.write("hi")
 
-        val ret1 = keyValueStore.read(listOf("hi" ))
-        val ret2 = keyValueStore.read(listOf("bye"))
+        val ret1 = string1.read()
+        val ret2 = string2.read()
 
         assertEquals("bye", ret1)
         assertEquals("hi", ret2)
@@ -59,59 +68,59 @@ internal class KeyValueStoreTest {
 
     @Test
     fun `non-deleted key stays intact`() {
-        keyValueStore.write(listOf("hi" ), value = "bye")
-        keyValueStore.write(listOf("bye"), value = "hi")
+        string1.write("bye")
+        string2.write("hi")
 
-        keyValueStore.delete(listOf("bye"))
-        val ret = keyValueStore.read(listOf("hi"))
+        string2.delete()
+        val ret = string1.read()
 
         assertEquals("bye", ret)
     }
 
     @Test
     fun `deleted key is read as null`() {
-        keyValueStore.write(listOf("bye", "hi"), value = "hi")
-        keyValueStore.delete(listOf("bye", "hi"))
+        string1.write("hi")
+        string1.delete()
 
-        val ret = keyValueStore.read(listOf("bye", "hi"))
+        val ret = string1.read()
 
         assertNull(ret)
     }
 
     @Test
     fun `deleted key can be rewritten`() {
-        keyValueStore.write(listOf("bye", "hi"), value = "hi")
-        keyValueStore.delete(listOf("bye", "hi"))
-        keyValueStore.write(listOf("bye", "hi"), value = "hi")
+        string1.write("hi")
+        string1.delete()
+        string1.write("hi")
 
-        val ret = keyValueStore.read(listOf("bye", "hi"))
+        val ret = string1.read()
 
         assertEquals("hi", ret)
     }
 
     @Test
     fun `null returned when reading non-exist key`() {
-        val ret = keyValueStore.read(listOf("hi", "bye"))
+        val ret = string1.read()
 
         assertNull(ret)
     }
 
     @Test
     fun `null returned when reading non-exist key and there is another`() {
-        keyValueStore.write(listOf("lo lo"), value = "hi")
-        val ret = keyValueStore.read(listOf("hi"))
+        string1.write("hi")
+        val ret = string2.read()
 
         assertNull(ret)
     }
 
     @Test
     fun `data should be stored persistently`() {
-        keyValueStore.write(listOf("lo lo"), value = "hi")
-        keyValueStore.write(listOf("lo", "lo"), value = "why")
+        string1.write("hi")
+        string2.write("why")
         val newKVwithOldStorage = KeyValueStoreImpl(storage)
 
-        val ret1 = newKVwithOldStorage.read(listOf("lo", "lo"))
-        val ret2 = newKVwithOldStorage.read(listOf("lo lo"))
+        val ret1 = string2.read()
+        val ret2 = string1.read()
 
         assertEquals("why", ret1)
         assertEquals("hi", ret2)
@@ -119,31 +128,24 @@ internal class KeyValueStoreTest {
 
     @Test
     fun `empty string doesnt cause issues`() {
-        keyValueStore.write(listOf("a"), value = "")
-        val newKVwithOldStorage = KeyValueStoreImpl(storage)
-
-        val ret1 = newKVwithOldStorage.read(listOf("a"))
+        string1.write("")
+        val ret1 = string1.read()
 
         assertEquals("", ret1)
     }
 
 
     @Test
-    fun `read int32 returns null if key doesn't exist`(){
-        val newKVwithOldStorage = KeyValueStoreImpl(storage)
-
-        val ret1 = newKVwithOldStorage.readInt32(listOf("a"))
+    fun `read int returns null if key doesn't exist`(){
+        val ret1 = int1.read()
 
         assertEquals(null, ret1)
     }
 
     @Test
     fun `write and read int32`(){
-        keyValueStore.writeInt32(listOf("a"), value = 25)
-        val newKVwithOldStorage = KeyValueStoreImpl(storage)
-
-
-        val ret1 = newKVwithOldStorage.readInt32(listOf("a"))
+        int1.write(25)
+        val ret1 = int1.read()
 
         assertEquals(25, ret1)
     }

@@ -13,16 +13,36 @@ class HeapTest {
     private val heap = Heap(keyValueStore, "test", listOf("primary","%s"), listOf("secondary","%s"))
 
 
-    // TODO test IDIncremented/IDDecremented
-
     @BeforeEach
     fun `Set up primary and secondary keys`() {
         for (i in 1..2048) {
-            keyValueStore.writeInt32(listOf("primary", i.toString()), i / 10)
-            keyValueStore.write(listOf("secondary", i.toString()), (i % 10).toString())
+
+            keyValueStore.getIntReference(listOf("primary", i.toString())).write(i / 10)
+            keyValueStore.getStringReference(listOf("secondary", i.toString())).write((i % 10).toString())
         }
     }
 
+    @Test
+    fun `IDIncremented works`() {
+        for (i in 1..256)
+            heap.add(i)
+
+        keyValueStore.getIntReference(listOf("primary", "50")).write(50000)
+        heap.IDIncremented(50)
+
+        assert(heap.getTop10()[0] == 50)
+    }
+
+    @Test
+    fun `IDDecremented works`() {
+        for (i in 1..256)
+            heap.add(i)
+
+        keyValueStore.getIntReference(listOf("primary", "256")).write(0)
+        heap.IDDecremented(256)
+
+        assert(heap.getTop10()[0] == 255)
+    }
 
     @Test
     fun `adds throws no assertion failures`() {

@@ -9,21 +9,23 @@ const val NODES_IDENTIFIER = "nodes"
 
 abstract class DataStructure(private val DB: KeyValueStore, private val name : String) {
 
-    protected var cachedcount = 0
+    protected var isInitializd = DB.getStringReference(listOf(name, INITIALIZED_IDENTIFIER))
+    protected var count = DB.getIntReference(listOf(name, COUNT_IDENTIFIER))
+    protected var cachedcount = -1
     init {
         initIfNotInitialized()
-
-        cachedcount = count()
+        if (cachedcount == -1) cachedcount = count.read()!!
     }
 
-    protected fun setCount(count: Int)
+    protected fun setCount(c: Int)
     {
-        DB.writeInt32(listOf(name, COUNT_IDENTIFIER), count)
-        cachedcount = count
+        count.write(c)
+        cachedcount = c
     }
+
 
     fun count() : Int {
-        return DB.readInt32(listOf(name, COUNT_IDENTIFIER))!!
+        return cachedcount
     }
 
     private fun initIfNotInitialized(){
@@ -34,14 +36,12 @@ abstract class DataStructure(private val DB: KeyValueStore, private val name : S
     }
 
     private fun getIsInitialized() : Boolean {
-        return DB.read(listOf(name, INITIALIZED_IDENTIFIER)) != null
+        return isInitializd.read() != null
     }
 
     private fun setInitialized() {
-        DB.write(listOf(name, INITIALIZED_IDENTIFIER), "")
+        isInitializd.write("")
     }
-
-
 
     abstract fun exists(id: Int) : Boolean
 

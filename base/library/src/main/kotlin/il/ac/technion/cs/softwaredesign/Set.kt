@@ -21,10 +21,10 @@ private const val FIRST_IDENTIFIER = "first"
 
 class Set(private val DB: KeyValueStore, private val name : String) : DataStructure(DB, name) {
 
+    val first = DB.getIntReference(listOf(name, FIRST_IDENTIFIER))
 
     fun add(id: Int) {
         if (exists(id)) return
-
 
         setExists(id)
 
@@ -92,41 +92,52 @@ class Set(private val DB: KeyValueStore, private val name : String) : DataStruct
 
     fun setExists(id : Int)
     {
-        DB.write(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER), "")
+        DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).write("")
     }
 
     fun unsetExists(id : Int)
     {
-        DB.delete(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER))
+        DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).delete()
     }
 
     override fun exists(id: Int) : Boolean {
-        return DB.read(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)) != null
+        return DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).read() != null
     }
 
     private fun setNext(id : Int, next : Int?)
     {
-        DB.writeInt32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER), next)
+        val ref = DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
+        if (next == null)
+            ref.delete()
+        else
+            ref.write(next)
     }
     private fun getNext(id : Int) : Int?
     {
-        return DB.readInt32(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
+        return DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER)).read()
     }
 
     private fun setPrevious(id : Int, prev : Int?)
     {
-        DB.writeInt32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER), prev)
+        val ref = DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
+        if (prev == null)
+            ref.delete()
+        else
+            ref.write(prev)
     }
     private fun getPrevious(id : Int) : Int?
     {
-        return DB.readInt32(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
+        return DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER)).read()
     }
 
     private fun getFirst() : Int? {
-        return DB.readInt32(listOf(name, FIRST_IDENTIFIER))
+        return first.read()
     }
 
     private fun setFirst(id : Int?){
-        DB.writeInt32(listOf(name, FIRST_IDENTIFIER), id)
+        if (id == null)
+            first.delete()
+        else
+            first.write(id)
     }
 }

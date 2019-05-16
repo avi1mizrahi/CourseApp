@@ -21,11 +21,13 @@ private const val NAMETOID_IDENTIFIER = "nametoid"
 
 class UserManager(private val DB: KeyValueStore)
 {
+    var count = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))
+    var nameToIdMap = DB.getIntMapReference(listOf(NAMETOID_IDENTIFIER))
+
     init {
         // initialize user count
-        if (DB.readInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER)) == null)
-            DB.writeInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER), 0)
-
+        if (count.read() == null)
+            count.write(0)
 
     }
 
@@ -46,37 +48,41 @@ class UserManager(private val DB: KeyValueStore)
     }
 
     fun getUserCount(): Int {
-        return DB.readInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))!!
+        return count.read()!!
     }
 
     fun incrementUserCount() {
-        DB.writeInt32(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER), getUserCount() + 1)
+        count.write(getUserCount() + 1)
     }
 
     fun getUserByName(name: String): User? {
-        val id = DB.readInt32(listOf(NAMETOID_IDENTIFIER, name)) ?: return null
+        val id = nameToIdMap.read(name) ?: return null
         return User(DB, id)
     }
 
 
     private fun addUserID(name: String, id: Int) {
-        DB.writeInt32(listOf(NAMETOID_IDENTIFIER, name), id)
+        nameToIdMap.write(name, id)
     }
 }
 
 
 class User(private val DB: KeyValueStore, private val id: Int) {
 
+    val name = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), NAME_IDENTIFIER))
+    val password = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), PASSWORD_IDENTIFIER))
+    var token = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER))
+
     // TODO make these two only visible to userManager.
-    internal fun setName(name : String) {
-        DB.write(listOf(USERS_IDENTIFIER, id.toString(), NAME_IDENTIFIER), name)
+    internal fun setName(n : String) {
+        name.write(n)
     }
     internal fun setPassword(pass: String) {
-        DB.write(listOf(USERS_IDENTIFIER, id.toString(), PASSWORD_IDENTIFIER), value=pass)
+        password.write(pass)
     }
 
     fun getName() : String {
-        return DB.read(listOf(USERS_IDENTIFIER, id.toString(), NAME_IDENTIFIER))!!
+        return name.read()!!
     }
 
     fun getID() : Int {
@@ -84,29 +90,29 @@ class User(private val DB: KeyValueStore, private val id: Int) {
     }
 
     fun exists() : Boolean {
-        return DB.read(listOf(USERS_IDENTIFIER, id.toString(), PASSWORD_IDENTIFIER)) != null
+        return password.read() != null
     }
 
     fun isLoggedIn() : Boolean {
-        return DB.read(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER)) != null
+        return token.read() != null
     }
 
     fun getCurrentToken() : Token? {
-        val token = DB.read(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER)) ?: return null
+        val t = token.read() ?: return null
 
-        return Token(DB, token)
+        return Token(DB, t)
     }
 
-    fun setToken(token: Token) {
-        DB.write(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER), value=token.getString())
+    fun setToken(t: Token) {
+        token.write(t.getString())
     }
 
     fun removeToken() {
-        DB.delete(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER))
+        token.delete()
     }
 
     fun getPassword() : String? {
-        return DB.read(listOf(USERS_IDENTIFIER, id.toString(), PASSWORD_IDENTIFIER))
+        return password.read()
     }
 
 
