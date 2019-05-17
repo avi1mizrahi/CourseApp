@@ -1,9 +1,8 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
-import il.ac.technion.cs.softwaredesign.KeyValueStore
-import il.ac.technion.cs.softwaredesign.getIntMapReference
-import il.ac.technion.cs.softwaredesign.getIntReference
-import il.ac.technion.cs.softwaredesign.getStringReference
+import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.Set
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 
 
 private const val USERSTATS_IDENTIFIER = "usersstats"
@@ -14,6 +13,7 @@ private const val PASSWORD_IDENTIFIER = "password"
 private const val NAME_IDENTIFIER = "name"
 private const val TOKEN_IDENTIFIER = "token"
 private const val NAMETOID_IDENTIFIER = "nametoid"
+
 
 
 
@@ -38,13 +38,12 @@ class UserManager(private val DB: KeyValueStore)
         var id = getUserCount()
         incrementUserCount()
 
-        var ret = User(DB, id)
+        var ret = getUserByID(id)
 
         ret.setName(name)
         ret.setPassword(password)
+        if (id == 0) ret.setisAdmin(true)
 
-
-        // TODO more user init stuff
 
         addUserID(name, id)
         return ret
@@ -60,64 +59,96 @@ class UserManager(private val DB: KeyValueStore)
 
     fun getUserByName(name: String): User? {
         val id = nameToIdMap.read(name) ?: return null
-        return User(DB, id)
+        return getUserByID(id)
     }
 
+    fun getUserByID(id : Int) : User {
+        return User(ScopedKeyValueStore(DB, listOf(USERS_IDENTIFIER, id.toString())), id)
+    }
 
     private fun addUserID(name: String, id: Int) {
         nameToIdMap.write(name, id)
     }
+
+
+    class User(private val DB: ScopedKeyValueStore, private val id: Int) {
+        private val name = DB.getStringReference(NAME_IDENTIFIER)
+        private val password = DB.getStringReference(PASSWORD_IDENTIFIER)
+        private var token = DB.getStringReference(TOKEN_IDENTIFIER)
+        private val isAdmin = DB.getStringReference("isAdmin")
+
+        private var channelList = Set(ScopedKeyValueStore(DB, listOf("channels")))
+
+
+        fun addToChannelList(channel: ChannelManager.Channel) {
+            assert(!isInChannel(channel))
+            channelList.add(channel.getID())
+        }
+        fun removeFromChannelList(channel: ChannelManager.Channel) {
+            assert(isInChannel(channel))
+            channelList.remove(channel.getID())
+        }
+
+        fun isInChannel(channel: ChannelManager.Channel) : Boolean {
+            return channelList.exists(channel.getID())
+        }
+
+        fun getChannelList() : List<Int> {
+            return channelList.getAll()
+        }
+
+
+        fun getisAdmin() : Boolean {
+            return isAdmin.read() != null
+        }
+        fun setisAdmin(b: Boolean) {
+            if (b)
+                isAdmin.write("")
+            else
+                isAdmin.delete()
+        }
+
+        fun setName(n : String) {
+            name.write(n)
+        }
+        fun setPassword(pass: String) {
+            password.write(pass)
+        }
+
+        fun getName() : String {
+            return name.read()!!
+        }
+
+        fun getID() : Int {
+            return this.id
+        }
+
+        fun exists() : Boolean {
+            return password.read() != null
+        }
+
+        fun isLoggedIn() : Boolean {
+            return token.read() != null
+        }
+
+        fun getCurrentToken() : String? {
+            return token.read()
+        }
+
+        fun setToken(t: Token) {
+            token.write(t.getString())
+        }
+
+        fun removeToken() {
+            token.delete()
+        }
+
+        fun getPassword() : String? {
+            return password.read()
+        }
+
+
+
+    }
 }
 
-
-class User(private val DB: KeyValueStore, private val id: Int) {
-
-    private val name = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), NAME_IDENTIFIER))
-    private val password = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), PASSWORD_IDENTIFIER))
-    private var token = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER))
-
-    // TODO make these two only visible to userManager.
-    internal fun setName(n : String) {
-        name.write(n)
-    }
-    internal fun setPassword(pass: String) {
-        password.write(pass)
-    }
-
-    fun getName() : String {
-        return name.read()!!
-    }
-
-    fun getID() : Int {
-        return this.id
-    }
-
-    fun exists() : Boolean {
-        return password.read() != null
-    }
-
-    fun isLoggedIn() : Boolean {
-        return token.read() != null
-    }
-
-    fun getCurrentToken() : Token? {
-        val t = token.read() ?: return null
-
-        return Token(DB, t)
-    }
-
-    fun setToken(t: Token) {
-        token.write(t.getString())
-    }
-
-    fun removeToken() {
-        token.delete()
-    }
-
-    fun getPassword() : String? {
-        return password.read()
-    }
-
-
-
-}

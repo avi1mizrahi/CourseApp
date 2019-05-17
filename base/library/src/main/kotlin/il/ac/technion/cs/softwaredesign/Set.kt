@@ -19,9 +19,9 @@ private const val PREVIOUS_IDENTIFIER = "previous"
 private const val NEXT_IDENTIFIER = "next"
 private const val FIRST_IDENTIFIER = "first"
 
-class Set(private val DB: KeyValueStore, private val name : String) : DataStructure(DB, name) {
+class Set(private val DB: ScopedKeyValueStore) : DataStructure(DB) {
 
-    private val first = DB.getIntReference(listOf(name, FIRST_IDENTIFIER))
+    private val first = DB.getIntReference(FIRST_IDENTIFIER)
 
     fun add(id: Int) {
         if (exists(id)) return
@@ -92,21 +92,21 @@ class Set(private val DB: KeyValueStore, private val name : String) : DataStruct
 
     private fun setExists(id : Int)
     {
-        DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).write("")
+        DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).write("")
     }
 
     private fun unsetExists(id : Int)
     {
-        DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).delete()
+        DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).delete()
     }
 
     override fun exists(id: Int) : Boolean {
-        return DB.getStringReference(listOf(name, NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).read() != null
+        return DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).read() != null
     }
 
     private fun setNext(id : Int, next : Int?)
     {
-        val ref = DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
+        val ref = DB.getIntReference(listOf(NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER))
         if (next == null)
             ref.delete()
         else
@@ -114,12 +114,12 @@ class Set(private val DB: KeyValueStore, private val name : String) : DataStruct
     }
     private fun getNext(id : Int) : Int?
     {
-        return DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER)).read()
+        return DB.getIntReference(listOf(NODES_IDENTIFIER, id.toString(), NEXT_IDENTIFIER)).read()
     }
 
     private fun setPrevious(id : Int, prev : Int?)
     {
-        val ref = DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
+        val ref = DB.getIntReference(listOf(NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER))
         if (prev == null)
             ref.delete()
         else
@@ -127,7 +127,7 @@ class Set(private val DB: KeyValueStore, private val name : String) : DataStruct
     }
     private fun getPrevious(id : Int) : Int?
     {
-        return DB.getIntReference(listOf(name, NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER)).read()
+        return DB.getIntReference(listOf(NODES_IDENTIFIER, id.toString(), PREVIOUS_IDENTIFIER)).read()
     }
 
     private fun getFirst() : Int? {

@@ -1,9 +1,6 @@
 package il.ac.technion.cs.softwaredesign.tests
 
-import il.ac.technion.cs.softwaredesign.Heap
-import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
-import il.ac.technion.cs.softwaredesign.getIntReference
-import il.ac.technion.cs.softwaredesign.getStringReference
+import il.ac.technion.cs.softwaredesign.*
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -12,15 +9,16 @@ import kotlin.random.Random
 class HeapTest {
     private val storage = MockStorage()
     private val keyValueStore = KeyValueStoreImpl(storage)
-    private val heap = Heap(keyValueStore, "test", listOf("primary","%s"), listOf("secondary","%s"))
+    private val innerKeyValueStore = ScopedKeyValueStore(keyValueStore, listOf("Test"))
+    private val heap = Heap(innerKeyValueStore, listOf("primary","%s"), listOf("secondary","%s"))
 
 
     @BeforeEach
     fun `Set up primary and secondary keys`() {
         for (i in 1..2048) {
 
-            keyValueStore.getIntReference(listOf("primary", i.toString())).write(i / 10)
-            keyValueStore.getStringReference(listOf("secondary", i.toString())).write((i % 10).toString())
+            innerKeyValueStore.getIntReference(listOf("primary", i.toString())).write(i / 10)
+            innerKeyValueStore.getIntReference(listOf("secondary", i.toString())).write((i % 10))
         }
     }
 
@@ -29,7 +27,7 @@ class HeapTest {
         for (i in 1..256)
             heap.add(i)
 
-        keyValueStore.getIntReference(listOf("primary", "50")).write(50000)
+        innerKeyValueStore.getIntReference(listOf("primary", "50")).write(50000)
         heap.idIncremented(50)
 
         assert(heap.getTop10()[0] == 50)
@@ -40,7 +38,7 @@ class HeapTest {
         for (i in 1..256)
             heap.add(i)
 
-        keyValueStore.getIntReference(listOf("primary", "256")).write(0)
+        innerKeyValueStore.getIntReference(listOf("primary", "256")).write(0)
         heap.idDecremented(256)
 
         assert(heap.getTop10()[0] == 255)

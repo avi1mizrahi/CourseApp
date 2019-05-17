@@ -2,6 +2,7 @@ package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
 import il.ac.technion.cs.softwaredesign.getIntReference
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import kotlin.random.Random
 
 
@@ -23,16 +24,6 @@ class TokenManager(private val DB: KeyValueStore) {
         return t
     }
 
-    fun removeTokenLink(t: Token){
-        val u = t.getUser()!! // User has to exist, we just checked
-
-        // User must have a token and it must be this token
-        assert(u.getCurrentToken()!!.getString() == t.getString())
-
-        t.remove()
-        u.removeToken()
-    }
-
     fun getTokenByString(str : String) : Token? {
         if (exists(str))
             return Token(DB, str)
@@ -42,32 +33,31 @@ class TokenManager(private val DB: KeyValueStore) {
     fun exists(str : String) : Boolean {
         return Token(DB, str).exists()
     }
+    inner class Token(private val DB: KeyValueStore, private val token: String) {
 
+        private val userID = DB.getIntReference(listOf(TOKENS_IDENTIFIER, token))
+
+        fun getString() : String{
+            return token
+        }
+
+        fun remove() {
+            userID.delete()
+        }
+
+        fun setUser(user: User)  {
+            userID.write(user.getID())
+        }
+
+        fun getUserid() : Int? {
+            return userID.read() ?: return null
+
+        }
+
+        fun exists() : Boolean {
+            return getUserid() != null
+        }
+
+    }
 }
 
-class Token(private val DB: KeyValueStore, private val token: String) {
-
-    val userID = DB.getIntReference(listOf(TOKENS_IDENTIFIER, token))
-
-    fun getString() : String{
-        return token
-    }
-
-    fun remove() {
-        userID.delete()
-    }
-
-    fun setUser(user: User)  {
-        userID.write(user.getID())
-    }
-
-    fun getUser() : User? {
-        val id = userID.read() ?: return null
-        return User(DB, id)
-    }
-
-    internal fun exists() : Boolean {
-        return getUser() != null
-    }
-
-}

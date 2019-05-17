@@ -7,6 +7,7 @@ import java.time.Duration
 
 // This should be standard.
 val isTrue = equalTo(true)
+val isFalse = equalTo(false)
 
 // This is a tiny wrapper over assertTimeoutPreemptively which makes the syntax slightly nicer.
 fun <T> runWithTimeout(timeout: Duration, executable: () -> T): T =

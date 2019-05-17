@@ -2,9 +2,9 @@ package il.ac.technion.cs.softwaredesign
 
 private const val OBJECTS_IDENTIFIER = "objects"
 
-class Heap(private val DB: KeyValueStore, name : String,
+class Heap(private val DB: ScopedKeyValueStore,
            private val PrimaryKeySource: List<String>, private val SecondaryKeySource: List<String>) :
-        DataStructure(DB, name){
+        DataStructure(DB){
 
 
 //$name/Count -> int32
@@ -14,13 +14,16 @@ class Heap(private val DB: KeyValueStore, name : String,
 //Nodes are Implemented as an Array.
 
 
-    private val indexToIdMap = DB.getIntMapReference(listOf(name, NODES_IDENTIFIER))
-    private val idToIndexMap = DB.getIntMapReference(listOf(name, OBJECTS_IDENTIFIER))
+    private val indexToIdMap = DB.getIntMapReference(NODES_IDENTIFIER)
+    private val idToIndexMap = DB.getIntMapReference(OBJECTS_IDENTIFIER)
+    private var cachedCount : Int = -1
+
 
     fun add(id: Int) {
         assert(!exists(id))
+        cachedCount = count()
 
-        val index = cachedCount
+        val index = cachedCount!!
         updateNode(index, id)
         setCount(index + 1)
         pushUp(index, id)
@@ -28,6 +31,7 @@ class Heap(private val DB: KeyValueStore, name : String,
 
     fun remove(id: Int){
         assert(exists(id))
+        cachedCount = count()
 
         var currentIndex = getObjectsNode(id)!!
 
@@ -51,6 +55,8 @@ class Heap(private val DB: KeyValueStore, name : String,
     }
 
     fun getTop10() : List<Int> {
+        cachedCount = count()
+
         val ret = ArrayList<Int>()
         if (cachedCount == 0)
             return ret
@@ -60,7 +66,7 @@ class Heap(private val DB: KeyValueStore, name : String,
         // ID -> Index
         val candidatesReversed = HashMap<Int, Int>()
         // ID -> PrimaryKey, SecondaryKey
-        val keycache = HashMap<Int, Pair<Int, String>>()
+        val keycache = HashMap<Int, Pair<Int, Int>>()
         fun addCandidate(index: Int?) {
             index ?: return
 
@@ -107,10 +113,12 @@ class Heap(private val DB: KeyValueStore, name : String,
     }
 
     fun idIncremented(id : Int) {
+        cachedCount = count()
         pushUp(getObjectsNode(id)!!, id)
     }
 
     fun idDecremented(id : Int) {
+        cachedCount = count()
         pushDown(getObjectsNode(id)!!, id)
     }
 
@@ -232,7 +240,7 @@ class Heap(private val DB: KeyValueStore, name : String,
 
 
 
-    private fun comparePair(pair1 : Pair<Int, String>, pair2: Pair<Int, String>) : Int {
+    private fun comparePair(pair1 : Pair<Int, Int>, pair2: Pair<Int, Int>) : Int {
         isPrimaryKeyLarger(pair1.first, pair2.first) ?: return if (isSecondaryKeyLarger(pair1.second, pair2.second)) 1 else -1
         return if (isPrimaryKeyLarger(pair1.first, pair2.first)!!) 1 else -1
     }
@@ -240,11 +248,11 @@ class Heap(private val DB: KeyValueStore, name : String,
 
     // find largest between 3 keys. First key is provided and keys of id1,id2 keys will be fetched as needed.
     // secondary keys will only be fetched if needed
-    private fun findLargest(p1 : Int, s1 : String, id2 : Int, id3 : Int) : Int {
+    private fun findLargest(p1 : Int, s1 : Int, id2 : Int, id3 : Int) : Int {
         val p2 = getPrimaryKey(id2)
         val p3 = getPrimaryKey(id3)
-        var s2 : String? = null
-        lateinit var s3 : String
+        var s2 : Int? = null
+        val s3 : Int?
 
 
         var res = isPrimaryKeyLarger(p1, p2)
@@ -280,7 +288,7 @@ class Heap(private val DB: KeyValueStore, name : String,
         }
     }
 
-    private fun isLargerThanID(primary : Int, secondary : String, otherid : Int) : Boolean {
+    private fun isLargerThanID(primary : Int, secondary : Int, otherid : Int) : Boolean {
         return isPrimaryKeyLarger(primary, getPrimaryKey(otherid))
                 ?: return isSecondaryKeyLarger(secondary, getSecondaryKey(otherid))
     }
@@ -296,7 +304,7 @@ class Heap(private val DB: KeyValueStore, name : String,
         return null
     }
 
-    private fun isSecondaryKeyLarger(s1 : String, s2: String) : Boolean {
+    private fun isSecondaryKeyLarger(s1 : Int, s2: Int) : Boolean {
         return (s1 > s2)
     }
 
@@ -311,10 +319,10 @@ class Heap(private val DB: KeyValueStore, name : String,
         return DB.getIntReference(query).read()!!
 
     }
-    private fun getSecondaryKey(id: Int) : String {
+    private fun getSecondaryKey(id: Int) : Int {
         val query = ArrayList(SecondaryKeySource)
         query[query.indexOf("%s")] = id.toString()
-        return DB.getStringReference(query).read()!!
+        return DB.getIntReference(query).read()!!
     }
 
 

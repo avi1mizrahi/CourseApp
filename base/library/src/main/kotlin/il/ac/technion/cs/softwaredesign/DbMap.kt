@@ -8,27 +8,22 @@ interface DbMap<V> {
 
 
 fun <V> KeyValueStore.getMapReference(key: List<String>, serializer: Serializer<V>): DbMap<V> =
-        DbMapImpl(key, this, serializer)
+        DbMapImpl(ScopedKeyValueStore(this, key), serializer)
 
-fun KeyValueStore.getIntMapReference(key: List<String>): DbMap<Int> =
-        getMapReference(key, IntSerializer())
+fun KeyValueStore.getIntMapReference(key: String): DbMap<Int> = getIntMapReference(listOf(key))
+fun KeyValueStore.getIntMapReference(key: List<String>): DbMap<Int> = getMapReference(key, IntSerializer())
 
-private class DbMapImpl<V>(key: List<String>,
-                           parent: KeyValueStore,
+private class DbMapImpl<V>(val DB: ScopedKeyValueStore,
                            val serializer: Serializer<V>) : DbMap<V> {
-    private val parent: KeyValueStore
 
-    init {
-        this.parent = ScopedKeyValueStore(key, parent)
-    }
 
     override fun write(key: String, value: V) =
-            parent.getReference(listOf(key), serializer).write(value)
+            DB.getReference(listOf(key), serializer).write(value)
 
     override fun read(key: String): V? =
-            parent.getReference(listOf(key), serializer).read()
+            DB.getReference(listOf(key), serializer).read()
 
     override fun delete(key: String) =
-            parent.getReference(listOf(key), serializer).delete()
+            DB.getReference(listOf(key), serializer).delete()
 }
 
