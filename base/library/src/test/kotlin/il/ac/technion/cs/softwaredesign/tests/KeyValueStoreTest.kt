@@ -4,7 +4,8 @@ import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
 import il.ac.technion.cs.softwaredesign.getIntReference
 import il.ac.technion.cs.softwaredesign.getStringReference
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 
@@ -119,10 +120,11 @@ internal class KeyValueStoreTest {
     fun `data should be stored persistently`() {
         string1.write("hi")
         string2.write("why")
-        val newKVwithOldStorage = KeyValueStoreImpl(storage)
 
-        val ret1 = string2.read()
-        val ret2 = string1.read()
+        val newKvWithOldStorage = KeyValueStoreImpl(storage)
+
+        val ret1 = newKvWithOldStorage.getStringReference(listOf("string2")).read()
+        val ret2 = newKvWithOldStorage.getStringReference(listOf("string1")).read()
 
         assertEquals("why", ret1)
         assertEquals("hi", ret2)
