@@ -72,9 +72,9 @@ class UserManager(private val DB: KeyValueStore)
 
 class User(private val DB: KeyValueStore, private val id: Int) {
 
-    val name = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), NAME_IDENTIFIER))
-    val password = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), PASSWORD_IDENTIFIER))
-    var token = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER))
+    private val name = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), NAME_IDENTIFIER))
+    private val password = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), PASSWORD_IDENTIFIER))
+    private var token = DB.getStringReference(listOf(USERS_IDENTIFIER, id.toString(), TOKEN_IDENTIFIER))
 
     // TODO make these two only visible to userManager.
     internal fun setName(n : String) {
