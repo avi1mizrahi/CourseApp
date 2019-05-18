@@ -1,8 +1,9 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.*
-
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
+
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
@@ -10,16 +11,22 @@ class HeapTest {
     private val storage = MockStorage()
     private val keyValueStore = KeyValueStoreImpl(storage)
     private val innerKeyValueStore = ScopedKeyValueStore(keyValueStore, listOf("Test"))
-    private val heap = Heap(innerKeyValueStore, listOf("primary","%s"), listOf("secondary","%s"))
+    private val heap = Heap(innerKeyValueStore, {id -> primary(id)}, {id -> id % 10})
+
+
+
+
+    private var getPrimaryOverride : Function1<Int, Int>? = null
+    private fun primary(id : Int) : Int {
+        getPrimaryOverride ?: return id / 10
+
+        return getPrimaryOverride!!.invoke(id)
+    }
 
 
     @BeforeEach
-    fun `Set up primary and secondary keys`() {
-        for (i in 1..2048) {
-
-            innerKeyValueStore.getIntReference(listOf("primary", i.toString())).write(i / 10)
-            innerKeyValueStore.getIntReference(listOf("secondary", i.toString())).write((i % 10))
-        }
+    fun `init`() {
+        heap.initialize()
     }
 
     @Test
@@ -27,7 +34,12 @@ class HeapTest {
         for (i in 1..256)
             heap.add(i)
 
-        innerKeyValueStore.getIntReference(listOf("primary", "50")).write(50000)
+        fun get(id : Int) : Int {
+            return if (id == 50) 500000
+            else id / 10
+        }
+        getPrimaryOverride = { id -> get(id)}
+
         heap.idIncremented(50)
 
         assert(heap.getTop10()[0] == 50)
@@ -38,7 +50,11 @@ class HeapTest {
         for (i in 1..256)
             heap.add(i)
 
-        innerKeyValueStore.getIntReference(listOf("primary", "256")).write(0)
+        fun get(id : Int) : Int {
+            return if (id == 256) 0
+            else id / 10
+        }
+        getPrimaryOverride = { id -> get(id)}
         heap.idDecremented(256)
 
         assert(heap.getTop10()[0] == 255)

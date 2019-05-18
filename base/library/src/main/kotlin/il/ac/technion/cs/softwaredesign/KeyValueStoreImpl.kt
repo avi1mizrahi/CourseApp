@@ -1,9 +1,11 @@
 package il.ac.technion.cs.softwaredesign
 
+import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import kotlinx.serialization.SerialId
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
+import kotlinx.serialization.protobuf.ProtoBuf.Companion.dump
 
 // can by anything, it is only to notify the array isn't empty, for supporting empty array values.
 // the only thing important is to remove these bytes before loading
@@ -13,9 +15,9 @@ private const val validEntrySuffix = 1.toByte()
 private data class Key(@SerialId(1) val c: List<String>)
 
 private fun convertKeyToByteArray(key: List<String>): ByteArray =
-        ProtoBuf.dump(Key.serializer(), Key(key))
+        dump(Key.serializer(), Key(key))
 
-class KeyValueStoreImpl(private val storage: SecureStorage) : KeyValueStore {
+class KeyValueStoreImpl @Inject constructor(private val storage: SecureStorage) : KeyValueStore {
 
     override fun <V> getReference(key: List<String>,
                                   serializer: Serializer<V>): KeyValueStore.Object<V> =

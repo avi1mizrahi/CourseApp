@@ -1,9 +1,11 @@
 package il.ac.technion.cs.softwaredesign
 
+
+
 private const val OBJECTS_IDENTIFIER = "objects"
 
 class Heap(private val DB: ScopedKeyValueStore,
-           private val PrimaryKeySource: List<String>, private val SecondaryKeySource: List<String>) :
+           private val PrimaryKeySource: Function1<Int, Int>, private val SecondaryKeySource: Function1<Int, Int>) :
         DataStructure(DB){
 
 
@@ -18,14 +20,14 @@ class Heap(private val DB: ScopedKeyValueStore,
     private val idToIndexMap = DB.getIntMapReference(OBJECTS_IDENTIFIER)
     private var cachedCount : Int = -1
 
-
     fun add(id: Int) {
         assert(!exists(id))
         cachedCount = count()
 
-        val index = cachedCount!!
+        val index = cachedCount
         updateNode(index, id)
         setCount(index + 1)
+        cachedCount++
         pushUp(index, id)
     }
 
@@ -48,6 +50,7 @@ class Heap(private val DB: ScopedKeyValueStore,
 
         updateNode(0, replacementNodeID)
         setCount(cachedCount - 1)
+        cachedCount--
         pushDown(0, replacementNodeID)
 
 
@@ -122,6 +125,9 @@ class Heap(private val DB: ScopedKeyValueStore,
         pushDown(getObjectsNode(id)!!, id)
     }
 
+    override fun exists(id: Int) : Boolean {
+        return getObjectsNode(id) != null
+    }
 
 
     private fun pushDown(index : Int, id: Int) {
@@ -309,26 +315,15 @@ class Heap(private val DB: ScopedKeyValueStore,
     }
 
 
-
-
-    // TODO
     private fun getPrimaryKey(id: Int) : Int {
-        val query = ArrayList(PrimaryKeySource)
-        query[query.indexOf("%s")] = id.toString()
-
-        return DB.getIntReference(query).read()!!
-
+        return PrimaryKeySource.invoke(id)
     }
     private fun getSecondaryKey(id: Int) : Int {
-        val query = ArrayList(SecondaryKeySource)
-        query[query.indexOf("%s")] = id.toString()
-        return DB.getIntReference(query).read()!!
+        return SecondaryKeySource.invoke(id)
     }
 
 
-    override fun exists(id: Int) : Boolean {
-        return getObjectsNode(id) != null
-    }
+
 
 
 }

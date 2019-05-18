@@ -1,7 +1,9 @@
 package il.ac.technion.cs.softwaredesign.tests
 
+import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
+import com.google.inject.Provider
 import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
@@ -11,39 +13,60 @@ import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration
 
 
-class CourseAppModuleMock : CourseAppModule() {
+
+class CourseAppProvider : Provider<CourseApp> {
+    var lastCourseApp : CourseAppImpl? = null
+    override fun get() : CourseApp {
+
+        class StorageInject : KotlinModule() {
+            override fun configure() {
+                bind<KeyValueStore>().to<MockKeyValueStore>()
+                bind<CourseApp>().to<CourseAppImpl>()
+            }
+        }
+
+        val app = Guice.createInjector(StorageInject()).getInstance<CourseApp>()
+
+        lastCourseApp = app as CourseAppImpl
+        lastCourseApp!!.init()
+
+        return app
+    }
+    inner class CourseAppStatsProvider : Provider<CourseAppStatistics> {
+        override fun get() : CourseAppStatistics {
+            return lastCourseApp!!
+        }
+    }
+
+}
+
+class CourseAppModuleMock : KotlinModule() {
     override fun configure() {
-        bind<CourseApp>().to<CourseAppImpl>()
+        bind<CourseAppInitializer>().to<CourseAppImplInitializer>()
         bind<KeyValueStore>().to<MockKeyValueStore>()
+
+        val provider = CourseAppProvider()
+        bind<CourseApp>().toProvider(provider)
+        bind<CourseAppStatistics>().toProvider(provider.CourseAppStatsProvider())
+
     }
 }
 
+val injector = Guice.createInjector(CourseAppModuleMock())
+
 class CourseAppTest {
 
-    // val courseAppInitializer = CourseAppInitializer() // TODO
+    private val courseApp = injector.getInstance<CourseApp>()
+    private val courseAppInitializer = injector.getInstance<CourseAppInitializer>()
+    private val courseAppStatistics = injector.getInstance<CourseAppStatistics>()
 
     init {
-        //courseAppInitializer.setup()
-    }
-
-    private lateinit var courseApp : CourseApp
-
-    @BeforeEach
-    fun before() {
-
-        // Inject the created mocked KeyValueStore instance to a new CourseApp
-
-        val injector = Guice.createInjector(CourseAppModuleMock())
-
-        // The instance needs to be created after the mock is configured!
-        courseApp = injector.getInstance()
-
+        courseAppInitializer.setup()
     }
 
     @Test
@@ -156,7 +179,7 @@ class CourseAppTest {
 
 
 
-    // TODO copy of staff tests, remove later
+    // TODO copy of staff tests from here, delete later
     @Test
     fun `administrator can create channel and is a member of it`() {
         val administratorToken = courseApp.login("admin", "admin")
@@ -186,6 +209,8 @@ class CourseAppTest {
 
         courseApp.channelJoin(adminToken, "#test")
         courseApp.channelJoin(nonAdminToken, "#test")
+
+        // TODO conflict
         courseApp.channelMakeOperator(adminToken, "#test", "matan")
 
         assertThat(runWithTimeout(Duration.ofSeconds(10)) {
@@ -207,6 +232,7 @@ class CourseAppTest {
         },
                 isFalse)
     }
+
 
     @Test
     fun `user is not in channel after being kicked`() {
@@ -244,7 +270,34 @@ class CourseAppTest {
                 equalTo(1L))
     }
 
+    @Test
+    fun `logged in user count is correct when no user is logged in`() {
+        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseAppStatistics.loggedInUsers() }, equalTo(0L))
+    }
 
+    @Test
+    fun `total user count is correct when no users exist`() {
+        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseAppStatistics.totalUsers() }, equalTo(0L))
+    }
+
+    @Test
+    fun `top 10 channel list counts only logged in users`() {
+        val adminToken = courseApp.login("admin", "admin")
+        val nonAdminToken = courseApp.login("matan", "4321")
+        courseApp.makeAdministrator(adminToken, "matan")
+
+        assert(courseAppStatistics.top10ActiveChannelsByUsers().size == 0)
+        courseApp.channelJoin(adminToken, "#test")
+        assert(courseAppStatistics.top10ActiveChannelsByUsers().size == 1)
+        courseApp.channelJoin(nonAdminToken, "#other")
+        assert(courseAppStatistics.top10ActiveChannelsByUsers().size == 2)
+        courseApp.logout(nonAdminToken)
+
+        runWithTimeout(Duration.ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10ActiveChannelsByUsers(),
+                    containsElementsInOrder("#test", "#other"))
+        }
+    }
 
 
 

@@ -24,24 +24,33 @@ private const val NAMETOID_IDENTIFIER = "nametoid"
 
 class UserManager(private val DB: KeyValueStore)
 {
-    var count = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))
-    var nameToIdMap = DB.getIntMapReference(listOf(NAMETOID_IDENTIFIER))
+    private val count = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))
+    private val nameToIdMap = DB.getIntMapReference(listOf(NAMETOID_IDENTIFIER))
+
+    private val activeCount = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))
+    private val allUsersByChannelCount = Heap(ScopedKeyValueStore(DB, listOf(USERSTATS_IDENTIFIER, "usersbychannels")),
+            {id -> getUserByID(id).getChannelCount()},
+            {id -> -id})
+
 
     init {
         // initialize user count
-        if (count.read() == null)
+        if (count.read() == null) {
             count.write(0)
+            activeCount.write(0)
+        }
 
     }
+
+
+    fun getTop10UsersByChannel() : List<String> = allUsersByChannelCount.getTop10().map{id -> getUserByID(id).getName()}
 
     fun createUser(name: String, password: String) : User {
         var id = getUserCount()
         incrementUserCount()
 
         var ret = getUserByID(id)
-
-        ret.setName(name)
-        ret.setPassword(password)
+        ret.initialize(name, password)
         if (id == 0) ret.setisAdmin(true)
 
 
@@ -51,6 +60,9 @@ class UserManager(private val DB: KeyValueStore)
 
     fun getUserCount(): Int {
         return count.read()!!
+    }
+    fun getActiveCount(): Int {
+        return activeCount.read()!!
     }
 
     fun incrementUserCount() {
@@ -71,7 +83,7 @@ class UserManager(private val DB: KeyValueStore)
     }
 
 
-    class User(private val DB: ScopedKeyValueStore, private val id: Int) {
+    inner class User(private val DB: ScopedKeyValueStore, private val id: Int) {
         private val name = DB.getStringReference(NAME_IDENTIFIER)
         private val password = DB.getStringReference(PASSWORD_IDENTIFIER)
         private var token = DB.getStringReference(TOKEN_IDENTIFIER)
@@ -79,6 +91,13 @@ class UserManager(private val DB: KeyValueStore)
 
         private var channelList = Set(ScopedKeyValueStore(DB, listOf("channels")))
 
+        fun initialize(n : String, pass : String) {
+            name.write(n)
+            password.write(pass)
+            channelList.initialize()
+        }
+
+        fun getChannelCount() : Int = channelList.count()
 
         fun addToChannelList(channel: ChannelManager.Channel) {
             assert(!isInChannel(channel))
@@ -108,13 +127,6 @@ class UserManager(private val DB: KeyValueStore)
                 isAdmin.delete()
         }
 
-        fun setName(n : String) {
-            name.write(n)
-        }
-        fun setPassword(pass: String) {
-            password.write(pass)
-        }
-
         fun getName() : String {
             return name.read()!!
         }
@@ -135,11 +147,11 @@ class UserManager(private val DB: KeyValueStore)
             return token.read()
         }
 
-        fun setToken(t: Token) {
+        private fun setToken(t: Token) {
             token.write(t.getString())
         }
 
-        fun removeToken() {
+        private fun removeToken() {
             token.delete()
         }
 
@@ -147,6 +159,22 @@ class UserManager(private val DB: KeyValueStore)
             return password.read()
         }
 
+
+        fun logInAndAssignToken(token: Token){
+            assert(!isLoggedIn())
+            setToken(token)
+
+            activeCount.write(activeCount.read()!! + 1)
+
+        }
+
+        // Assign the token to this user
+        fun logout(){
+            assert(isLoggedIn())
+            removeToken()
+
+            activeCount.write(activeCount.read()!! - 1)
+        }
 
 
     }

@@ -12,9 +12,6 @@ import il.ac.technion.cs.softwaredesign.exceptions.*
  * + Channels.
  */
 interface CourseApp {
-
-
-
     /**
      * Log in a user identified by [username] and [password], returning an authentication token that can be used in
      * future calls. If this username did not previously log in to the system, it will be automatically registered with
@@ -146,7 +143,7 @@ interface CourseApp {
      *
      * @throws InvalidTokenException If the auth [token] is invalid.
      * @throws NoSuchEntityException If [channel] does not exist.
-     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator or is not a member
+     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator and is not a member
      * of [channel].
      * @returns Number of logged-in users in [channel].
      */
@@ -159,7 +156,7 @@ interface CourseApp {
      *
      * @throws InvalidTokenException If the auth [token] is invalid.
      * @throws NoSuchEntityException If [channel] does not exist.
-     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator or is not a member
+     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator and is not a member
      * of [channel].
      * @return Number of users, both logged-in and logged-out, in [channel].
      */

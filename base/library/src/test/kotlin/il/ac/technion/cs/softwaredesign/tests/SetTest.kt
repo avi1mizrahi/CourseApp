@@ -4,6 +4,7 @@ import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
 import il.ac.technion.cs.softwaredesign.ScopedKeyValueStore
 import il.ac.technion.cs.softwaredesign.Set
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 internal class SetTest {
@@ -12,6 +13,10 @@ internal class SetTest {
     private val keyValueStore = KeyValueStoreImpl(storage)
     private val list = Set(ScopedKeyValueStore(keyValueStore, listOf("Test")))
 
+    @BeforeEach
+    fun `init`() {
+        list.initialize()
+    }
 
     @Test
     fun `nothing exists in empty list`() {

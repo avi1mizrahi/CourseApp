@@ -29,17 +29,37 @@ private fun isBadChannelName(name : String) : Boolean {
 
 class ChannelManager(private val DB: KeyValueStore) {
 
-    var indexCounter = DB.getIntReference(listOf(CHANNELSTATS_IDENTIFIER, INDEXCOUNTER_IDENTIFIER))
-    //var count = DB.getIntReference(listOf(CHANNELSTATS_IDENTIFIER, COUNT_IDENTIFIER))
+    private val indexCounter = DB.getIntReference(listOf(CHANNELSTATS_IDENTIFIER, INDEXCOUNTER_IDENTIFIER))
 
     // Channel name -> index
-    var allChannels = DB.getIntMapReference(listOf(CHANNELSTATS_IDENTIFIER, ALLCHANNELS_IDENTIFIER))
+    private val allChannels = DB.getIntMapReference(listOf(CHANNELSTATS_IDENTIFIER, ALLCHANNELS_IDENTIFIER))
+    private val allChannelsByUserCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByUserCount")),
+            {id -> getChannelById(id).getUserCount()},
+            {id -> -id})
+
+    private val allChannelsByActiveCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByActiveUserCount")),
+            {id -> getChannelById(id).getActiveCount()},
+            {id -> -id})
+
 
     init {
         if (indexCounter.read() == null)
             indexCounter.write(0)
+
+
+        allChannelsByUserCount.initialize()
+        allChannelsByActiveCount.initialize()
     }
 
+
+
+    fun getTop10ChannelsByUserCount() : List<String> {
+        return allChannelsByUserCount.getTop10().map { id -> getChannelById(id).getName() }
+    }
+
+    fun getTop10ChannelsByActiveUserCount() : List<String> {
+        return allChannelsByActiveCount.getTop10().map { id -> getChannelById(id).getName() }
+    }
 
     fun createNewChannel(name : String) : Channel {
         assert(getChannelByName(name) == null)
@@ -48,10 +68,14 @@ class ChannelManager(private val DB: KeyValueStore) {
         indexCounter.write(id + 1)
 
 
+        val channel = Channel(ScopedKeyValueStore(DB, listOf("Channels", id.toString())), id)
+        channel.initialize(name)
         allChannels.write(name, id)
+        allChannelsByUserCount.add(id)
+        allChannelsByActiveCount.add(id)
 
-        val channel = Channel(ScopedKeyValueStore(DB, listOf(id.toString())), id)
-        channel.setName(name)
+
+
         return channel
     }
 
@@ -61,23 +85,25 @@ class ChannelManager(private val DB: KeyValueStore) {
 
     fun getChannelByName(name : String) : Channel? {
         val channelID = allChannels.read(name) ?: return null
-        return Channel(ScopedKeyValueStore(DB, listOf(channelID.toString())), channelID)
+        return Channel(ScopedKeyValueStore(DB, listOf("Channels", channelID.toString())), channelID)
     }
 
 
     fun getChannelById(channelID : Int) : Channel {
-        return Channel(ScopedKeyValueStore(DB, listOf(channelID.toString())), channelID)
+        return Channel(ScopedKeyValueStore(DB, listOf("Channels", channelID.toString())), channelID)
     }
 
-
-    fun channelExists(name : String) : Boolean {
-        return allChannels.read(name) != null
-    }
+//
+//    fun channelExists(name : String) : Boolean {
+//        return allChannels.read(name) != null
+//    }
 
     fun removeChannel(c : Channel) {
         assert(c.getUserCount() == 0)
 
         allChannels.delete(c.getName())
+        allChannelsByUserCount.remove(c.getID())
+        allChannelsByActiveCount.remove(c.getID())
     }
 
     inner class Channel(private val DB: ScopedKeyValueStore, private val id: Int) {
@@ -87,9 +113,16 @@ class ChannelManager(private val DB: KeyValueStore) {
         private val operatorList = Set(ScopedKeyValueStore(DB, listOf("operators")))
         private val name = DB.getStringReference("name")
 
+        fun initialize(s : String) {
+            name.write(s)
+            userList.initialize()
+            activeList.initialize()
+            operatorList.initialize()
+        }
+
+
         fun getID() = id
 
-        internal fun setName(s : String) = name.write(s)
 
         fun getName() = name.read()!!
 
@@ -116,36 +149,47 @@ class ChannelManager(private val DB: KeyValueStore) {
         fun addActive(user : User) {
             assert(!isActive(user))
             activeList.add(user.getID())
+            allChannelsByActiveCount.idIncremented(id)
         }
 
         fun removeActive(user : User) {
             assert(isActive(user))
             activeList.remove(user.getID())
+            allChannelsByActiveCount.idDecremented(id)
         }
 
         fun isActive(user : User) : Boolean = activeList.exists(user.getID())
 
         fun addUser(user : User) {
             assert(!hasUser(user))
-            val id = user.getID()
-            userList.add(id)
+            val userid = user.getID()
 
-            if (user.isLoggedIn())
-                activeList.add(id)
+            userList.add(userid)
+            allChannelsByUserCount.idIncremented(id)
+
+            if (user.isLoggedIn()) {
+                activeList.add(userid)
+                allChannelsByActiveCount.idIncremented(id)
+            }
 
         }
 
         fun removeUser(user : User) {
             assert(hasUser(user))
-            val id = user.getID()
-            userList.remove(id)
+            val userid = user.getID()
 
+            userList.remove(userid)
+            allChannelsByUserCount.idDecremented(id)
 
-            assertEquals(activeList.exists(id), user.isLoggedIn())
-            if (user.isLoggedIn()) activeList.remove(id)
+            assertEquals(activeList.exists(userid), user.isLoggedIn())
+            if (user.isLoggedIn())  {
+                activeList.remove(userid)
+                allChannelsByActiveCount.idDecremented(id)
+            }
 
-            if (getUserCount() == 0)
-                allChannels.delete(this.getName())
+            if (getUserCount() == 0) {
+                removeChannel(this)
+            }
 
         }
 

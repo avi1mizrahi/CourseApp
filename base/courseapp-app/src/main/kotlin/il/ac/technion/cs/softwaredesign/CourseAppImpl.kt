@@ -5,8 +5,6 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.exceptions.*
 
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.ChannelManager.Channel
 
 
 /**
@@ -18,12 +16,26 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.ChannelManager.Channel
  * + User authentication.
  */
 
+class CourseAppImplInitializer : CourseAppInitializer {
+    val courseApp = CourseAppImpl()
 
-class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
 
-    private var userManager = UserManager(DB)
-    private var tokenManager = TokenManager(DB)
-    private var channelManager = ChannelManager(DB)
+}
+
+class CourseAppImpl : CourseApp, CourseAppStatistics  {
+
+    @Inject
+    private lateinit var DB: KeyValueStore
+    private lateinit var userManager : UserManager
+    private lateinit var tokenManager : TokenManager
+    private lateinit var channelManager : ChannelManager
+
+    fun init() {
+        userManager = UserManager(DB)
+        tokenManager = TokenManager(DB)
+        channelManager = ChannelManager(DB)
+    }
+
 
 
     private fun getUserByTokenOrThrow(t : String) : User {
@@ -73,7 +85,8 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
         }
 
 
-        val t = tokenManager.generateNewToken(u)
+        val t = tokenManager.generateNewTokenForUser(u)
+        u.logInAndAssignToken(t)
         return t.getString()
     }
 
@@ -93,8 +106,8 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
         // User must have a token and it must be this token
         assert(u.getCurrentToken()!! == t.getString())
 
-        t.remove()
-        u.removeToken()
+        t.delete()
+        u.logout()
 
         val channels = u.getChannelList()
         channels.forEach { channelID -> channelManager.getChannelById(channelID).removeActive(u)}
@@ -165,7 +178,6 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
             c = channelManager.createNewChannel(channel)
         }
 
-        // TODO another layer for these kind of operations?
         c.addUser(u)
         u.addToChannelList(c)
     }
@@ -209,7 +221,7 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
         val targetUser = userManager.getUserByName(username) ?: throw NoSuchEntityException()
         if (!c.hasUser(targetUser)) throw NoSuchEntityException()
 
-        // TODO test conflict.
+        // TODO function description conflicts with given staff test
         // I think they want channel creator to be operator.
         if (!c.isOp(admin) && !admin.getisAdmin()) throw UserNotAuthorizedException()
         if (!c.isOp(admin) && admin.getisAdmin() && admin.getID() != targetUser.getID()) throw UserNotAuthorizedException()
@@ -239,6 +251,7 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
         if (!c.isOp(op) && !op.getisAdmin()) throw UserNotAuthorizedException()
 
         c.removeUser(targetUser)
+        targetUser.removeFromChannelList(c)
     }
 
     /**
@@ -269,7 +282,7 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
      *
      * @throws InvalidTokenException If the auth [token] is invalid.
      * @throws NoSuchEntityException If [channel] does not exist.
-     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator or is not a member
+     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator and is not a member
      * of [channel].
      * @returns Number of logged-in users in [channel].
      */
@@ -288,7 +301,7 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
      *
      * @throws InvalidTokenException If the auth [token] is invalid.
      * @throws NoSuchEntityException If [channel] does not exist.
-     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator or is not a member
+     * @throws UserNotAuthorizedException If [token] identifies a user who is not an administrator and is not a member
      * of [channel].
      * @return Number of users, both logged-in and logged-out, in [channel].
      */
@@ -299,5 +312,61 @@ class CourseAppImpl @Inject constructor(val DB: KeyValueStore) : CourseApp  {
 
         return c.getUserCount().toLong()
     }
+
+
+    /**
+     * Count the total number of users, both logged-in and logged-out, in the system.
+     *
+     * @return The total number of users.
+     */
+    override fun totalUsers(): Long = userManager.getUserCount().toLong()
+
+    /**
+     * Count the number of logged-in users in the system.
+     *
+     * @return The number of logged-in users.
+     */
+    override fun loggedInUsers(): Long = userManager.getActiveCount().toLong()
+
+    /**
+     * Return a sorted list of the top 10 channels in the system by user count. The list will be sorted in descending
+     * order, so the channel with the highest membership will be first, followed by the second, and so on.
+     *
+     * If two channels have the same number of users, they will be sorted in ascending lexicographical order.
+     *
+     * If there are less than 10 channels in the system, a shorter list will be returned.
+     *
+     * @return A sorted list of channels by user count.
+     */
+    override fun top10ChannelsByUsers(): List<String> = channelManager.getTop10ChannelsByUserCount()
+
+
+    /**
+     * Return a sorted list of the top 10 channels in the system by logged-in user count. The list will be sorted in
+     * descending order, so the channel with the highest active membership will be first, followed by the second, and so
+     * on.
+     *
+     * If two channels have the same number of logged-in users, they will be sorted in ascending lexicographical order.
+     *
+     * If there are less than 10 channels in the system, a shorter list will be returned.
+     *
+     * @return A sorted list of channels by logged-in user count.
+     */
+    override fun top10ActiveChannelsByUsers(): List<String> = channelManager.getTop10ChannelsByActiveUserCount()
+
+    /**
+     * Return a sorted list of the top 10 users in the system by channel membership count. The list will be sorted in
+     * descending order, so the user who is a member of the most channels will be first, followed by the second, and so
+     * on.
+     *
+     * If two users are members of the same number of channels, they will be sorted in ascending lexicographical order.
+     *
+     * If there are less than 10 users in the system, a shorter list will be returned.
+     *
+     * @return A sorted list of users by channel count.
+     *
+     */
+    override fun top10UsersByChannels(): List<String> = userManager.getTop10UsersByChannel()
+
 }
 

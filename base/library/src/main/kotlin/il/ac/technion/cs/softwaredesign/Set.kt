@@ -77,7 +77,6 @@ class Set(private val DB: ScopedKeyValueStore) : DataStructure(DB) {
 
 
     fun getAll() : List<Int> {
-
         val out = ArrayList<Int>()
 
         var current = getFirst()
@@ -89,6 +88,9 @@ class Set(private val DB: ScopedKeyValueStore) : DataStructure(DB) {
         return out
     }
 
+    override fun exists(id: Int) : Boolean {
+        return DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).read() != null
+    }
 
     private fun setExists(id : Int)
     {
@@ -100,9 +102,7 @@ class Set(private val DB: ScopedKeyValueStore) : DataStructure(DB) {
         DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).delete()
     }
 
-    override fun exists(id: Int) : Boolean {
-        return DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).read() != null
-    }
+
 
     private fun setNext(id : Int, next : Int?)
     {

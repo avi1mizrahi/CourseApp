@@ -17,10 +17,9 @@ class TokenManager(private val DB: KeyValueStore) {
         return out
     }
 
-    fun generateNewToken(u: User) : Token {
+    fun generateNewTokenForUser(u: User) : Token {
         val t = Token(DB, generateToken())
         t.setUser(u)
-        u.setToken(t)
         return t
     }
 
@@ -41,7 +40,7 @@ class TokenManager(private val DB: KeyValueStore) {
             return token
         }
 
-        fun remove() {
+        fun delete() {
             userID.delete()
         }
 
