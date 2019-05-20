@@ -159,13 +159,16 @@ class CourseAppTest {
     @Test
     fun `First user is admin and making others admin causes no exceptions`() {
         val tokenAdmin = courseApp.login("name1", "pass")
+        courseApp.login("name2", "pass")
 
         courseApp.makeAdministrator(tokenAdmin, "name2")
 
     }
     @Test
     fun `Second user is not an admin`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
         val tokenSecond = courseApp.login("name2", "pass")
+
 
         assertThrows<UserNotAuthorizedException> {courseApp.makeAdministrator(tokenSecond, "name1")}
     }
@@ -220,9 +223,8 @@ class CourseAppTest {
         assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 1)
 
         courseApp.channelPart(tokenAdmin, "#ch1")
-        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 0)
-        courseApp.channelPart(tokenAdmin, "#ch1")
-        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 0)
+        assertThrows<NoSuchEntityException>{ courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1") }
+        assertThrows<NoSuchEntityException>{ courseApp.channelPart(tokenAdmin, "#ch1") }
     }
 
     // TODO function description conflicts with staff test
@@ -268,8 +270,6 @@ class CourseAppTest {
             courseApp.login("name$i", "pass")
         }
 
-
-        var a = courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt()
         assert ( courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
         assert ( courseApp.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
 
