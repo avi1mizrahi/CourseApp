@@ -134,29 +134,29 @@ class ChannelManager(private val DB: KeyValueStore) {
 
         fun addOp(user : User) {
             assert(!isOp(user))
-            operatorList.add(user.getID())
+            operatorList.add(user.id())
         }
 
-        fun isOp(user : User) : Boolean = operatorList.exists(user.getID())
+        fun isOp(user : User) : Boolean = operatorList.exists(user.id())
 
 
         fun addActive(user : User) {
             assert(!isActive(user))
-            activeList.add(user.getID())
+            activeList.add(user.id())
             allChannelsByActiveCount.idIncremented(id)
         }
 
         fun removeActive(user : User) {
             assert(isActive(user))
-            activeList.remove(user.getID())
+            activeList.remove(user.id())
             allChannelsByActiveCount.idDecremented(id)
         }
 
-        private fun isActive(user : User) : Boolean = activeList.exists(user.getID())
+        private fun isActive(user : User) : Boolean = activeList.exists(user.id())
 
         fun addUser(user : User) {
             assert(!hasUser(user))
-            val userid = user.getID()
+            val userid = user.id()
 
             userList.add(userid)
             allChannelsByUserCount.idIncremented(id)
@@ -170,7 +170,7 @@ class ChannelManager(private val DB: KeyValueStore) {
 
         fun removeUser(user : User) {
             assert(hasUser(user))
-            val userid = user.getID()
+            val userid = user.id()
 
             userList.remove(userid)
             allChannelsByUserCount.idDecremented(id)
@@ -188,7 +188,7 @@ class ChannelManager(private val DB: KeyValueStore) {
 
         }
 
-        fun hasUser(user : User) : Boolean = userList.exists(user.getID())
+        fun hasUser(user : User) : Boolean = userList.exists(user.id())
 
     }
 

@@ -12,7 +12,7 @@ import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.time.Duration
+import java.time.Duration.*
 
 
 class CourseAppTest {
@@ -48,8 +48,8 @@ class CourseAppTest {
 
         val token = courseApp.login("matan", "s3kr1t")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token, "gal") },
-                present(isTrue))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token, "gal") },
+                   present(isTrue))
     }
 
     @Test
@@ -59,18 +59,18 @@ class CourseAppTest {
         courseApp.logout(token)
 
         assertThrows<InvalidTokenException> {
-            runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token, "matan") }
+            runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token, "matan") }
         }
     }
 
     @Test
     fun `throw on invalid tokens`(){
         assertThrows<InvalidTokenException> {
-            runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn("a", "any") }
+            runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn("a", "any") }
         }
 
         assertThrows<InvalidTokenException> {
-            runWithTimeout(Duration.ofSeconds(10)) { courseApp.logout("a") }
+            runWithTimeout(ofSeconds(10)) { courseApp.logout("a") }
         }
     }
 
@@ -84,8 +84,8 @@ class CourseAppTest {
         val newtoken = courseApp.login("name", "pass")
 
         // new token works
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(newtoken, "name") },
-                present(isTrue))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(newtoken, "name") },
+                   present(isTrue))
     }
 
     @Test
@@ -93,7 +93,7 @@ class CourseAppTest {
         courseApp.login("someone", "123")
 
         assertThrows<UserAlreadyLoggedInException> {
-            runWithTimeout(Duration.ofSeconds(10)) { courseApp.login("someone", "123") }
+            runWithTimeout(ofSeconds(10)) { courseApp.login("someone", "123") }
         }
     }
 
@@ -103,7 +103,7 @@ class CourseAppTest {
         courseApp.logout(oldtoken)
 
         assertThrows<NoSuchEntityException> {
-            runWithTimeout(Duration.ofSeconds(10)) { courseApp.login("name", "badpass") }
+            runWithTimeout(ofSeconds(10)) { courseApp.login("name", "badpass") }
         }
     }
 
@@ -112,10 +112,10 @@ class CourseAppTest {
         val token1 = courseApp.login("name1", "pass")
         val token2 = courseApp.login("name2", "pass")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token1, "name2") },
-                present(isTrue))
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
-                present(isTrue))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token1, "name2") },
+                   present(isTrue))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
+                   present(isTrue))
 
 
     }
@@ -125,11 +125,11 @@ class CourseAppTest {
         val token1 = courseApp.login("name1", "pass")
         val token2 = courseApp.login("name2", "pass")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
-                present(isTrue))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
+                   present(isTrue))
         courseApp.logout(token1)
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
-                present(equalTo(false)))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
+                   present(equalTo(false)))
 
 
     }
@@ -139,7 +139,7 @@ class CourseAppTest {
     {
         val token1 = courseApp.login("name1", "pass")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseApp.isUserLoggedIn(token1, "name2") }, absent())
+        assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token1, "name2") }, absent())
     }
 
 
@@ -275,7 +275,7 @@ class CourseAppTest {
         val administratorToken = courseApp.login("admin", "admin")
         courseApp.channelJoin(administratorToken, "#mychannel")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) {
+        assertThat(runWithTimeout(ofSeconds(10)) {
             courseApp.isUserInChannel(administratorToken, "#mychannel", "admin")
         },
                 isTrue)
@@ -288,7 +288,7 @@ class CourseAppTest {
         courseApp.login("gal", "hunter2")
 
         assertThrows<UserNotAuthorizedException> {
-            runWithTimeout(Duration.ofSeconds(10)) { courseApp.makeAdministrator(nonAdminToken, "gal") }
+            runWithTimeout(ofSeconds(10)) { courseApp.makeAdministrator(nonAdminToken, "gal") }
         }
     }
 
@@ -303,7 +303,7 @@ class CourseAppTest {
         // TODO conflict
         courseApp.channelMakeOperator(adminToken, "#test", "matan")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) {
+        assertThat(runWithTimeout(ofSeconds(10)) {
             courseApp.isUserInChannel(adminToken, "#test", "matan")
         },
                 isTrue)
@@ -317,7 +317,7 @@ class CourseAppTest {
         courseApp.channelJoin(nonAdminToken, "#mychannel")
         courseApp.channelPart(nonAdminToken, "#mychannel")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) {
+        assertThat(runWithTimeout(ofSeconds(10)) {
             courseApp.isUserInChannel(adminToken, "#mychannel", "matan")
         },
                 isFalse)
@@ -332,7 +332,7 @@ class CourseAppTest {
         courseApp.channelJoin(nonAdminToken, "#236700")
         courseApp.channelKick(adminToken, "#236700", "matan")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) {
+        assertThat(runWithTimeout(ofSeconds(10)) {
             courseApp.isUserInChannel(adminToken, "#236700", "matan")
         },
                 isFalse)
@@ -343,7 +343,7 @@ class CourseAppTest {
         val adminToken = courseApp.login("admin", "admin")
         courseApp.channelJoin(adminToken, "#test")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) {
+        assertThat(runWithTimeout(ofSeconds(10)) {
             courseApp.numberOfTotalUsersInChannel(adminToken, "#test")
         },
                 equalTo(1L))
@@ -354,7 +354,7 @@ class CourseAppTest {
         val adminToken = courseApp.login("admin", "admin")
         courseApp.channelJoin(adminToken, "#test")
 
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) {
+        assertThat(runWithTimeout(ofSeconds(10)) {
             courseApp.numberOfActiveUsersInChannel(adminToken, "#test")
         },
                 equalTo(1L))
@@ -362,12 +362,12 @@ class CourseAppTest {
 
     @Test
     fun `logged in user count is correct when no user is logged in`() {
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseAppStatistics.loggedInUsers() }, equalTo(0L))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseAppStatistics.loggedInUsers() }, equalTo(0L))
     }
 
     @Test
     fun `total user count is correct when no users exist`() {
-        assertThat(runWithTimeout(Duration.ofSeconds(10)) { courseAppStatistics.totalUsers() }, equalTo(0L))
+        assertThat(runWithTimeout(ofSeconds(10)) { courseAppStatistics.totalUsers() }, equalTo(0L))
     }
 
     @Test
@@ -383,7 +383,7 @@ class CourseAppTest {
         assert(courseAppStatistics.top10ActiveChannelsByUsers().size == 2)
         courseApp.logout(nonAdminToken)
 
-        runWithTimeout(Duration.ofSeconds(10)) {
+        runWithTimeout(ofSeconds(10)) {
             assertThat(courseAppStatistics.top10ActiveChannelsByUsers(),
                     containsElementsInOrder("#test", "#other"))
         }

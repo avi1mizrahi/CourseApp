@@ -45,7 +45,7 @@ class TokenManager(private val DB: KeyValueStore) {
         }
 
         fun setUser(user: User)  {
-            userID.write(user.getID())
+            userID.write(user.id())
         }
 
         fun getUserid() : Int? {
