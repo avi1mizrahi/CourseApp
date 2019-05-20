@@ -4,26 +4,11 @@ import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
 import il.ac.technion.cs.softwaredesign.Serializer
 import il.ac.technion.cs.softwaredesign.getIntReference
 import il.ac.technion.cs.softwaredesign.getStringReference
-import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
-
-class MockStorage : SecureStorage {
-    private val encoding = Charsets.UTF_8
-
-    private val keyvalDB = HashMap<String, ByteArray>()
-
-    override fun read(key: ByteArray): ByteArray? {
-        return keyvalDB[key.toString(encoding)]
-    }
-
-    override fun write(key: ByteArray, value: ByteArray) {
-        keyvalDB[key.toString(encoding)] = value
-    }
-}
 
 internal class KeyValueStoreTest {
 
@@ -41,7 +26,6 @@ internal class KeyValueStoreTest {
     @Test
     fun `read the written`() {
         string1.write("bye")
-
 
         val ret = string1.read()
 

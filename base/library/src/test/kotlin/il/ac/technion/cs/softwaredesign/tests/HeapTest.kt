@@ -1,7 +1,6 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.*
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 
 import org.junit.jupiter.api.Test
@@ -13,16 +12,12 @@ class HeapTest {
     private val innerKeyValueStore = ScopedKeyValueStore(keyValueStore, listOf("Test"))
     private val heap = Heap(innerKeyValueStore, {id -> primary(id)}, {id -> id % 10})
 
-
-
-
     private var getPrimaryOverride : Function1<Int, Int>? = null
     private fun primary(id : Int) : Int {
         getPrimaryOverride ?: return id / 10
 
         return getPrimaryOverride!!.invoke(id)
     }
-
 
     @BeforeEach
     fun `init`() {
@@ -64,7 +59,6 @@ class HeapTest {
     fun `adds throws no assertion failures`() {
         for (i in 1..10)
             heap.add(i)
-
     }
 
     @Test
@@ -74,13 +68,10 @@ class HeapTest {
 
         val list = heap.getTop10()
 
-
         assert(list.size == 3)
         assert(list[0] == 3)
         assert(list[1] == 2)
         assert(list[2] == 1)
-
-
     }
 
     @Test

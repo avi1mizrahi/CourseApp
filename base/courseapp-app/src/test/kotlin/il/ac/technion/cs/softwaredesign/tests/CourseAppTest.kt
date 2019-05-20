@@ -4,7 +4,6 @@ import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
 import com.google.inject.Injector
-import com.google.inject.Provider
 import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
@@ -16,17 +15,7 @@ import org.junit.jupiter.api.assertThrows
 import java.time.Duration
 
 
-
-
-
-
-
-
-val mockKV = MockKeyValueStore()
 class CourseAppTest {
-
-
-
     // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
     private var injector : Injector
     private var courseApp : CourseApp
@@ -45,7 +34,6 @@ class CourseAppTest {
         courseApp = injector.getInstance<CourseApp>()
         courseAppStatistics = injector.getInstance<CourseAppStatistics>()
     }
-
 
 
     @Test
@@ -166,7 +154,7 @@ class CourseAppTest {
     }
     @Test
     fun `Second user is not an admin`() {
-        val tokenAdmin = courseApp.login("name1", "pass")
+        courseApp.login("name1", "pass")
         val tokenSecond = courseApp.login("name2", "pass")
 
 
@@ -256,14 +244,14 @@ class CourseAppTest {
         courseApp.channelJoin(tokenAdmin, "#ch1")
 
 
-        var tokens = ArrayList<String>()
+        val tokens = ArrayList<String>()
         for (i in 101..130) {
-            var t = courseApp.login("name$i", "pass")
+            val t = courseApp.login("name$i", "pass")
             courseApp.channelJoin(t, "#ch1")
             tokens.add(t)
         }
         for (i in 2..30) {
-            var t = courseApp.login("name$i", "pass")
+            val t = courseApp.login("name$i", "pass")
             courseApp.channelJoin(t, "#ch1")
         }
         for (i in 201..230) {
@@ -400,7 +388,4 @@ class CourseAppTest {
                     containsElementsInOrder("#test", "#other"))
         }
     }
-
-
-
 }

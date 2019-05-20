@@ -32,7 +32,6 @@ internal class SetTest {
         val ret1 = list.exists(5)
         val ret2 = list.exists(6)
 
-
         assertEquals(true, ret1)
         assertEquals(false, ret2)
     }
@@ -56,9 +55,7 @@ internal class SetTest {
         val ret = list.exists(5)
 
         assertEquals(false, ret)
-
     }
-
 
     @Test
     fun `basic getAll`() {
@@ -67,7 +64,6 @@ internal class SetTest {
         list.add(3)
 
         val ret = list.getAll()
-
 
         assertEquals(3, ret.size)
         assertTrue(ret.contains(1))
@@ -96,7 +92,6 @@ internal class SetTest {
             assertFalse(ret.contains(i))
     }
 
-
     @Test
     fun `add a few and remove all, then add again`() {
         for (i in 1..10)
@@ -113,9 +108,5 @@ internal class SetTest {
         assertTrue(ret.contains(1))
         assertTrue(ret.contains(2))
         assertFalse(ret.contains(3))
-
-
-
     }
-
 }
