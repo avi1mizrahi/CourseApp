@@ -11,7 +11,5 @@ interface CourseAppInitializer {
      *
      * You may assume that when this method is called the data-store is completely empty.
      */
-    fun setup() {
-
-    }
+    fun setup()
 }
