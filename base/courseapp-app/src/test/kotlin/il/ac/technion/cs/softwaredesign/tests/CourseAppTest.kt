@@ -3,71 +3,50 @@ package il.ac.technion.cs.softwaredesign.tests
 import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
+import com.google.inject.Injector
 import com.google.inject.Provider
 import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
-import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
-import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
-import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
-import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
+import il.ac.technion.cs.softwaredesign.exceptions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration
 
 
 
-class CourseAppProvider : Provider<CourseApp> {
-    var lastCourseApp : CourseAppImpl? = null
-    override fun get() : CourseApp {
 
-        class StorageInject : KotlinModule() {
+
+
+
+
+val mockKV = MockKeyValueStore()
+class CourseAppTest {
+
+
+
+    // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
+    private var injector : Injector
+    private var courseApp : CourseApp
+    private var courseAppStatistics : CourseAppStatistics
+    init {
+        class CourseAppModuleMock : KotlinModule() {
             override fun configure() {
-                bind<KeyValueStore>().to<MockKeyValueStore>()
+                val mockKV = MockKeyValueStore()
+                bind<KeyValueStore>().toInstance(mockKV)
                 bind<CourseApp>().to<CourseAppImpl>()
+                bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
             }
         }
 
-        val app = Guice.createInjector(StorageInject()).getInstance<CourseApp>()
-
-        lastCourseApp = app as CourseAppImpl
-        lastCourseApp!!.init()
-
-        return app
-    }
-    inner class CourseAppStatsProvider : Provider<CourseAppStatistics> {
-        override fun get() : CourseAppStatistics {
-            return lastCourseApp!!
-        }
+        injector = Guice.createInjector(CourseAppModuleMock())
+        courseApp = injector.getInstance<CourseApp>()
+        courseAppStatistics = injector.getInstance<CourseAppStatistics>()
     }
 
-}
 
-class CourseAppModuleMock : KotlinModule() {
-    override fun configure() {
-        bind<CourseAppInitializer>().to<CourseAppImplInitializer>()
-        bind<KeyValueStore>().to<MockKeyValueStore>()
-
-        val provider = CourseAppProvider()
-        bind<CourseApp>().toProvider(provider)
-        bind<CourseAppStatistics>().toProvider(provider.CourseAppStatsProvider())
-
-    }
-}
-
-val injector = Guice.createInjector(CourseAppModuleMock())
-
-class CourseAppTest {
-
-    private val courseApp = injector.getInstance<CourseApp>()
-    private val courseAppInitializer = injector.getInstance<CourseAppInitializer>()
-    private val courseAppStatistics = injector.getInstance<CourseAppStatistics>()
-
-    init {
-        courseAppInitializer.setup()
-    }
 
     @Test
     fun `Empty test`() {
@@ -176,7 +155,130 @@ class CourseAppTest {
     }
 
 
+    // HW1 tests from here
+    @Test
+    fun `First user is admin and making others admin causes no exceptions`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
 
+        courseApp.makeAdministrator(tokenAdmin, "name2")
+
+    }
+    @Test
+    fun `Second user is not an admin`() {
+        val tokenSecond = courseApp.login("name2", "pass")
+
+        assertThrows<UserNotAuthorizedException> {courseApp.makeAdministrator(tokenSecond, "name1")}
+    }
+
+    @Test
+    fun `Test Channel name`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
+
+
+        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "hello")}
+        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "1234")}
+        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "a1")}
+        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "עברית")}
+        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "#עברית")}
+        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "#hello[")}
+        courseApp.channelJoin(tokenAdmin, "#hello")
+    }
+
+
+    @Test
+    fun `Only admin can make channels`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
+        val tokenSecond = courseApp.login("name2", "pass")
+
+        courseApp.channelJoin(tokenAdmin, "#ch1")
+        assertThrows<UserNotAuthorizedException> {courseApp.channelJoin(tokenSecond, "#ch2")}
+    }
+
+    @Test
+    fun `Non admin cant join deleted channel`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
+        val tokenSecond = courseApp.login("name2", "pass")
+
+        courseApp.channelJoin(tokenAdmin, "#ch1")
+        courseApp.channelPart(tokenAdmin, "#ch1")
+        assertThrows<UserNotAuthorizedException> {courseApp.channelJoin(tokenSecond, "#ch1")}
+    }
+
+    // TODO function description conflicts with staff test
+    @Test
+    fun `channelMakeOperator`() {
+
+    }
+
+    @Test
+    fun `Nothing happens when joining or leaving channel twice`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
+
+        courseApp.channelJoin(tokenAdmin, "#ch1")
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 1)
+        courseApp.channelJoin(tokenAdmin, "#ch1")
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 1)
+
+        courseApp.channelPart(tokenAdmin, "#ch1")
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 0)
+        courseApp.channelPart(tokenAdmin, "#ch1")
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 0)
+    }
+
+    // TODO function description conflicts with staff test
+    @Test
+    fun `channelKick`() {
+
+    }
+
+
+    @Test
+    fun `IsUserInChannel throws on bad input and works correctly`() {
+
+        assertThrows<InvalidTokenException> {courseApp.isUserInChannel("aaa", "#ch1", "name1")}
+        val tokenAdmin = courseApp.login("name1", "pass")
+        val tokenOther = courseApp.login("name2", "pass")
+        courseApp.channelJoin(tokenAdmin, "#ch1")
+        assert(courseApp.isUserInChannel(tokenAdmin, "#ch1", "name3") == null)
+        assert(courseApp.isUserInChannel(tokenAdmin, "#ch1", "name2") == false)
+        assert(courseApp.isUserInChannel(tokenAdmin, "#ch1", "name1") == true)
+
+
+        assertThrows<NoSuchEntityException> {courseApp.isUserInChannel(tokenAdmin, "#ch2", "name1")}
+        assertThrows<UserNotAuthorizedException> {courseApp.isUserInChannel(tokenOther, "#ch1", "name1")}
+    }
+
+    @Test
+    fun `Test channel active and nonactive user count`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
+        courseApp.channelJoin(tokenAdmin, "#ch1")
+
+
+        var tokens = ArrayList<String>()
+        for (i in 101..130) {
+            var t = courseApp.login("name$i", "pass")
+            courseApp.channelJoin(t, "#ch1")
+            tokens.add(t)
+        }
+        for (i in 2..30) {
+            var t = courseApp.login("name$i", "pass")
+            courseApp.channelJoin(t, "#ch1")
+        }
+        for (i in 201..230) {
+            courseApp.login("name$i", "pass")
+        }
+
+
+        var a = courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt()
+        assert ( courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
+        assert ( courseApp.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
+
+
+        tokens.forEach {courseApp.logout(it)}
+        assert ( courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt()  == 60)
+        assert ( courseApp.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").toInt() == 30)
+
+    }
 
 
     // TODO copy of staff tests from here, delete later

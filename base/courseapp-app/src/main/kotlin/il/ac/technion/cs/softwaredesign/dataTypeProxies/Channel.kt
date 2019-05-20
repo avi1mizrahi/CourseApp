@@ -7,7 +7,6 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import org.junit.jupiter.api.Assertions.assertEquals
 
 private const val CHANNELSTATS_IDENTIFIER = "usersstats"
-private const val COUNT_IDENTIFIER = "count"
 private const val INDEXCOUNTER_IDENTIFIER = "indexCounter"
 private const val ALLCHANNELS_IDENTIFIER = "allchannels"
 

@@ -6,8 +6,6 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 
 
 private const val USERSTATS_IDENTIFIER = "usersstats"
-private const val USERSTATSCOUNT_IDENTIFIER = "count"
-
 private const val USERS_IDENTIFIER = "users"
 private const val PASSWORD_IDENTIFIER = "password"
 private const val NAME_IDENTIFIER = "name"
@@ -24,10 +22,10 @@ private const val NAMETOID_IDENTIFIER = "nametoid"
 
 class UserManager(private val DB: KeyValueStore)
 {
-    private val count = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))
+    private val count = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, "count"))
     private val nameToIdMap = DB.getIntMapReference(listOf(NAMETOID_IDENTIFIER))
 
-    private val activeCount = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, USERSTATSCOUNT_IDENTIFIER))
+    private val activeCount = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, "activecount"))
     private val allUsersByChannelCount = Heap(ScopedKeyValueStore(DB, listOf(USERSTATS_IDENTIFIER, "usersbychannels")),
             {id -> getUserByID(id).getChannelCount()},
             {id -> -id})

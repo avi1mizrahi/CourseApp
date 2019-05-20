@@ -17,4 +17,8 @@ class MockKeyValueStore : KeyValueStore {
                     map.remove(key)
                 }
             }
+
+    fun clear() {
+        map.clear()
+    }
 }

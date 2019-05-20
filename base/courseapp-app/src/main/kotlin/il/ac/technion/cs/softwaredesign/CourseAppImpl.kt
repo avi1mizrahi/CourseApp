@@ -5,6 +5,8 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.exceptions.*
 
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
+import il.ac.technion.cs.softwaredesign.storage.SecureStorage
+import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 
 
 /**
@@ -16,26 +18,23 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
  * + User authentication.
  */
 
-class CourseAppImplInitializer : CourseAppInitializer {
-    val courseApp = CourseAppImpl()
-
+class CourseAppImplInitializer @Inject constructor(val storageFactory: SecureStorageFactory) : CourseAppInitializer {
+    companion object {
+        var storage : SecureStorage? = null
+    }
+    override fun setup() {
+        storage = storageFactory.open("main".toByteArray())
+    }
 
 }
 
-class CourseAppImpl : CourseApp, CourseAppStatistics  {
+abstract class CourseAppComponent (var DB: KeyValueStore) {
+    protected var userManager = UserManager(DB)
+    protected var tokenManager = TokenManager(DB)
+    protected var channelManager  = ChannelManager(DB)
+}
 
-    @Inject
-    private lateinit var DB: KeyValueStore
-    private lateinit var userManager : UserManager
-    private lateinit var tokenManager : TokenManager
-    private lateinit var channelManager : ChannelManager
-
-    fun init() {
-        userManager = UserManager(DB)
-        tokenManager = TokenManager(DB)
-        channelManager = ChannelManager(DB)
-    }
-
+class CourseAppImpl @Inject constructor(val _DB: KeyValueStore): CourseAppComponent(_DB), CourseApp  {
 
 
     private fun getUserByTokenOrThrow(t : String) : User {
@@ -178,6 +177,8 @@ class CourseAppImpl : CourseApp, CourseAppStatistics  {
             c = channelManager.createNewChannel(channel)
         }
 
+        if (u.isInChannel(c)) return
+
         c.addUser(u)
         u.addToChannelList(c)
     }
@@ -196,6 +197,8 @@ class CourseAppImpl : CourseApp, CourseAppStatistics  {
     override fun channelPart(token: String, channel: String) {
         val u = getUserByTokenOrThrow(token)
         val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
+
+        if (!u.isInChannel(c)) return
 
         c.removeUser(u)
         u.removeFromChannelList(c)
@@ -314,6 +317,10 @@ class CourseAppImpl : CourseApp, CourseAppStatistics  {
     }
 
 
+}
+
+
+class CourseAppStatisticsImpl @Inject constructor(val _DB: KeyValueStore): CourseAppComponent(_DB), CourseAppStatistics {
     /**
      * Count the total number of users, both logged-in and logged-out, in the system.
      *
@@ -367,6 +374,4 @@ class CourseAppImpl : CourseApp, CourseAppStatistics  {
      *
      */
     override fun top10UsersByChannels(): List<String> = userManager.getTop10UsersByChannel()
-
 }
-
