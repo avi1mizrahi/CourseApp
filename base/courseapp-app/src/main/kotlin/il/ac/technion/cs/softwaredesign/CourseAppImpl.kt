@@ -31,34 +31,31 @@ class CourseAppImplInitializer @Inject constructor(private val storageFactory: S
     override fun setup() {
         storage = storageFactory.open("main".toByteArray())
     }
-
 }
 
-abstract class CourseAppComponent(DB: KeyValueStore) {
-    protected var userManager = UserManager(DB)
-    protected var tokenManager = TokenManager(DB)
-    protected var channelManager = ChannelManager(DB)
+class Managers @Inject constructor(db: KeyValueStore) {
+    val users = UserManager(db)
+    val tokens = TokenManager(db)
+    val channels = ChannelManager(db)
 }
 
-class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent(_DB),
-                                                              CourseApp {
-
-
+class CourseAppImpl @Inject constructor(private val managers: Managers) :
+        CourseApp {
     private fun getUserByTokenOrThrow(t: String): User {
         return getUserByToken(t) ?: throw InvalidTokenException()
     }
 
     private fun getUserByToken(t: String): User? {
-        val token = tokenManager.getTokenByString(t) ?: return null
-        return userManager.getUserByID(token.getUserid()!!)
+        val token = managers.tokens.getTokenByString(t) ?: return null
+        return managers.users.getUserByID(token.getUserid()!!)
     }
 
     override fun login(username: String, password: String): String {
-        var u = userManager.getUserByName(username)
+        var u = managers.users.getUserByName(username)
 
         // User does not exist
         if (u == null) {
-            u = userManager.createUser(username, password)
+            u = managers.users.createUser(username, password)
         } else {
             if (u.getPassword() != password)
                 throw NoSuchEntityException()
@@ -66,19 +63,19 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
             if (u.isLoggedIn())
                 throw UserAlreadyLoggedInException()
 
-            u.getChannelList().forEach { channelManager.getChannelById(it).addActive(u) }
+            u.getChannelList().forEach { managers.channels.getChannelById(it).addActive(u) }
         }
 
 
-        val t = tokenManager.generateNewTokenForUser(u)
+        val t = managers.tokens.generateNewTokenForUser(u)
         u.logInAndAssignToken(t)
         return t.getString()
     }
 
     override fun logout(token: String) {
-        val t = tokenManager.getTokenByString(token) ?: throw InvalidTokenException()
+        val t = managers.tokens.getTokenByString(token) ?: throw InvalidTokenException()
 
-        val u = userManager.getUserByID(t.getUserid()!!) // User has to exist, we just checked
+        val u = managers.users.getUserByID(t.getUserid()!!) // User has to exist, we just checked
 
         // User must have a token and it must be this token
         assert(u.getCurrentToken()!! == t.getString())
@@ -87,13 +84,13 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
         u.logout()
 
         val channels = u.getChannelList()
-        channels.forEach { channelID -> channelManager.getChannelById(channelID).removeActive(u) }
+        channels.forEach { managers.channels.getChannelById(it).removeActive(u) }
     }
 
     override fun isUserLoggedIn(token: String, username: String): Boolean? {
         // Confirm that token belongs to any user
-        tokenManager.getTokenByString(token) ?: throw InvalidTokenException()
-        val u = userManager.getUserByName(username) ?: return null
+        managers.tokens.getTokenByString(token) ?: throw InvalidTokenException()
+        val u = managers.users.getUserByName(username) ?: return null
         return u.isLoggedIn()
     }
 
@@ -101,7 +98,7 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
         val oldAdmin = getUserByTokenOrThrow(token)
         if (!oldAdmin.getisAdmin()) throw UserNotAuthorizedException()
 
-        val newAdmin = userManager.getUserByName(username) ?: throw NoSuchEntityException()
+        val newAdmin = managers.users.getUserByName(username) ?: throw NoSuchEntityException()
 
         newAdmin.setisAdmin(true)
     }
@@ -109,12 +106,12 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
     override fun channelJoin(token: String, channel: String) {
         val u = getUserByTokenOrThrow(token)
 
-        channelManager.throwIfBadChannelName(channel)
-        var c = channelManager.getChannelByName(channel)
+        managers.channels.throwIfBadChannelName(channel)
+        var c = managers.channels.getChannelByName(channel)
         if (c == null) { // new channel
             if (!u.getisAdmin()) throw UserNotAuthorizedException()
 
-            c = channelManager.createNewChannel(channel)
+            c = managers.channels.createNewChannel(channel)
             c.addOp(u)
         }
 
@@ -126,7 +123,7 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
 
     override fun channelPart(token: String, channel: String) {
         val u = getUserByTokenOrThrow(token)
-        val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
+        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
 
         if (!u.isInChannel(c)) return
 
@@ -136,13 +133,13 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
 
     override fun channelMakeOperator(token: String, channel: String, username: String) {
         val actingUser = getUserByTokenOrThrow(token)
-        val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
+        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
 
         if (!c.isOp(actingUser) && !actingUser.getisAdmin()) throw UserNotAuthorizedException()
         if (!c.isOp(actingUser) && actingUser.getisAdmin() && actingUser.getName() != username) throw UserNotAuthorizedException()
         if (!c.hasUser(actingUser)) throw UserNotAuthorizedException()
 
-        val targetUser = userManager.getUserByName(username) ?: throw NoSuchEntityException()
+        val targetUser = managers.users.getUserByName(username) ?: throw NoSuchEntityException()
         if (!c.hasUser(targetUser)) throw NoSuchEntityException()
 
         c.addOp(targetUser)
@@ -150,8 +147,8 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
 
     override fun channelKick(token: String, channel: String, username: String) {
         val op = getUserByTokenOrThrow(token)
-        val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
-        val targetUser = userManager.getUserByName(username) ?: throw NoSuchEntityException()
+        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
+        val targetUser = managers.users.getUserByName(username) ?: throw NoSuchEntityException()
         if (!c.hasUser(targetUser)) throw NoSuchEntityException()
 
         if (!c.isOp(op)) throw UserNotAuthorizedException()
@@ -162,17 +159,17 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
 
     override fun isUserInChannel(token: String, channel: String, username: String): Boolean? {
         val user = getUserByTokenOrThrow(token)
-        val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
+        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
 
         if (!c.hasUser(user) && !user.getisAdmin()) throw UserNotAuthorizedException()
 
-        val targetUser = userManager.getUserByName(username) ?: return null
+        val targetUser = managers.users.getUserByName(username) ?: return null
         return c.hasUser(targetUser)
     }
 
     override fun numberOfActiveUsersInChannel(token: String, channel: String): Long {
         val user = getUserByTokenOrThrow(token)
-        val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
+        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         if (!c.hasUser(user) && !user.getisAdmin()) throw UserNotAuthorizedException()
 
         return c.getActiveCount().toLong()
@@ -180,7 +177,7 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
 
     override fun numberOfTotalUsersInChannel(token: String, channel: String): Long {
         val user = getUserByTokenOrThrow(token)
-        val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
+        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         if (!c.hasUser(user) && !user.getisAdmin()) throw UserNotAuthorizedException()
 
         return c.getUserCount().toLong()
@@ -188,16 +185,14 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
 }
 
 
-class CourseAppStatisticsImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent(_DB),
-                                                                        CourseAppStatistics {
-    override fun totalUsers(): Long = userManager.getUserCount().toLong()
+class CourseAppStatisticsImpl @Inject constructor(private val managers: Managers): CourseAppStatistics {
+    override fun totalUsers() = managers.users.getUserCount().toLong()
 
-    override fun loggedInUsers(): Long = userManager.getActiveCount().toLong()
+    override fun loggedInUsers() = managers.users.getActiveCount().toLong()
 
-    override fun top10ChannelsByUsers(): List<String> = channelManager.getTop10ChannelsByUserCount()
+    override fun top10ChannelsByUsers() = managers.channels.getTop10ChannelsByUserCount()
 
-    override fun top10ActiveChannelsByUsers(): List<String> =
-            channelManager.getTop10ChannelsByActiveUserCount()
+    override fun top10ActiveChannelsByUsers() = managers.channels.getTop10ChannelsByActiveUserCount()
 
-    override fun top10UsersByChannels(): List<String> = userManager.getTop10UsersByChannel()
+    override fun top10UsersByChannels() = managers.users.getTop10UsersByChannel()
 }
