@@ -1,7 +1,5 @@
 package il.ac.technion.cs.softwaredesign.tests
 
-import il.ac.technion.cs.softwaredesign.KeyValueStoreImpl
-import il.ac.technion.cs.softwaredesign.ScopedKeyValueStore
 import il.ac.technion.cs.softwaredesign.Set
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -9,9 +7,7 @@ import org.junit.jupiter.api.Test
 
 internal class SetTest {
 
-    private val storage = MockStorage()
-    private val keyValueStore = KeyValueStoreImpl(storage)
-    private val list = Set(ScopedKeyValueStore(keyValueStore, listOf("Test")))
+    private val list = Set(MockKeyValueStore())
 
     @BeforeEach
     fun `init`() {

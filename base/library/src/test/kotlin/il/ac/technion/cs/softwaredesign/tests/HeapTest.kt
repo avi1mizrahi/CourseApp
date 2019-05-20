@@ -7,10 +7,7 @@ import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
 class HeapTest {
-    private val storage = MockStorage()
-    private val keyValueStore = KeyValueStoreImpl(storage)
-    private val innerKeyValueStore = ScopedKeyValueStore(keyValueStore, listOf("Test"))
-    private val heap = Heap(innerKeyValueStore, {id -> primary(id)}, {id -> id % 10})
+    private val heap = Heap(MockKeyValueStore(), { id -> primary(id)}, { id -> id % 10})
 
     private var getPrimaryOverride : Function1<Int, Int>? = null
     private fun primary(id : Int) : Int {
