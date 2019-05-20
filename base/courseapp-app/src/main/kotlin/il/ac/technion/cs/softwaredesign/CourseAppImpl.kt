@@ -138,16 +138,15 @@ class CourseAppImpl @Inject constructor(val _DB: KeyValueStore) : CourseAppCompo
     }
 
     override fun channelMakeOperator(token: String, channel: String, username: String) {
-        val admin = getUserByTokenOrThrow(token)
+        val actingUser = getUserByTokenOrThrow(token)
         val c = channelManager.getChannelByName(channel) ?: throw NoSuchEntityException()
+
+        if (!c.isOp(actingUser) && !actingUser.getisAdmin()) throw UserNotAuthorizedException()
+        if (!c.isOp(actingUser) && actingUser.getisAdmin() && actingUser.getName() != username) throw UserNotAuthorizedException()
+        if (!c.hasUser(actingUser)) throw UserNotAuthorizedException()
+
         val targetUser = userManager.getUserByName(username) ?: throw NoSuchEntityException()
         if (!c.hasUser(targetUser)) throw NoSuchEntityException()
-
-        // TODO function description conflicts with given staff test
-        // I think they want channel creator to be operator.
-        if (!c.isOp(admin) && !admin.getisAdmin()) throw UserNotAuthorizedException()
-        if (!c.isOp(admin) && admin.getisAdmin() && admin.getID() != targetUser.getID()) throw UserNotAuthorizedException()
-        if (!c.hasUser(admin)) throw UserNotAuthorizedException()
 
         c.addOp(targetUser)
     }
@@ -158,8 +157,7 @@ class CourseAppImpl @Inject constructor(val _DB: KeyValueStore) : CourseAppCompo
         val targetUser = userManager.getUserByName(username) ?: throw NoSuchEntityException()
         if (!c.hasUser(targetUser)) throw NoSuchEntityException()
 
-        // TODO conflict between requirements. Test say admin can kick. Description doesn't mention admin
-        if (!c.isOp(op) && !op.getisAdmin()) throw UserNotAuthorizedException()
+        if (!c.isOp(op)) throw UserNotAuthorizedException()
 
         c.removeUser(targetUser)
         targetUser.removeFromChannelList(c)
