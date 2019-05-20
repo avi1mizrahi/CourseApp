@@ -14,12 +14,11 @@ package il.ac.technion.cs.softwaredesign
 //$ListName/nodes/$id/Next -> int32
 
 
-
 private const val PREVIOUS_IDENTIFIER = "previous"
 private const val NEXT_IDENTIFIER = "next"
 private const val FIRST_IDENTIFIER = "first"
 
-class Set(private val DB: ScopedKeyValueStore) : DataStructure(DB) {
+class Set(private val DB: KeyValueStore) : DataStructure(DB) {
 
     private val first = DB.getIntReference(FIRST_IDENTIFIER)
 

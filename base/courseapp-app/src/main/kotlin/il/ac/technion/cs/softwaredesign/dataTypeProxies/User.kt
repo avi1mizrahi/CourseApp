@@ -44,13 +44,12 @@ class UserManager(private val DB: KeyValueStore)
     fun getTop10UsersByChannel() : List<String> = allUsersByChannelCount.getTop10().map{id -> getUserByID(id).getName()}
 
     fun createUser(name: String, password: String) : User {
-        var id = getUserCount()
+        val id = getUserCount()
         incrementUserCount()
 
-        var ret = getUserByID(id)
+        val ret = getUserByID(id)
         ret.initialize(name, password)
         if (id == 0) ret.setisAdmin(true)
-
 
         addUserID(name, id)
         return ret

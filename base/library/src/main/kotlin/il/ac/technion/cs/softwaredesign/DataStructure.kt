@@ -7,7 +7,7 @@ private const val INITIALIZED_IDENTIFIER = "initialized"
 const val EXISTS_IDENTIFIER = "exists"
 const val NODES_IDENTIFIER = "nodes"
 
-abstract class DataStructure(DB: ScopedKeyValueStore) {
+abstract class DataStructure(DB: KeyValueStore) {
 
     private var isInitialized = DB.getStringReference(INITIALIZED_IDENTIFIER)
     protected var count = DB.getIntReference(COUNT_IDENTIFIER)

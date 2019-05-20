@@ -4,7 +4,7 @@ package il.ac.technion.cs.softwaredesign
 
 private const val OBJECTS_IDENTIFIER = "objects"
 
-class Heap(private val DB: ScopedKeyValueStore,
+class Heap(private val DB: KeyValueStore,
            private val PrimaryKeySource: Function1<Int, Int>, private val SecondaryKeySource: Function1<Int, Int>) :
         DataStructure(DB){
 
