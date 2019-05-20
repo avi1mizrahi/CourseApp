@@ -214,7 +214,7 @@ class CourseAppTest {
         courseApp.channelMakeOperator(adminToken, "#test", "matan")
 
         assertThat(runWithTimeout(Duration.ofSeconds(10)) {
-            courseApp.isUserInChannel(adminToken, "#mychannel", "matan")
+            courseApp.isUserInChannel(adminToken, "#test", "matan")
         },
                 isTrue)
     }
