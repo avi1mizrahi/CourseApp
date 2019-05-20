@@ -175,6 +175,7 @@ class CourseAppImpl @Inject constructor(val _DB: KeyValueStore): CourseAppCompon
             if (!u.getisAdmin()) throw UserNotAuthorizedException()
 
             c = channelManager.createNewChannel(channel)
+            c.addOp(u)
         }
 
         if (u.isInChannel(c)) return

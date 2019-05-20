@@ -179,6 +179,7 @@ class ChannelManager(private val DB: KeyValueStore) {
 
             userList.remove(userid)
             allChannelsByUserCount.idDecremented(id)
+            operatorList.remove(userid)
 
             assertEquals(activeList.exists(userid), user.isLoggedIn())
             if (user.isLoggedIn())  {
