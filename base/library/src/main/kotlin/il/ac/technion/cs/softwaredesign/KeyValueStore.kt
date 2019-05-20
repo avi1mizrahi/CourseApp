@@ -22,9 +22,8 @@ interface KeyValueStore {
  * Wrap [parent] store calls with the given [prefix],
  * effectively creating a directory in the key-space
  * */
-class ScopedKeyValueStore(private val parent: KeyValueStore, private val prefix: List<String>) : KeyValueStore {
-    constructor(parent: ScopedKeyValueStore, prefix: List<String>) : this(parent.parent, parent.prefix + prefix)
-
+class ScopedKeyValueStore(private val parent: KeyValueStore,
+                          private val prefix: List<String>) : KeyValueStore {
     override fun <V> getReference(key: List<String>,
                                   serializer: Serializer<V>) =
             parent.getReference(prefix + key, serializer)

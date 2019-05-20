@@ -13,12 +13,9 @@ class MockKeyValueStore : KeyValueStore {
                 override fun write(value: V) = map.set(key, value as Any)
                 @Suppress("UNCHECKED_CAST")
                 override fun read(): V? = map[key] as V?
+
                 override fun delete() {
                     map.remove(key)
                 }
             }
-
-    fun clear() {
-        map.clear()
-    }
 }

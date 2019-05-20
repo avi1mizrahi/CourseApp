@@ -21,8 +21,6 @@ internal class KeyValueStoreTest {
     private val int1 = keyValueStore.getIntReference(listOf("int1"))
 
 
-    // TODO add tests for map
-
     @Test
     fun `read the written`() {
         string1.write("bye")
