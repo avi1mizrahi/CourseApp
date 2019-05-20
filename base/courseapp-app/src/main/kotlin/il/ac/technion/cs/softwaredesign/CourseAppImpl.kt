@@ -66,10 +66,7 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
             if (u.isLoggedIn())
                 throw UserAlreadyLoggedInException()
 
-
-            val channels = u.getChannelList()
-            channels.forEach { channelID -> channelManager.getChannelById(channelID).addActive(u) }
-
+            u.getChannelList().forEach { channelManager.getChannelById(it).addActive(u) }
         }
 
 
@@ -188,13 +185,11 @@ class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent
 
         return c.getUserCount().toLong()
     }
-
-
 }
 
 
-class CourseAppStatisticsImpl @Inject constructor(val _DB: KeyValueStore) : CourseAppComponent(_DB),
-                                                                            CourseAppStatistics {
+class CourseAppStatisticsImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent(_DB),
+                                                                        CourseAppStatistics {
     override fun totalUsers(): Long = userManager.getUserCount().toLong()
 
     override fun loggedInUsers(): Long = userManager.getActiveCount().toLong()

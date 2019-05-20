@@ -10,7 +10,7 @@ const val NODES_IDENTIFIER = "nodes"
 abstract class DataStructure(DB: KeyValueStore) {
 
     private var isInitialized = DB.getStringReference(INITIALIZED_IDENTIFIER)
-    protected var count = DB.getIntReference(COUNT_IDENTIFIER)
+    private var count = DB.getIntReference(COUNT_IDENTIFIER)
 
     protected fun setCount(c: Int)
     {

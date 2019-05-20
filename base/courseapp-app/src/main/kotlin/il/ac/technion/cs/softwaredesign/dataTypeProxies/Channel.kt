@@ -105,7 +105,7 @@ class ChannelManager(private val DB: KeyValueStore) {
         allChannelsByActiveCount.remove(c.getID())
     }
 
-    inner class Channel(private val DB: ScopedKeyValueStore, private val id: Int) {
+    inner class Channel(DB: ScopedKeyValueStore, private val id: Int) {
 
         private val userList = Set(ScopedKeyValueStore(DB, listOf("users")))
         private val activeList = Set(ScopedKeyValueStore(DB, listOf("activeUsers")))
@@ -137,11 +137,6 @@ class ChannelManager(private val DB: KeyValueStore) {
             operatorList.add(user.getID())
         }
 
-        fun removeOp(user : User) {
-            assert(isOp(user))
-            operatorList.remove(user.getID())
-        }
-
         fun isOp(user : User) : Boolean = operatorList.exists(user.getID())
 
 
@@ -157,7 +152,7 @@ class ChannelManager(private val DB: KeyValueStore) {
             allChannelsByActiveCount.idDecremented(id)
         }
 
-        fun isActive(user : User) : Boolean = activeList.exists(user.getID())
+        private fun isActive(user : User) : Boolean = activeList.exists(user.getID())
 
         fun addUser(user : User) {
             assert(!hasUser(user))

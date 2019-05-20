@@ -29,10 +29,10 @@ class TokenManager(private val DB: KeyValueStore) {
         return null
     }
 
-    fun exists(str : String) : Boolean {
+    private fun exists(str : String) : Boolean {
         return Token(DB, str).exists()
     }
-    inner class Token(private val DB: KeyValueStore, private val token: String) {
+    inner class Token(DB: KeyValueStore, private val token: String) {
 
         private val userID = DB.getIntReference(listOf(TOKENS_IDENTIFIER, token))
 

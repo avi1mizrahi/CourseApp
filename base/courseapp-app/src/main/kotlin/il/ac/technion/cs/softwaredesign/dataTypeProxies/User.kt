@@ -12,9 +12,6 @@ private const val NAME_IDENTIFIER = "name"
 private const val TOKEN_IDENTIFIER = "token"
 private const val NAMETOID_IDENTIFIER = "nametoid"
 
-
-
-
 //users/$id/token
 //users/$id/password
 //users/$id/name -> name
@@ -30,7 +27,6 @@ class UserManager(private val DB: KeyValueStore)
             {id -> getUserByID(id).getChannelCount()},
             {id -> -id})
 
-
     init {
         // initialize user count
         if (count.read() == null) {
@@ -39,7 +35,6 @@ class UserManager(private val DB: KeyValueStore)
         }
 
     }
-
 
     fun getTop10UsersByChannel() : List<String> = allUsersByChannelCount.getTop10().map{id -> getUserByID(id).getName()}
 
@@ -62,7 +57,7 @@ class UserManager(private val DB: KeyValueStore)
         return activeCount.read()!!
     }
 
-    fun incrementUserCount() {
+    private fun incrementUserCount() {
         count.write(getUserCount() + 1)
     }
 
@@ -79,8 +74,7 @@ class UserManager(private val DB: KeyValueStore)
         nameToIdMap.write(name, id)
     }
 
-
-    inner class User(private val DB: ScopedKeyValueStore, private val id: Int) {
+    inner class User(DB: ScopedKeyValueStore, private val id: Int) {
         private val name = DB.getStringReference(NAME_IDENTIFIER)
         private val password = DB.getStringReference(PASSWORD_IDENTIFIER)
         private var token = DB.getStringReference(TOKEN_IDENTIFIER)
@@ -113,7 +107,6 @@ class UserManager(private val DB: KeyValueStore)
             return channelList.getAll()
         }
 
-
         fun getisAdmin() : Boolean {
             return isAdmin.read() != null
         }
@@ -130,10 +123,6 @@ class UserManager(private val DB: KeyValueStore)
 
         fun getID() : Int {
             return this.id
-        }
-
-        fun exists() : Boolean {
-            return password.read() != null
         }
 
         fun isLoggedIn() : Boolean {
@@ -156,13 +145,11 @@ class UserManager(private val DB: KeyValueStore)
             return password.read()
         }
 
-
         fun logInAndAssignToken(token: Token){
             assert(!isLoggedIn())
             setToken(token)
 
             activeCount.write(activeCount.read()!! + 1)
-
         }
 
         // Assign the token to this user
@@ -172,8 +159,6 @@ class UserManager(private val DB: KeyValueStore)
 
             activeCount.write(activeCount.read()!! - 1)
         }
-
-
     }
 }
 

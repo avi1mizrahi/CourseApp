@@ -1,5 +1,6 @@
 package il.ac.technion.cs.softwaredesign
 
+/** Represents a storage-backed Key-Value store */
 interface DbMap<V> {
     fun write(key: String, value: V)
     fun read(key: String): V?
@@ -13,9 +14,8 @@ fun <V> KeyValueStore.getMapReference(key: List<String>, serializer: Serializer<
 fun KeyValueStore.getIntMapReference(key: String): DbMap<Int> = getIntMapReference(listOf(key))
 fun KeyValueStore.getIntMapReference(key: List<String>): DbMap<Int> = getMapReference(key, IntSerializer())
 
-private class DbMapImpl<V>(val DB: ScopedKeyValueStore,
+private class DbMapImpl<V>(val DB: KeyValueStore,
                            val serializer: Serializer<V>) : DbMap<V> {
-
 
     override fun write(key: String, value: V) =
             DB.getReference(listOf(key), serializer).write(value)
@@ -26,4 +26,3 @@ private class DbMapImpl<V>(val DB: ScopedKeyValueStore,
     override fun delete(key: String) =
             DB.getReference(listOf(key), serializer).delete()
 }
-
