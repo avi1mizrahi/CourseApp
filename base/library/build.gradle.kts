@@ -1,17 +1,19 @@
 
-val junitVersion = "5.5.0-M1"
-val hamkrestVersion = "1.7.0.0"
-val mockkVersion = "1.9.3.kotlin12"
-val kotlinVersion = "1.3.30"
-
 buildscript {
     repositories { jcenter() }
+
+    val kotlinVersion = "1.3.30"
 
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("org.jetbrains.kotlin:kotlin-serialization:$kotlinVersion")
     }
 }
+
+val junitVersion = "5.5.0-M1"
+val hamkrestVersion = "1.7.0.0"
+val mockkVersion = "1.9.3.kotlin12"
+val kotlinVersion = "1.3.30"
 
 apply(plugin = "kotlinx-serialization")
 
