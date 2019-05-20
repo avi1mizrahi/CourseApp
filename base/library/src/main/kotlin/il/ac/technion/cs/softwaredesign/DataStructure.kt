@@ -9,33 +9,23 @@ const val NODES_IDENTIFIER = "nodes"
 
 abstract class DataStructure(DB: KeyValueStore) {
 
-    private var isInitialized = DB.getStringReference(INITIALIZED_IDENTIFIER)
+    private var initialized = DB.getStringReference(INITIALIZED_IDENTIFIER)
     private var count = DB.getIntReference(COUNT_IDENTIFIER)
 
-    protected fun setCount(c: Int)
-    {
-        count.write(c)
-    }
-
     fun initialize() {
-        if (!getIsInitialized()) {
+        if (!isInitialized()) {
             setCount(0)
             setInitialized()
         }
     }
 
-    fun count() : Int {
-        return count.read()!!
-    }
+    private fun isInitialized(): Boolean = initialized.read() != null
 
-    private fun getIsInitialized() : Boolean {
-        return isInitialized.read() != null
-    }
+    private fun setInitialized() = initialized.write("")
 
-    private fun setInitialized() {
-        isInitialized.write("")
-    }
+    fun setCount(c: Int) = count.write(c)
 
-    abstract fun exists(id: Int) : Boolean
+    fun count(): Int = count.read()!!
 
+    abstract fun exists(id: Int): Boolean
 }
