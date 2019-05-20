@@ -22,10 +22,10 @@ import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
  * + User authentication.
  */
 
-class CourseAppImplInitializer @Inject constructor(val storageFactory: SecureStorageFactory) :
+class CourseAppImplInitializer @Inject constructor(private val storageFactory: SecureStorageFactory) :
         CourseAppInitializer {
     companion object {
-        var storage: SecureStorage? = null
+        lateinit var storage: SecureStorage
     }
 
     override fun setup() {
@@ -34,14 +34,14 @@ class CourseAppImplInitializer @Inject constructor(val storageFactory: SecureSto
 
 }
 
-abstract class CourseAppComponent(var DB: KeyValueStore) {
+abstract class CourseAppComponent(DB: KeyValueStore) {
     protected var userManager = UserManager(DB)
     protected var tokenManager = TokenManager(DB)
     protected var channelManager = ChannelManager(DB)
 }
 
-class CourseAppImpl @Inject constructor(val _DB: KeyValueStore) : CourseAppComponent(_DB),
-                                                                  CourseApp {
+class CourseAppImpl @Inject constructor(_DB: KeyValueStore) : CourseAppComponent(_DB),
+                                                              CourseApp {
 
 
     private fun getUserByTokenOrThrow(t: String): User {

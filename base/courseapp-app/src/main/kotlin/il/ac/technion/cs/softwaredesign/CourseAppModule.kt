@@ -11,7 +11,7 @@ class CourseAppModule : KotlinModule() {
 
         class KVStoreProvider : Provider<KeyValueStore> {
             override fun get(): KeyValueStore {
-                return KeyValueStoreImpl(CourseAppImplInitializer.storage!!)
+                return KeyValueStoreImpl(CourseAppImplInitializer.storage)
             }
         }
 
