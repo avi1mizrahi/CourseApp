@@ -29,6 +29,7 @@ class UserManager(private val DB: KeyValueStore) {
             activeCount.write(0)
         }
 
+        allUsersByChannelCount.initialize()
     }
 
     fun getTop10UsersByChannel(): List<String> =
@@ -43,6 +44,7 @@ class UserManager(private val DB: KeyValueStore) {
         if (id == 0) ret.setAdmin()
 
         addUserID(name, id)
+        allUsersByChannelCount.add(id)
         return ret
     }
 
@@ -81,11 +83,15 @@ class UserManager(private val DB: KeyValueStore) {
         fun addToChannelList(channel: ChannelManager.Channel) {
             assert(!isInChannel(channel))
             channelList.add(channel.getID())
+
+            allUsersByChannelCount.idIncremented(id)
         }
 
         fun removeFromChannelList(channel: ChannelManager.Channel) {
             assert(isInChannel(channel))
             channelList.remove(channel.getID())
+
+            allUsersByChannelCount.idDecremented(id)
         }
 
         fun isInChannel(channel: ChannelManager.Channel): Boolean =

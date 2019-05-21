@@ -17,9 +17,10 @@ import java.time.Duration.*
 
 class CourseAppTest {
     // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
-    private var injector : Injector
-    private var courseApp : CourseApp
-    private var courseAppStatistics : CourseAppStatistics
+    private var injector: Injector
+    private var courseApp: CourseApp
+    private var courseAppStatistics: CourseAppStatistics
+
     init {
         class CourseAppModuleMock : KotlinModule() {
             override fun configure() {
@@ -49,7 +50,7 @@ class CourseAppTest {
         val token = courseApp.login("matan", "s3kr1t")
 
         assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token, "gal") },
-                   present(isTrue))
+                present(isTrue))
     }
 
     @Test
@@ -64,7 +65,7 @@ class CourseAppTest {
     }
 
     @Test
-    fun `throw on invalid tokens`(){
+    fun `throw on invalid tokens`() {
         assertThrows<InvalidTokenException> {
             runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn("a", "any") }
         }
@@ -75,7 +76,7 @@ class CourseAppTest {
     }
 
     @Test
-    fun `login after logout`(){
+    fun `login after logout`() {
         // log in and log out
         val oldtoken = courseApp.login("name", "pass")
         courseApp.logout(oldtoken)
@@ -85,7 +86,7 @@ class CourseAppTest {
 
         // new token works
         assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(newtoken, "name") },
-                   present(isTrue))
+                present(isTrue))
     }
 
     @Test
@@ -113,9 +114,9 @@ class CourseAppTest {
         val token2 = courseApp.login("name2", "pass")
 
         assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token1, "name2") },
-                   present(isTrue))
+                present(isTrue))
         assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
-                   present(isTrue))
+                present(isTrue))
 
 
     }
@@ -126,17 +127,16 @@ class CourseAppTest {
         val token2 = courseApp.login("name2", "pass")
 
         assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
-                   present(isTrue))
+                present(isTrue))
         courseApp.logout(token1)
         assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token2, "name1") },
-                   present(equalTo(false)))
+                present(equalTo(false)))
 
 
     }
 
     @Test
-    fun `User not existing returns null when asked if logged in`()
-    {
+    fun `User not existing returns null when asked if logged in`() {
         val token1 = courseApp.login("name1", "pass")
 
         assertThat(runWithTimeout(ofSeconds(10)) { courseApp.isUserLoggedIn(token1, "name2") }, absent())
@@ -152,13 +152,14 @@ class CourseAppTest {
         courseApp.makeAdministrator(tokenAdmin, "name2")
 
     }
+
     @Test
     fun `Second user is not an admin`() {
         courseApp.login("name1", "pass")
         val tokenSecond = courseApp.login("name2", "pass")
 
 
-        assertThrows<UserNotAuthorizedException> {courseApp.makeAdministrator(tokenSecond, "name1")}
+        assertThrows<UserNotAuthorizedException> { courseApp.makeAdministrator(tokenSecond, "name1") }
     }
 
     @Test
@@ -166,12 +167,12 @@ class CourseAppTest {
         val tokenAdmin = courseApp.login("name1", "pass")
 
 
-        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "hello")}
-        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "1234")}
-        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "a1")}
-        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "עברית")}
-        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "#עברית")}
-        assertThrows<NameFormatException> {courseApp.channelJoin(tokenAdmin, "#hello[")}
+        assertThrows<NameFormatException> { courseApp.channelJoin(tokenAdmin, "hello") }
+        assertThrows<NameFormatException> { courseApp.channelJoin(tokenAdmin, "1234") }
+        assertThrows<NameFormatException> { courseApp.channelJoin(tokenAdmin, "a1") }
+        assertThrows<NameFormatException> { courseApp.channelJoin(tokenAdmin, "עברית") }
+        assertThrows<NameFormatException> { courseApp.channelJoin(tokenAdmin, "#עברית") }
+        assertThrows<NameFormatException> { courseApp.channelJoin(tokenAdmin, "#hello[") }
         courseApp.channelJoin(tokenAdmin, "#hello")
     }
 
@@ -182,7 +183,7 @@ class CourseAppTest {
         val tokenSecond = courseApp.login("name2", "pass")
 
         courseApp.channelJoin(tokenAdmin, "#ch1")
-        assertThrows<UserNotAuthorizedException> {courseApp.channelJoin(tokenSecond, "#ch2")}
+        assertThrows<UserNotAuthorizedException> { courseApp.channelJoin(tokenSecond, "#ch2") }
     }
 
     @Test
@@ -192,13 +193,40 @@ class CourseAppTest {
 
         courseApp.channelJoin(tokenAdmin, "#ch1")
         courseApp.channelPart(tokenAdmin, "#ch1")
-        assertThrows<UserNotAuthorizedException> {courseApp.channelJoin(tokenSecond, "#ch1")}
+        assertThrows<UserNotAuthorizedException> { courseApp.channelJoin(tokenSecond, "#ch1") }
     }
 
-    // TODO function description conflicts with staff test
-    @Test
-    fun `channelMakeOperator`() {
 
+    @Test
+    fun `Admins cant kick from channels they're not in`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
+        val tokenAdmin2 = courseApp.login("name2", "pass")
+
+        courseApp.makeAdministrator(tokenAdmin, "name2")
+
+        courseApp.channelJoin(tokenAdmin2, "#ch1")
+        assertThrows<UserNotAuthorizedException> {
+            courseApp.channelKick(tokenAdmin, "#ch1", "name2")
+        }
+
+    }
+
+    @Test
+    fun `Operator can make operators and can kick admins`() {
+        val tokenAdmin = courseApp.login("name1", "pass")
+        val tokenSecond = courseApp.login("name2", "pass")
+
+        courseApp.channelJoin(tokenAdmin, "#ch1")
+        courseApp.channelJoin(tokenSecond, "#ch1")
+        assertThrows<UserNotAuthorizedException> {
+            courseApp.channelKick(tokenSecond, "#ch1", "name1")
+        }
+
+
+        assert(courseApp.numberOfTotalUsersInChannel(tokenSecond, "#ch1").toInt() == 2)
+        courseApp.channelMakeOperator(tokenAdmin, "#ch1", "name2")
+        courseApp.channelKick(tokenSecond, "#ch1", "name1")
+        assert(courseApp.numberOfTotalUsersInChannel(tokenSecond, "#ch1").toInt() == 1)
     }
 
     @Test
@@ -206,26 +234,20 @@ class CourseAppTest {
         val tokenAdmin = courseApp.login("name1", "pass")
 
         courseApp.channelJoin(tokenAdmin, "#ch1")
-        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 1)
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt() == 1)
         courseApp.channelJoin(tokenAdmin, "#ch1")
-        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1").toInt() == 1)
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt() == 1)
 
         courseApp.channelPart(tokenAdmin, "#ch1")
-        assertThrows<NoSuchEntityException>{ courseApp.numberOfTotalUsersInChannel(tokenAdmin,"#ch1") }
-        assertThrows<NoSuchEntityException>{ courseApp.channelPart(tokenAdmin, "#ch1") }
-    }
-
-    // TODO function description conflicts with staff test
-    @Test
-    fun `channelKick`() {
-
+        assertThrows<NoSuchEntityException> { courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1") }
+        assertThrows<NoSuchEntityException> { courseApp.channelPart(tokenAdmin, "#ch1") }
     }
 
 
     @Test
     fun `IsUserInChannel throws on bad input and works correctly`() {
 
-        assertThrows<InvalidTokenException> {courseApp.isUserInChannel("aaa", "#ch1", "name1")}
+        assertThrows<InvalidTokenException> { courseApp.isUserInChannel("aaa", "#ch1", "name1") }
         val tokenAdmin = courseApp.login("name1", "pass")
         val tokenOther = courseApp.login("name2", "pass")
         courseApp.channelJoin(tokenAdmin, "#ch1")
@@ -234,15 +256,14 @@ class CourseAppTest {
         assert(courseApp.isUserInChannel(tokenAdmin, "#ch1", "name1") == true)
 
 
-        assertThrows<NoSuchEntityException> {courseApp.isUserInChannel(tokenAdmin, "#ch2", "name1")}
-        assertThrows<UserNotAuthorizedException> {courseApp.isUserInChannel(tokenOther, "#ch1", "name1")}
+        assertThrows<NoSuchEntityException> { courseApp.isUserInChannel(tokenAdmin, "#ch2", "name1") }
+        assertThrows<UserNotAuthorizedException> { courseApp.isUserInChannel(tokenOther, "#ch1", "name1") }
     }
 
     @Test
     fun `Test channel active and nonactive user count`() {
         val tokenAdmin = courseApp.login("name1", "pass")
         courseApp.channelJoin(tokenAdmin, "#ch1")
-
 
         val tokens = ArrayList<String>()
         for (i in 101..130) {
@@ -258,134 +279,128 @@ class CourseAppTest {
             courseApp.login("name$i", "pass")
         }
 
-        assert ( courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
-        assert ( courseApp.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
+        assert(courseApp.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
 
 
-        tokens.forEach {courseApp.logout(it)}
-        assert ( courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt()  == 60)
-        assert ( courseApp.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").toInt() == 30)
+        tokens.forEach { courseApp.logout(it) }
+        assert(courseApp.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").toInt() == 60)
+        assert(courseApp.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").toInt() == 30)
 
     }
 
-
-    // TODO copy of staff tests from here, delete later
     @Test
-    fun `administrator can create channel and is a member of it`() {
-        val administratorToken = courseApp.login("admin", "admin")
-        courseApp.channelJoin(administratorToken, "#mychannel")
+    fun `Test top 10 channels`() {
+        val tokenAdmin = courseApp.login("admin", "pass")
 
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.isUserInChannel(administratorToken, "#mychannel", "admin")
-        },
-                isTrue)
-    }
+        for (j in 1..20) courseApp.channelJoin(tokenAdmin, "#ch$j")
 
-    @Test
-    fun `non-administrator can not make administrator`() {
-        courseApp.login("admin", "admin")
-        val nonAdminToken = courseApp.login("matan", "1234")
-        courseApp.login("gal", "hunter2")
-
-        assertThrows<UserNotAuthorizedException> {
-            runWithTimeout(ofSeconds(10)) { courseApp.makeAdministrator(nonAdminToken, "gal") }
+        val tokens = ArrayList<String>()
+        for (i in 1..20) {
+            val t = courseApp.login("name$i", "pass")
+            for (j in 1..i) courseApp.channelJoin(t, "#ch$j")
+            tokens.add(t)
         }
-    }
 
-    @Test
-    fun `non-administrator can join existing channel and be made operator`() {
-        val adminToken = courseApp.login("admin", "admin")
-        val nonAdminToken = courseApp.login("matan", "1234")
-
-        courseApp.channelJoin(adminToken, "#test")
-        courseApp.channelJoin(nonAdminToken, "#test")
-
-        // TODO conflict
-        courseApp.channelMakeOperator(adminToken, "#test", "matan")
-
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.isUserInChannel(adminToken, "#test", "matan")
-        },
-                isTrue)
-    }
-
-    @Test
-    fun `user is not in channel after parting from it`() {
-        val adminToken = courseApp.login("admin", "admin")
-        val nonAdminToken = courseApp.login("matan", "1234")
-        courseApp.channelJoin(adminToken, "#mychannel")
-        courseApp.channelJoin(nonAdminToken, "#mychannel")
-        courseApp.channelPart(nonAdminToken, "#mychannel")
-
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.isUserInChannel(adminToken, "#mychannel", "matan")
-        },
-                isFalse)
-    }
-
-
-    @Test
-    fun `user is not in channel after being kicked`() {
-        val adminToken = courseApp.login("admin", "admin")
-        val nonAdminToken = courseApp.login("matan", "4321")
-        courseApp.channelJoin(adminToken, "#236700")
-        courseApp.channelJoin(nonAdminToken, "#236700")
-        courseApp.channelKick(adminToken, "#236700", "matan")
-
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.isUserInChannel(adminToken, "#236700", "matan")
-        },
-                isFalse)
-    }
-
-    @Test
-    fun `total user count in a channel is correct with a single user`() {
-        val adminToken = courseApp.login("admin", "admin")
-        courseApp.channelJoin(adminToken, "#test")
-
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.numberOfTotalUsersInChannel(adminToken, "#test")
-        },
-                equalTo(1L))
-    }
-
-    @Test
-    fun `active user count in a channel is correct with a single user`() {
-        val adminToken = courseApp.login("admin", "admin")
-        courseApp.channelJoin(adminToken, "#test")
-
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.numberOfActiveUsersInChannel(adminToken, "#test")
-        },
-                equalTo(1L))
-    }
-
-    @Test
-    fun `logged in user count is correct when no user is logged in`() {
-        assertThat(runWithTimeout(ofSeconds(10)) { courseAppStatistics.loggedInUsers() }, equalTo(0L))
-    }
-
-    @Test
-    fun `total user count is correct when no users exist`() {
-        assertThat(runWithTimeout(ofSeconds(10)) { courseAppStatistics.totalUsers() }, equalTo(0L))
-    }
-
-    @Test
-    fun `top 10 channel list counts only logged in users`() {
-        val adminToken = courseApp.login("admin", "admin")
-        val nonAdminToken = courseApp.login("matan", "4321")
-        courseApp.makeAdministrator(adminToken, "matan")
-
-        assert(courseAppStatistics.top10ActiveChannelsByUsers().size == 0)
-        courseApp.channelJoin(adminToken, "#test")
-        assert(courseAppStatistics.top10ActiveChannelsByUsers().size == 1)
-        courseApp.channelJoin(nonAdminToken, "#other")
-        assert(courseAppStatistics.top10ActiveChannelsByUsers().size == 2)
-        courseApp.logout(nonAdminToken)
 
         runWithTimeout(ofSeconds(10)) {
-            assertThat(courseAppStatistics.top10ActiveChannelsByUsers(),
-                    containsElementsInOrder("#test", "#other"))
+            assertThat(courseAppStatistics.top10ChannelsByUsers(),
+                    containsElementsInOrder(
+                            "#ch1", "#ch2", "#ch3", "#ch4", "#ch5",
+                            "#ch6", "#ch7", "#ch8", "#ch9", "#ch10"))
         }
+
+
+        // Test order by creation time (index)
+        courseApp.channelPart(tokens[0], "#ch1")
+        runWithTimeout(ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10ChannelsByUsers(),
+                    containsElementsInOrder(
+                            "#ch1", "#ch2", "#ch3", "#ch4", "#ch5",
+                            "#ch6", "#ch7", "#ch8", "#ch9", "#ch10"))
+        }
+
+        // Test order by count
+        courseApp.channelPart(tokens[1], "#ch1")
+        runWithTimeout(ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10ChannelsByUsers(),
+                    containsElementsInOrder(
+                            "#ch2", "#ch1", "#ch3", "#ch4", "#ch5",
+                            "#ch6", "#ch7", "#ch8", "#ch9", "#ch10"))
+        }
+
     }
+
+    @Test
+    fun `Test top 10 Active`() {
+        val tokenAdmin = courseApp.login("admin", "pass")
+        for (j in 1..2) courseApp.channelJoin(tokenAdmin, "#ch$j")
+
+        val tokens = ArrayList<String>()
+        for (i in 1..2) {
+            val t = courseApp.login("name$i", "pass")
+            courseApp.channelJoin(t, "#ch$i")
+            tokens.add(t)
+        }
+
+        val token3 = courseApp.login("name3", "pass")
+        courseApp.channelJoin(token3, "#ch1")
+
+        // (3,2) in channels
+        runWithTimeout(ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10ActiveChannelsByUsers(),
+                    containsElementsInOrder("#ch1", "#ch2"))
+        }
+
+        courseApp.logout(token3)
+        // (2,2) in channels
+        runWithTimeout(ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10ActiveChannelsByUsers(),
+                    containsElementsInOrder("#ch1", "#ch2"))
+        }
+
+
+        courseApp.logout(tokens[0])
+        // (1,2) in channels
+        runWithTimeout(ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10ActiveChannelsByUsers(),
+                    containsElementsInOrder("#ch2", "#ch1"))
+        }
+
+
+        courseApp.login("name1", "pass")
+        // (2,2) in channels
+        runWithTimeout(ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10ActiveChannelsByUsers(),
+                    containsElementsInOrder("#ch1", "#ch2"))
+        }
+
+
+    }
+
+    @Test
+    fun `Test top 10 Users`() {
+
+        val tokenAdmin = courseApp.login("admin", "pass")
+        for (j in 1..20) courseApp.channelJoin(tokenAdmin, "#ch$j")
+
+        val tokens = ArrayList<String>()
+        for (i in 1..20) {
+            val t = courseApp.login("name$i", "pass")
+            for (j in 1..i) courseApp.channelJoin(t, "#ch$j")
+            tokens.add(t)
+        }
+
+
+        // admin in all channels and created first. for rest later users have more channels
+        runWithTimeout(ofSeconds(10)) {
+            assertThat(courseAppStatistics.top10UsersByChannels(),
+                    containsElementsInOrder(
+                            "admin", "name20", "name19", "name18", "name17",
+                            "name16", "name15", "name14", "name13", "name12"))
+        }
+
+
+    }
+
 }
