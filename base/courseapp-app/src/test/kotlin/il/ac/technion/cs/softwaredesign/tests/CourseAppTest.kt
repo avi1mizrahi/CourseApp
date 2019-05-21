@@ -399,6 +399,24 @@ class CourseAppTest {
                             "name16", "name15", "name14", "name13", "name12"))
         }
 
+    }
+
+    @Test
+    fun `Test user count statistics`() {
+        val tokens = ArrayList<String>()
+        for (i in 1..20) {
+            val t = courseApp.login("name$i", "pass")
+            tokens.add(t)
+        }
+
+
+        assert(courseAppStatistics.totalUsers().toInt() == 20)
+        assert(courseAppStatistics.loggedInUsers().toInt() == 20)
+        courseApp.logout(tokens[0])
+        courseApp.logout(tokens[5])
+        courseApp.logout(tokens[10])
+        assert(courseAppStatistics.totalUsers().toInt() == 20)
+        assert(courseAppStatistics.loggedInUsers().toInt() == 17)
 
     }
 
