@@ -23,8 +23,7 @@ class CourseAppTest {
     init {
         class CourseAppModuleMock : KotlinModule() {
             override fun configure() {
-                val mockKV = MockKeyValueStore()
-                bind<KeyValueStore>().toInstance(mockKV)
+                bind<KeyValueStore>().toInstance(MockKeyValueStore())
                 bind<CourseApp>().to<CourseAppImpl>()
                 bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
             }
