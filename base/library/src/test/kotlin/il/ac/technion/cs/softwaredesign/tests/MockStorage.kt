@@ -1,17 +1,20 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
+import java.util.*
+import kotlin.collections.HashMap
 
 class MockStorage : SecureStorage {
-    private val encoding = Charsets.UTF_8
+    private class BiteArray(private val byte: ByteArray) {
+        override fun equals(other: Any?): Boolean =
+                if (other is BiteArray) byte contentEquals other.byte else false
 
-    private val keyvalDB = HashMap<String, ByteArray>()
-
-    override fun read(key: ByteArray): ByteArray? {
-        return keyvalDB[key.toString(encoding)]
+        override fun hashCode(): Int = Arrays.hashCode(byte)
     }
 
-    override fun write(key: ByteArray, value: ByteArray) {
-        keyvalDB[key.toString(encoding)] = value
-    }
+    private val map = HashMap<BiteArray, ByteArray>()
+
+    override fun read(key: ByteArray): ByteArray? = map[BiteArray(key)]
+
+    override fun write(key: ByteArray, value: ByteArray) = map.set(BiteArray(key), value)
 }
