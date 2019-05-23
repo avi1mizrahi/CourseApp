@@ -1,24 +1,53 @@
 package il.ac.technion.cs.softwaredesign.tests
 
+import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
-import il.ac.technion.cs.softwaredesign.CourseApp
-import il.ac.technion.cs.softwaredesign.CourseAppInitializer
-import il.ac.technion.cs.softwaredesign.CourseAppModule
-import il.ac.technion.cs.softwaredesign.CourseAppStatistics
+import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
+import il.ac.technion.cs.softwaredesign.storage.SecureStorage
+import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageModule
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration.ofSeconds
 
+// This class is a copy of the staff's tests, with a mocked SecureStorageModule
+
+
+class SecureStorageModuleMock : KotlinModule() {
+    override fun configure() {
+        class MockStorage : SecureStorage {
+            private val encoding = Charsets.UTF_8
+
+            private val keyvalDB = HashMap<String, ByteArray>()
+
+            override fun read(key: ByteArray): ByteArray? {
+                return keyvalDB[key.toString(encoding)]
+            }
+
+            override fun write(key: ByteArray, value: ByteArray) {
+                keyvalDB[key.toString(encoding)] = value
+            }
+        }
+
+        class SecureStorageFactoryMock : SecureStorageFactory {
+            override fun open(b : ByteArray) : SecureStorage {
+                return MockStorage()
+            }
+        }
+
+        bind<SecureStorageFactory>().to<SecureStorageFactoryMock>()
+    }
+
+}
 
 class CourseAppStaffTest {
-    private val injector = Guice.createInjector(CourseAppModule(), SecureStorageModule())
+    private val injector = Guice.createInjector(CourseAppModule(), SecureStorageModuleMock())
 
     private val courseAppInitializer = injector.getInstance<CourseAppInitializer>()
 
