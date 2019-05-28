@@ -1,4 +1,4 @@
-# CourseApp: Assignment 1
+# CourseApp: Assignment 2
 
 ## Authors
 * Alon Tavor, 307915561
@@ -10,6 +10,9 @@
 ## Notes
 
 ### Implementation Summary
+TODO: Short summary of your implementation, including data structures used, design choices made, and
+a short tour of the class hierarchy you created.
+
 Our software stack built with 3 layers:
 1. SecureStorage - a persistent storage with a raw interface (as you supplied)
 2. Library - Persistent Data Structures
@@ -26,11 +29,14 @@ Combining these we can use O(logn) time for most of the actions.
 By using the namespaces the use of several SecureStorage instances is redundant (saves a few milis in startup)
 
 ### Testing Summary
+TODO: Short summary describing the ways you chose to test your code.
+
 We tested each of the layer and stubbed it's underlying layer, each class on its own.
 
 ### Difficulties
-Trying to encapsulate the Storage access is challenging. 
+TODO: Please list any technological difficulties you had while working on this assignment, especially
+with the tools used: Kotlin, JUnit, MockK, Gradle, and Guice.
 
 ### Feedback
-The Heap implementation fills quite unnecessary and time consuming.
-Although there are implementations out there, it should be modifies and tested, and it takes time. 
+TODO: Put any feedback you may have for this assignment here. This **will** be read by the course staff,
+and may influence future assignments!

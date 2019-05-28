@@ -2,7 +2,7 @@
 buildscript {
     repositories { jcenter() }
 
-    val kotlinVersion = "1.3.30"
+    val kotlinVersion = "1.3.31"
 
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
@@ -10,10 +10,11 @@ buildscript {
     }
 }
 
-val junitVersion = "5.5.0-M1"
-val hamkrestVersion = "1.7.0.0"
-val mockkVersion = "1.9.3.kotlin12"
-val kotlinVersion = "1.3.30"
+val junitVersion: String? by extra
+val hamkrestVersion: String? by extra
+val kotlinVersion: String? by extra
+val kotlinGuiceVersion: String? by extra
+val mockkVersion: String? by extra
 
 apply(plugin = "kotlinx-serialization")
 
@@ -24,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    compile("il.ac.technion.cs.softwaredesign:primitive-storage-layer:1.1")
+    compile("il.ac.technion.cs.softwaredesign", "primitive-storage-layer", "1.2")
 
     compile("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
     compile("org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.11.0")

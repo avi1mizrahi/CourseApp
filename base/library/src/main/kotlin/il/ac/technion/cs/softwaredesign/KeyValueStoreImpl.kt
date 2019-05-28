@@ -16,7 +16,7 @@ private data class Key(@SerialId(1) val c: List<String>)
 private fun convertKeyToByteArray(key: List<String>): ByteArray =
         ProtoBuf.dump(Key.serializer(), Key(key))
 
-class KeyValueStoreImpl @Inject constructor(private val storage: SecureStorage) : KeyValueStore {
+class KeyValueStoreImpl @Inject constructor(private val storage: SyncStorage) : KeyValueStore {
 
     override fun <V> getReference(key: List<String>,
                                   serializer: Serializer<V>): KeyValueStore.Object<V> =
@@ -33,7 +33,6 @@ class KeyValueStoreImpl @Inject constructor(private val storage: SecureStorage) 
                     ?.takeIf(ByteArray::isNotEmpty)
                     ?.let { serializer.load(it.dropLast(1).toByteArray()) }
 
-        override fun delete() = storage.write(convertKeyToByteArray(
-                key), ByteArray(0))
+        override fun delete() = storage.write(convertKeyToByteArray(key), ByteArray(0))
     }
 }
