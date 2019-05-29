@@ -98,7 +98,7 @@ class CourseAppStaffTest {
                 }.join()
 
         assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.isUserInChannel(adminToken, "#mychannel", "matan").join()
+            courseApp.isUserInChannel(adminToken, "#test", "matan").join()
         }, isTrue)
     }
 
