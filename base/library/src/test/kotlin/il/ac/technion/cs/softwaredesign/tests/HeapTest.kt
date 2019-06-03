@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
 class HeapTest {
-    private val heap = Heap(MockKeyValueStore(), { id -> primary(id)}, { id -> id % 10})
+    private val heap = Heap(VolatileKeyValueStore(), { id -> primary(id)}, { id -> id % 10})
 
     private var getPrimaryOverride : Function1<Int, Int>? = null
     private fun primary(id : Int) : Int {

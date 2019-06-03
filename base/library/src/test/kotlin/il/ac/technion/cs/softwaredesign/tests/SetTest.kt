@@ -1,13 +1,14 @@
 package il.ac.technion.cs.softwaredesign.tests
 
 import il.ac.technion.cs.softwaredesign.Set
+import il.ac.technion.cs.softwaredesign.VolatileKeyValueStore
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 internal class SetTest {
 
-    private val list = Set(MockKeyValueStore())
+    private val list = Set(VolatileKeyValueStore())
 
     @BeforeEach
     fun `init`() {

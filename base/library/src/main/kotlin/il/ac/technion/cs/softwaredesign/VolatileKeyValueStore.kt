@@ -1,9 +1,6 @@
-package il.ac.technion.cs.softwaredesign.tests
+package il.ac.technion.cs.softwaredesign
 
-import il.ac.technion.cs.softwaredesign.KeyValueStore
-import il.ac.technion.cs.softwaredesign.Serializer
-
-class MockKeyValueStore : KeyValueStore {
+class VolatileKeyValueStore : KeyValueStore {
     private val map = mutableMapOf<List<String>, Any>()
 
     override fun <V> getReference(key: List<String>,
