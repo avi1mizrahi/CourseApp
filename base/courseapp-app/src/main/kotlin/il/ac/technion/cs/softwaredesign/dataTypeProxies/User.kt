@@ -97,7 +97,7 @@ class UserManager(private val DB: KeyValueStore) {
         fun isInChannel(channel: ChannelManager.Channel): Boolean =
                 channelList.exists(channel.getID())
 
-        fun getChannelList(): List<Int> = channelList.getAll()
+        fun forEachChannel(action: (Int) -> Unit) = channelList.forEach(action)
 
         fun isAdmin(): Boolean = isAdmin.read() != null
 

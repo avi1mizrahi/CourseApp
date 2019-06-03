@@ -59,7 +59,8 @@ internal class SetTest {
         list.add(2)
         list.add(3)
 
-        val ret = list.getAll()
+        val ret = mutableListOf<Int>()
+        list.forEach { ret.add(it) }
 
         assertEquals(3, ret.size)
         assertTrue(ret.contains(1))
@@ -77,7 +78,8 @@ internal class SetTest {
         list.remove(10)
         list.remove(7)
 
-        val ret = list.getAll()
+        val ret = mutableListOf<Int>()
+        list.forEach { ret.add(it) }
         val count = list.count()
 
         assertEquals(6, count) // count()
@@ -97,8 +99,8 @@ internal class SetTest {
         list.add(1)
         list.add(2)
 
-        val ret = list.getAll()
-
+        val ret = mutableListOf<Int>()
+        list.forEach { ret.add(it) }
 
         assertEquals(2, ret.size)
         assertTrue(ret.contains(1))

@@ -100,7 +100,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
             if (u.isLoggedIn())
                 throw UserAlreadyLoggedInException()
 
-            u.getChannelList().forEach { managers.channels.getChannelById(it).addActive(u) }
+            u.forEachChannel { managers.channels.getChannelById(it).addActive(u) }
         }
 
 
@@ -120,8 +120,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         t.delete()
         u.logout()
 
-        val channels = u.getChannelList()
-        channels.forEach { managers.channels.getChannelById(it).removeActive(u) }
+        u.forEachChannel { managers.channels.getChannelById(it).removeActive(u) }
 
         return completedOf(Unit)
     }

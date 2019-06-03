@@ -74,17 +74,12 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
         setCount(currentCount - 1)
     }
 
-
-    fun getAll() : List<Int> {
-        val out = ArrayList<Int>()
-
+    fun forEach(action: (Int) -> Unit) {
         var current = getFirst()
-        while (current != null)
-        {
-            out.add(current)
+        while (current != null) {
+            action(current)
             current = getNext(current)
         }
-        return out
     }
 
     override fun exists(id: Int) : Boolean {
