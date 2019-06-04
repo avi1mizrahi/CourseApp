@@ -51,28 +51,45 @@ private fun <T> completedOf(t: T) : CompletableFuture<T> {
 class CourseAppImpl @Inject constructor(private val managers: Managers) :
         CourseApp {
     override fun addListener(token: String, callback: ListenerCallback): CompletableFuture<Unit> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val u = getUserByTokenOrThrow(token)
+
+        TODO("not implemented")
     }
 
     override fun removeListener(token: String,
                                 callback: ListenerCallback): CompletableFuture<Unit> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val u = getUserByTokenOrThrow(token)
+
+        TODO("not implemented")
     }
 
     override fun channelSend(token: String,
                              channel: String,
                              message: Message): CompletableFuture<Unit> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val u = getUserByTokenOrThrow(token)
+        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
+        if (!u.isInChannel(c)) throw UserNotAuthorizedException()
+
+
+        TODO("not implemented")
+
     }
 
     override fun broadcast(token: String, message: Message): CompletableFuture<Unit> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val u = getUserByTokenOrThrow(token)
+        if (!u.isAdmin()) throw UserNotAuthorizedException()
+
+        TODO("not implemented")
     }
 
     override fun privateSend(token: String,
                              user: String,
                              message: Message): CompletableFuture<Unit> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val sender = getUserByTokenOrThrow(token)
+        val receiver = managers.users.getUserByName(user) ?: throw NoSuchEntityException()
+
+
+        TODO("not implemented")
     }
 
     override fun fetchMessage(token: String, id: Long): CompletableFuture<Pair<String, Message>> {
@@ -228,6 +245,8 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
         return completedOf(c.getUserCount().toLong())
     }
+
+
 }
 
 
