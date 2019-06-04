@@ -25,3 +25,9 @@ class StringSerializer : Serializer<String> {
 
     override fun load(byteArray: ByteArray): String = byteArray.toString(encoding)
 }
+
+
+class ByteArraySerializer : Serializer<ByteArray> {
+    override fun dump(t: ByteArray): ByteArray = t
+    override fun load(byteArray: ByteArray): ByteArray = byteArray
+}

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 
 class ArrayTest {
     private val array = Array(VolatileKeyValueStore())
+    private val arrayInt = ArrayInt(VolatileKeyValueStore())
 
     class mockProxy(var DB : ScopedKeyValueStore) {
         val int1 = DB.getIntReference("int1")
@@ -117,4 +118,40 @@ class ArrayTest {
 
         confirmVerified()
     }
+
+
+    @Test
+    fun `ArrayInt insertion`() {
+        arrayInt.push(3)
+
+        assertEquals(1, arrayInt.size())
+        assertEquals(3, arrayInt[0])
+    }
+
+    @Test
+    fun `ArrayInt clear`() {
+        arrayInt.push(3)
+        arrayInt.clear()
+
+        assertEquals(0, arrayInt.size())
+    }
+    @Test
+    fun `ArrayInt for each`() {
+        arrayInt.push(3)
+        arrayInt.push(5)
+        arrayInt.push(4)
+
+
+        val each = mockk<(Int) -> Unit>(relaxed = true)
+        arrayInt.forEach(each)
+
+        verifySequence {
+            each.invoke(3)
+            each.invoke(5)
+            each.invoke(4)
+        }
+
+        confirmVerified()
+    }
+
 }

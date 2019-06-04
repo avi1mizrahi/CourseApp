@@ -11,16 +11,16 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 //users/$id/name -> name
 //nametoid/$name/ -> int32
 
-class UserManager(private val DB: KeyValueStore) {
-    private val nameToIdMap = DB.getIntMapReference(listOf("users", "nametoid"))
-    private val activeCount = DB.getIntReference(listOf("users", "activecount"))
+class UserManager(private val DB: ScopedKeyValueStore) {
+    private val nameToIdMap = DB.getIntMapReference(listOf("nametoid"))
+    private val activeCount = DB.getIntReference(listOf("activecount"))
     private val allUsersByChannelCount =
-            Heap(ScopedKeyValueStore(DB, listOf("users", "usersbychannels")),
+            Heap(ScopedKeyValueStore(DB, listOf("usersbychannels")),
                  { id -> getUserByID(id).getChannelCount() },
                  { id -> -id })
 
 
-    private val allUsers = Array(ScopedKeyValueStore(DB, listOf("users", "allusers")))
+    private val allUsers = Array(ScopedKeyValueStore(DB, listOf("allusers")))
 
 
     init {
@@ -58,6 +58,12 @@ class UserManager(private val DB: KeyValueStore) {
 
     fun getUserByID(id: Int): User = User(allUsers[id]!!, id)
 
+    fun forEachUser( func: (User) -> Unit) {
+        allUsers.forEach { db, index ->
+            func(User(db, index))
+        }
+    }
+
     private fun addUserID(name: String, id: Int) = nameToIdMap.write(name, id)
 
     inner class User(DB: ScopedKeyValueStore, private val id: Int) {
@@ -65,8 +71,8 @@ class UserManager(private val DB: KeyValueStore) {
         private val password = DB.getStringReference("password")
         private var token = DB.getStringReference("token")
         private val isAdmin = DB.getStringReference("isAdmin")
-
-        private var channelList = Set(ScopedKeyValueStore(DB, listOf("channels")))
+        private var channelList = Set(DB.getNewScope("channels"))
+        private val pendingMessages = ArrayInt(DB.getNewScope("pendingMessagges"))
 
         fun initialize(n: String, pass: String) {
             name.write(n)
@@ -126,6 +132,14 @@ class UserManager(private val DB: KeyValueStore) {
             removeToken()
 
             activeCount.write(activeCount.read()!! - 1)
+        }
+
+        fun addPendingMessageID(i : Int) {
+            pendingMessages.push(i)
+        }
+
+        fun forEachPendingMessage(action : (Int) -> Unit) {
+            pendingMessages.forEach(action)
         }
     }
 }

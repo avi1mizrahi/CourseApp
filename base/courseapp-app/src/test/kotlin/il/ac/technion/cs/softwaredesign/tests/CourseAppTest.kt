@@ -350,7 +350,6 @@ class CourseAppTest {
         }
     }
 
-    @Disabled // TODO
     @Nested
     inner class Messages {
         @Test
@@ -442,6 +441,7 @@ class CourseAppTest {
             every { message.id } returns 4
 
             app.login("someone", "1234")
+                .thenCompose { token -> app.makeAdministrator(admin, "someone").thenApply { token } }
                 .thenCompose { token -> app.channelJoin(token, "#wawa").thenApply { token } }
                 .thenCompose { token -> app.channelSend(token, "#wawa", message) }
                 .join()

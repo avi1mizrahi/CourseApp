@@ -9,14 +9,10 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.CompletableFuture
 
-private const val MESSAGES_IDENTIFIER = "messages"
-private const val ALLMESSAGES_IDENTIFIER = "allmessages"
 
+class MessageManager(private val DB: ScopedKeyValueStore) : MessageFactory {
 
-
-class MessageManager(private val DB: KeyValueStore) : MessageFactory {
-
-    private val messages = Array(ScopedKeyValueStore(DB, listOf(ALLMESSAGES_IDENTIFIER)))
+    private val messages = Array(DB.getNewScope("allmessages"))
 
 //    enum class MessageType {
 //        BROADCAST,
@@ -36,12 +32,10 @@ class MessageManager(private val DB: KeyValueStore) : MessageFactory {
         return MessageImpl(messageDB, index)
     }
 
+
+
     inner class MessageImpl : Message {
-        private val mediaProxy = DB.getIntReference("media")
-//        private val typeProxy = DB.getIntReference("type")
-        private val createdProxy = DB.getIntReference("created")
-        private val receivedProxy = DB.getIntReference("received")
-        private val contentProxy = DB.getStringReference("content")
+        private val messageDB : ScopedKeyValueStore
 
         override val id: Long
         override val media: MediaType
@@ -50,9 +44,14 @@ class MessageManager(private val DB: KeyValueStore) : MessageFactory {
         override var received : LocalDateTime?
 
 
+        lateinit var messagesource : String
+
         // New message
-        constructor(DB: ScopedKeyValueStore, id: Long,
+        constructor(messageDB: ScopedKeyValueStore, id: Long,
                     media: MediaType, contents: ByteArray) {
+            this.messageDB = messageDB
+            initPoxies()
+
             this.id = id
             this.media = media
             this.contents = contents
@@ -62,21 +61,41 @@ class MessageManager(private val DB: KeyValueStore) : MessageFactory {
         }
 
         // Read message
-        constructor(DB: ScopedKeyValueStore, id: Long) {
+        constructor(messageDB: ScopedKeyValueStore, id: Long) {
+            this.messageDB = messageDB
+            initPoxies()
+
             this.id = id
             this.media = MediaType.values()[mediaProxy.read()!!]
-            this.contents = contentProxy.read()!!.toByteArray() // TODO read raw bytearray instead of encoding it
+            this.contents = contentProxy.read()!!
             this.created = LocalDateTime.ofEpochSecond(createdProxy.read()!!.toLong(), 0, ZoneOffset.UTC)
 
             this.received = receivedProxy.read()?.let {
                 LocalDateTime.ofEpochSecond(it.toLong(), 0, ZoneOffset.UTC)
             }
 
+            this.messagesource = getSource()
         }
+
+
+        private lateinit var mediaProxy: KeyValueStore.Object<Int>
+        private lateinit var createdProxy:KeyValueStore.Object<Int>
+        private lateinit var receivedProxy:KeyValueStore.Object<Int>
+        private lateinit var contentProxy:KeyValueStore.Object<ByteArray>
+        private lateinit var sourceProxy: KeyValueStore.Object<String>
+        private fun initPoxies() {
+            mediaProxy = messageDB.getIntReference("media")
+            createdProxy = messageDB.getIntReference("created")
+            receivedProxy = messageDB.getIntReference("received")
+            contentProxy = messageDB.getByteArrayReference("content")
+            sourceProxy = messageDB.getStringReference("source")
+        }
+
+
 
         private fun write() {
             assert(mediaProxy.read() == null)
-            contentProxy.write(contents.toString()) // TODO write raw bytearray instead of encoding it
+            contentProxy.write(contents)
             mediaProxy.write(media.ordinal)
             createdProxy.write(created.toEpochSecond(ZoneOffset.UTC).toInt()) // Good until 2038.
             //receivedProxy.write() // This is not needed as long as we do not delete messages.
@@ -89,14 +108,11 @@ class MessageManager(private val DB: KeyValueStore) : MessageFactory {
         }
 
 
+        fun setSource(s : String) = sourceProxy.write(s)
 
-        // Broadcast/private/channel. not sure if we need
-//        fun setType(type: MessageType) {
-//            typeProxy.write(type.ordinal)
-//        }
-//        fun getType() : MessageType {
-//            return MessageType.values()[typeProxy.read()!!]
-//        }
+        // getSource on an unsent message should be considered a bug
+        fun getSource() : String = sourceProxy.read()!!
+
 
 
     }

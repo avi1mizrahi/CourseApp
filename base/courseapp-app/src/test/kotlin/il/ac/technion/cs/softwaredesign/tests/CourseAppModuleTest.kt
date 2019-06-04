@@ -285,7 +285,7 @@ class CourseAppStaffTest {
         confirmVerified(listener)
     }
 
-    @Test @Disabled
+    @Test
     fun `channel message received successfully`() {
         val listener = mockk<ListenerCallback>()
         every { listener(any(), any()) }.returns(CompletableFuture.completedFuture(Unit))

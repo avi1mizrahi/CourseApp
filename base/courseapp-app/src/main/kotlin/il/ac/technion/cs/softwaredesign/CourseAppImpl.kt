@@ -2,6 +2,7 @@ package il.ac.technion.cs.softwaredesign
 
 import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.ChannelManager
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
@@ -38,9 +39,11 @@ class CourseAppImplInitializer @Inject constructor(private val storageFactory: S
 }
 
 class Managers @Inject constructor(db: KeyValueStore) {
-    val users = UserManager(db)
-    val tokens = TokenManager(db)
-    val channels = ChannelManager(db)
+
+    val users = UserManager(ScopedKeyValueStore(db, listOf("users")))
+    val tokens = TokenManager(ScopedKeyValueStore(db, listOf("tokens")))
+    val channels = ChannelManager(ScopedKeyValueStore(db, listOf("channels")))
+    val messages = MessageManager(ScopedKeyValueStore(db, listOf("messages")))
 }
 
 private fun <T> completedOf(t: T) : CompletableFuture<T> {
@@ -48,19 +51,57 @@ private fun <T> completedOf(t: T) : CompletableFuture<T> {
     return CompletableFuture.completedFuture(t)
 }
 
+
+
 class CourseAppImpl @Inject constructor(private val managers: Managers) :
         CourseApp {
+
+
+    // Map of UserID -> his callbacks
+    private val messageListeners = HashMap<Int, ArrayList<ListenerCallback>>()
+
+    private fun sendToUserOrEnqueuePending(receiver : User, source: String, message : Message) {
+        var messageRead = false
+        messageListeners[receiver.id()].let {
+            it?.forEach {
+                it(source, message)
+                (message as MessageManager.MessageImpl).setReadNow() // TODO
+                messageRead = true
+            }
+        }
+
+        if (!messageRead)
+            receiver.addPendingMessageID(message.id.toInt())
+    }
+
+
     override fun addListener(token: String, callback: ListenerCallback): CompletableFuture<Unit> {
         val u = getUserByTokenOrThrow(token)
+        val id = u.id()
 
-        TODO("not implemented")
+        messageListeners[id] ?: messageListeners.put(id, ArrayList())
+        val list = messageListeners[id]!!
+        list.add(callback)
+
+
+        if (list.size == 1) {
+            u.forEachPendingMessage {
+                val m = managers.messages.readMessageFromDB(it.toLong()) as MessageManager.MessageImpl
+                m.setReadNow()
+                callback(m.getSource(), m)
+            }
+        }
+
+        return completedOf(Unit)
     }
 
     override fun removeListener(token: String,
                                 callback: ListenerCallback): CompletableFuture<Unit> {
         val u = getUserByTokenOrThrow(token)
+        val id = u.id()
+        if (messageListeners[id]?.remove(callback) != true) throw NoSuchEntityException()
 
-        TODO("not implemented")
+        return completedOf(Unit)
     }
 
     override fun channelSend(token: String,
@@ -71,15 +112,33 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         if (!u.isInChannel(c)) throw UserNotAuthorizedException()
 
 
-        TODO("not implemented")
+        val source = channel + "@" + u.getName()
+        (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
 
+        c.forEachUser{
+            val receiver = managers.users.getUserByID(it)
+            sendToUserOrEnqueuePending(receiver, source, message)
+        }
+
+
+        return completedOf(Unit)
     }
 
     override fun broadcast(token: String, message: Message): CompletableFuture<Unit> {
         val u = getUserByTokenOrThrow(token)
         if (!u.isAdmin()) throw UserNotAuthorizedException()
 
-        TODO("not implemented")
+        // Make the source string and write it
+        val source = "BROADCAST"
+        (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
+
+
+        managers.users.forEachUser {
+            sendToUserOrEnqueuePending(it, source, message)
+        }
+
+
+        return completedOf(Unit)
     }
 
     override fun privateSend(token: String,
@@ -88,12 +147,25 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val sender = getUserByTokenOrThrow(token)
         val receiver = managers.users.getUserByName(user) ?: throw NoSuchEntityException()
 
+        // Make the source string and write it
+        val source = "@" + sender.getName()
+        (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
 
-        TODO("not implemented")
+        sendToUserOrEnqueuePending(receiver, source, message)
+
+        return completedOf(Unit)
     }
 
     override fun fetchMessage(token: String, id: Long): CompletableFuture<Pair<String, Message>> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val u = getUserByTokenOrThrow(token)
+        val message = managers.messages.readMessageFromDB(id) ?: throw NoSuchEntityException()
+        val source = (message as MessageManager.MessageImpl).getSource()
+        val channelName = source.split("@")[0]
+        val c = managers.channels.getChannelByName(channelName) ?: TODO() // What to do with deleted channels?
+        if (!c.hasUser(u)) throw UserNotAuthorizedException()
+
+
+        return completedOf(Pair(source,message))
     }
 
     private fun getUserByTokenOrThrow(t: String): User {

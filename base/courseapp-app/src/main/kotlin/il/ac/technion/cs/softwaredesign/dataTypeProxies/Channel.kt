@@ -24,10 +24,10 @@ private fun isBadChannelName(name : String) : Boolean {
 }
 
 
-class ChannelManager(private val DB: KeyValueStore) {
+class ChannelManager(private val DB: ScopedKeyValueStore) {
 
-    private val allChannels = Array(ScopedKeyValueStore(DB, listOf("channels", "allChannels")))
-    private val nameToId = DB.getIntMapReference(listOf("channels", "nameToId"))
+    private val allChannels = Array(ScopedKeyValueStore(DB, listOf("allChannels")))
+    private val nameToId = DB.getIntMapReference(listOf("nameToId"))
 
     private val allChannelsByUserCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByUserCount")),
             {id -> getChannelById(id).getUserCount()},
@@ -178,6 +178,10 @@ class ChannelManager(private val DB: KeyValueStore) {
                 removeChannel(this)
             }
 
+        }
+
+        fun forEachUser( func: (Int) -> Unit) {
+            userList.forEach(func)
         }
 
         fun hasUser(user : User) : Boolean = userList.exists(user.id())

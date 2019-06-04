@@ -1,14 +1,13 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import il.ac.technion.cs.softwaredesign.KeyValueStore
+import il.ac.technion.cs.softwaredesign.ScopedKeyValueStore
 import il.ac.technion.cs.softwaredesign.getIntReference
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import kotlin.random.Random
 
 
-private const val TOKENS_IDENTIFIER = "tokens"
-
-class TokenManager(private val DB: KeyValueStore) {
+class TokenManager(private val DB: ScopedKeyValueStore) {
     private fun generateToken() : String {
         var out = ""
         repeat(32) {
@@ -34,7 +33,7 @@ class TokenManager(private val DB: KeyValueStore) {
     }
     inner class Token(DB: KeyValueStore, private val token: String) {
 
-        private val userID = DB.getIntReference(listOf(TOKENS_IDENTIFIER, token))
+        private val userID = DB.getIntReference(token)
 
         fun getString() : String{
             return token
