@@ -8,23 +8,29 @@ import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
 import il.ac.technion.cs.softwaredesign.exceptions.*
-import il.ac.technion.cs.softwaredesign.messages.Message
+import il.ac.technion.cs.softwaredesign.messages.MediaType
+import il.ac.technion.cs.softwaredesign.messages.MessageFactory
+import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration.ofSeconds
+import java.util.concurrent.CompletableFuture
 
 
 class CourseAppTest {
     // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
-    private var injector: Injector
-    private var app: CourseApp
-    private var statistics: CourseAppStatistics
+    private val injector: Injector
+    private val app: CourseApp
+    private val statistics: CourseAppStatistics
+    private val messageFactory: MessageFactory
 
     init {
         class CourseAppModuleMock : KotlinModule() {
@@ -32,12 +38,14 @@ class CourseAppTest {
                 bind<KeyValueStore>().toInstance(VolatileKeyValueStore())
                 bind<CourseApp>().to<CourseAppImpl>()
                 bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
+                bind<MessageFactory>().to<MessageManager>()
             }
         }
 
         injector = Guice.createInjector(CourseAppModuleMock())
-        app = injector.getInstance<CourseApp>()
-        statistics = injector.getInstance<CourseAppStatistics>()
+        app = injector.getInstance()
+        statistics = injector.getInstance()
+        messageFactory = injector.getInstance()
     }
 
 
@@ -377,6 +385,16 @@ class CourseAppTest {
         }
 
         @Test
+        fun `removeListener removes old listener`() {
+            val token = app.login("who", "ha").join()
+
+            val callback = mockk<ListenerCallback>(name = "A cute listener")
+            app.addListener(token, callback).join()
+
+            assertDoesNotThrow { app.removeListener(token, callback).joinException() }
+        }
+
+        @Test
         fun `channelSend throws on bad input`() {
             val token = app.login("who", "ha").join()
 
@@ -389,12 +407,41 @@ class CourseAppTest {
             }
 
             app.login("bla", "bla")
-                .thenCompose{app.channelJoin(it, "what") }
+                .thenCompose{bla -> app.makeAdministrator(token, "bla").thenApply { bla } }
+                .thenCompose{app.channelJoin(it, "#what") }
                 .join()
 
             assertThrows<UserNotAuthorizedException> {
                 app.channelSend(token, "#what", mockk()).joinException()
             }
+        }
+
+        @Test
+        fun `channelSend message received by all listeners`() {
+            val listener = mockk<ListenerCallback>()
+
+            every { listener(any(), any()) } returns CompletableFuture.completedFuture(Unit)
+
+            val (tokens, message) =
+                    app.login("who", "ha")
+                .thenCompose { admin -> app.login("user2", "user2").thenApply { Pair(admin, it) } }
+                .thenCompose { tokens ->
+                    app.addListener(tokens.first, listener)
+                        .thenCompose { app.addListener(tokens.second, listener) }
+                        .thenCompose { app.channelJoin(tokens.first, "#channel") }
+                        .thenCompose { app.channelJoin(tokens.second, "#channel") }
+                        .thenCompose { messageFactory.create(MediaType.TEXT,
+                                                             "1 2".toByteArray())
+                        }.thenApply { Pair(tokens, it) }
+                }.join()
+
+            app.channelSend(tokens.first, "#channel", message).join()
+
+            verify(exactly = 2) {
+                listener(match { it == "#channel@who" },
+                         match { it.contents contentEquals "1 2".toByteArray() })
+            }
+            confirmVerified()
         }
 
         @Test
@@ -425,7 +472,7 @@ class CourseAppTest {
             }
         }
 
-        @Test
+        @Test @Disabled
         fun `fetchMessage throws on bad input`() {
             val admin = app.login("who", "ha").join()
 
@@ -437,17 +484,20 @@ class CourseAppTest {
                 app.fetchMessage(admin, 4).joinException()
             }
 
-            val message = mockk<Message>(relaxed = true)
-            every { message.id } returns 4
-
-            app.login("someone", "1234")
-                .thenCompose { token -> app.makeAdministrator(admin, "someone").thenApply { token } }
-                .thenCompose { token -> app.channelJoin(token, "#wawa").thenApply { token } }
-                .thenCompose { token -> app.channelSend(token, "#wawa", message) }
-                .join()
+            val id = app.login("someone", "1234")
+                .thenCompose { token -> app.makeAdministrator(admin, "someone")
+                        .thenCompose { app.channelJoin(token, "#wawa") }
+                        .thenCompose {
+                            messageFactory.create(MediaType.TEXT,
+                                                  "important message".toByteArray())
+                        }
+                        .thenCompose { msg -> app.channelSend(token, "#wawa", msg)
+                            .thenApply { msg.id }
+                        }
+                }.join()
 
             assertThrows<UserNotAuthorizedException> {
-                app.fetchMessage(admin, 4).joinException()
+                app.fetchMessage(admin, id).joinException()
             }
         }
     }
