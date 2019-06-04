@@ -30,9 +30,10 @@ class CourseAppImplInitializer @Inject constructor(private val storageFactory: S
         lateinit var storage: SecureStorage
     }
 
-    override fun setup() {
+    override fun setup(): CompletableFuture<Unit> {
         storage = storageFactory.open("main".toByteArray())
             .join()// TODO: remove join
+        return completedOf(Unit) // TODO: workaround
     }
 }
 

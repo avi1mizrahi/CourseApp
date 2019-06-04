@@ -88,7 +88,7 @@ class CourseAppStaffTest {
 
         assertThrows<InvalidTokenException> {
             runWithTimeout(ofSeconds(10)) {
-                throw courseApp.isUserLoggedIn(token, "matan").handle { _, ex -> ex }.join()
+                courseApp.isUserLoggedIn(token, "matan").joinException()
             }
         }
     }
@@ -113,7 +113,7 @@ class CourseAppStaffTest {
 
         assertThrows<UserNotAuthorizedException> {
             runWithTimeout(ofSeconds(10)) {
-                throw courseApp.makeAdministrator(nonAdminToken, "gal").handle { _, ex -> ex }.join()
+                courseApp.makeAdministrator(nonAdminToken, "gal").joinException()
             }
         }
     }

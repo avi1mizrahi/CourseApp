@@ -24,10 +24,8 @@ import java.util.concurrent.CompletableFuture
 class CourseAppStaffTest {
     private val injector = Guice.createInjector(CourseAppModule(), SecureStorageModule())
 
-    private val courseAppInitializer = injector.getInstance<CourseAppInitializer>()
-
     init {
-        courseAppInitializer.setup()
+        injector.getInstance<CourseAppInitializer>().setup().join()
     }
 
     private val courseApp = injector.getInstance<CourseApp>()
@@ -53,7 +51,7 @@ class CourseAppStaffTest {
 
         assertThrows<InvalidTokenException> {
             runWithTimeout(ofSeconds(10)) {
-                throw courseApp.isUserLoggedIn(token, "matan").handle { _, ex -> ex }.join()
+                courseApp.isUserLoggedIn(token, "matan").joinException()
             }
         }
     }
@@ -78,7 +76,7 @@ class CourseAppStaffTest {
 
         assertThrows<UserNotAuthorizedException> {
             runWithTimeout(ofSeconds(10)) {
-                throw courseApp.makeAdministrator(nonAdminToken, "gal").handle { _, ex -> ex }.join()
+                courseApp.makeAdministrator(nonAdminToken, "gal").joinException()
             }
         }
     }
@@ -98,7 +96,7 @@ class CourseAppStaffTest {
                 }.join()
 
         assertThat(runWithTimeout(ofSeconds(10)) {
-            courseApp.isUserInChannel(adminToken, "#test", "matan").join()
+            courseApp.isUserInChannel(adminToken, "#mychannel", "matan").join()
         }, isTrue)
     }
 
