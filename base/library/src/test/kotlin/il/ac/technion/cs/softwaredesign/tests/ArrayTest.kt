@@ -85,19 +85,18 @@ class ArrayTest {
 
     @Test
     fun `for each`() {
-        val p1 = createNewMockProxySlot()
-        val p2 = createNewMockProxySlot()
-        val p3 = createNewMockProxySlot()
-
-
+        createNewMockProxySlot().int1.write(45)
+        createNewMockProxySlot().int1.write(23)
+        createNewMockProxySlot().int1.write(1010)
 
         val each = mockk<(KeyValueStore) -> Unit>(relaxed = true)
+
         array.forEach(each)
 
         verifySequence {
-            each.invoke(p1.DB)
-            each.invoke(p2.DB)
-            each.invoke(p3.DB)
+            each(match { it.getIntReference("int1").read() == 45 })
+            each(match { it.getIntReference("int1").read() == 23 })
+            each(match { it.getIntReference("int1").read() == 1010 })
         }
 
         confirmVerified()
@@ -105,9 +104,8 @@ class ArrayTest {
 
     @Test
     fun `for each empty doesn't callback`() {
-        createNewMockProxySlot()
-        createNewMockProxySlot()
-        createNewMockProxySlot()
+        array.newSlot()
+        array.newSlot()
         array.clear()
 
         val each = mockk<(KeyValueStore) -> Unit>()
