@@ -1,30 +1,32 @@
 package il.ac.technion.cs.softwaredesign
 
 
-class Array(map: KeyValueStore) {
+class Array(private val map: KeyValueStore) {
     private val count = map.getIntReference("count")
-    private val map = map.getIntMapReference("values")
 
     init {
         if (count.read() == null) count.write(0)
     }
 
-    fun push(i: Int): Int {
+    // Create a new slot
+    fun newSlot(): Pair<ScopedKeyValueStore,Int>  {
         val position = count.read()!!
-        map.write(position.toString(), i)
         count.write(position + 1)
-        return position
+        return Pair(ScopedKeyValueStore(map, listOf(position.toString())), position)
     }
 
-    operator fun get(i: Int): Int = map.read(i.toString())!!
+    operator fun get(i: Int): ScopedKeyValueStore? {
+        if (i < 0 || i >= count.read()!!) return null
+        return ScopedKeyValueStore(map, listOf(i.toString()))
+    }
 
     fun clear() = count.write(0)
 
     fun size(): Int = count.read() ?: 0
 
-    fun forEach(action: (Int) -> Unit) {
+    fun forEach(action: (ScopedKeyValueStore) -> Unit) {
         repeat(count.read()!!) {
-            action(map.read(it.toString())!!)
+            action(get(it)!!)
         }
     }
 }

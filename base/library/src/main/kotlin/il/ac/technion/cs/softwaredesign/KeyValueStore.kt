@@ -27,6 +27,23 @@ class ScopedKeyValueStore(private val parent: KeyValueStore,
     override fun <V> getReference(key: List<String>,
                                   serializer: Serializer<V>) =
             parent.getReference(prefix + key, serializer)
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is ScopedKeyValueStore) return false
+
+        if (this.parent != other.parent) return false
+
+        repeat (this.prefix.size) {
+            if (this.prefix[it] != other.prefix[it]) return false
+        }
+        return true
+    }
+
+    // TODO if we use collections with scopedDB for some reason
+    override fun hashCode(): Int {
+        return super.hashCode()
+    }
+
 }
 
 /****** EXTENSION METHODS ******/

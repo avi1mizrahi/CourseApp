@@ -1,19 +1,35 @@
 package il.ac.technion.cs.softwaredesign.tests
 
+import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.Array
-import il.ac.technion.cs.softwaredesign.VolatileKeyValueStore
 import io.mockk.*
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
 class ArrayTest {
     private val array = Array(VolatileKeyValueStore())
 
+    class mockProxy(var DB : ScopedKeyValueStore) {
+        val int1 = DB.getIntReference("int1")
+    }
+
+
+    private fun createNewMockProxySlot() : mockProxy {
+        val (scopedDB, index) = array.newSlot()
+        return mockProxy(scopedDB)
+    }
+
+    private fun readMockProxySlot(index : Int) : mockProxy? {
+        return mockProxy(array[index]?: return null)
+    }
+
     @Test
     fun `push and get the right value`() {
-        array.push(2)
+        val obj = createNewMockProxySlot()
+        obj.int1.write(2)
 
-        assertEquals(2, array[0])
+        assertEquals(2, readMockProxySlot(0)!!.int1.read())
     }
 
     @Test
@@ -23,12 +39,12 @@ class ArrayTest {
 
     @Test
     fun `push affect size`() {
-        array.push(2)
+        createNewMockProxySlot()
 
         assertEquals(1, array.size())
 
         repeat(13) {
-            array.push(2)
+            createNewMockProxySlot()
         }
 
         assertEquals(14, array.size())
@@ -36,16 +52,18 @@ class ArrayTest {
 
     @Test
     fun `push returns index`() {
-        assertEquals(0, array.push(32))
-        assertEquals(1, array.push(32))
+        val (_, index1) = array.newSlot()
+        val (_, index2) = array.newSlot()
+
+        assertEquals(0, index1)
+        assertEquals(1, index2)
     }
 
     @Test
     fun `clear clears`() {
-        array.push(232)
-        array.push(3)
-        array.push(232)
-
+        array.newSlot()
+        array.newSlot()
+        array.newSlot()
         array.clear()
 
         assertEquals(0, array.size())
@@ -53,31 +71,33 @@ class ArrayTest {
 
     @Test
     fun `can insert after clear`() {
-        array.push(232)
-        array.push(3)
-        array.push(232)
+        array.newSlot()
+        array.newSlot()
+        array.newSlot()
 
         array.clear()
 
-        array.push(1)
-        array.push(42)
+        array.newSlot()
+        array.newSlot()
 
         assertEquals(2, array.size())
     }
 
     @Test
     fun `for each`() {
-        array.push(232)
-        array.push(3)
-        array.push(232)
+        val p1 = createNewMockProxySlot()
+        val p2 = createNewMockProxySlot()
+        val p3 = createNewMockProxySlot()
 
-        val each = mockk<(Int) -> Unit>(relaxed = true)
+
+
+        val each = mockk<(ScopedKeyValueStore) -> Unit>(relaxed = true)
         array.forEach(each)
 
         verifySequence {
-            each.invoke(232)
-            each.invoke(3)
-            each.invoke(232)
+            each.invoke(p1.DB)
+            each.invoke(p2.DB)
+            each.invoke(p3.DB)
         }
 
         confirmVerified()
@@ -85,12 +105,12 @@ class ArrayTest {
 
     @Test
     fun `for each empty doesn't callback`() {
-        array.push(232)
-        array.push(3)
-        array.push(232)
+        createNewMockProxySlot()
+        createNewMockProxySlot()
+        createNewMockProxySlot()
         array.clear()
 
-        val each = mockk<(Int) -> Unit>()
+        val each = mockk<(ScopedKeyValueStore) -> Unit>()
         array.forEach(each)
 
         verify { each.invoke(any()) wasNot called }
