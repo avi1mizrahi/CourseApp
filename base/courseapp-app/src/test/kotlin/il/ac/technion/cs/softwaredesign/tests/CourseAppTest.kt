@@ -472,7 +472,7 @@ class CourseAppTest {
             }
         }
 
-        @Test @Disabled
+        @Test @Disabled // TODO
         fun `fetchMessage throws on bad input`() {
             val admin = app.login("who", "ha").join()
 

@@ -24,7 +24,7 @@ private fun isBadChannelName(name : String) : Boolean {
 }
 
 
-class ChannelManager(private val DB: ScopedKeyValueStore) {
+class ChannelManager(DB: KeyValueStore) {
 
     private val allChannels = Array(ScopedKeyValueStore(DB, listOf("allChannels")))
     private val nameToId = DB.getIntMapReference(listOf("nameToId"))
@@ -97,7 +97,7 @@ class ChannelManager(private val DB: ScopedKeyValueStore) {
         allChannelsByActiveCount.remove(c.getID())
     }
 
-    inner class Channel(DB: ScopedKeyValueStore, private val id: Int) {
+    inner class Channel(DB: KeyValueStore, private val id: Int) {
 
         private val userList = Set(ScopedKeyValueStore(DB, listOf("users")))
         private val activeList = Set(ScopedKeyValueStore(DB, listOf("activeUsers")))

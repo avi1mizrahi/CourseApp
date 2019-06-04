@@ -64,6 +64,7 @@ fun KeyValueStore.getByteArrayReference(key: List<String>): KeyValueStore.Object
         getReference(key, ByteArraySerializer())
 fun KeyValueStore.getByteArrayReference(key: String): KeyValueStore.Object<ByteArray> = getByteArrayReference(listOf(key))
 
+/** scoping */
 
-fun KeyValueStore.scope(keys : List<String>) : ScopedKeyValueStore = ScopedKeyValueStore(this, keys)
-fun KeyValueStore.scope(key : String) : ScopedKeyValueStore = this.scope(listOf(key))
+fun KeyValueStore.scope(keys : List<String>) : KeyValueStore = ScopedKeyValueStore(this, keys)
+fun KeyValueStore.scope(key : String) : KeyValueStore = this.scope(listOf(key))

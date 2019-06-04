@@ -27,13 +27,13 @@ class Array(private val map: KeyValueStore) {
     private val count = map.getIntReference("count")
 
     // Create a new slot
-    fun newSlot(): Pair<ScopedKeyValueStore,Int>  {
+    fun newSlot(): Pair<KeyValueStore,Int>  {
         val position = size()
         count.write(position + 1)
         return Pair(ScopedKeyValueStore(map, listOf(position.toString())), position)
     }
 
-    operator fun get(i: Int): ScopedKeyValueStore? {
+    operator fun get(i: Int): KeyValueStore? {
         if (i < 0 || i >= size()) return null
         return ScopedKeyValueStore(map, listOf(i.toString()))
     }
@@ -42,13 +42,13 @@ class Array(private val map: KeyValueStore) {
 
     fun size(): Int = count.read() ?: 0
 
-    fun forEach(action: (ScopedKeyValueStore) -> Unit) {
+    fun forEach(action: (KeyValueStore) -> Unit) {
         repeat( size()) {
             action(get(it)!!)
         }
     }
 
-    fun forEach(action: (ScopedKeyValueStore, Int) -> Unit) {
+    fun forEach(action: (KeyValueStore, Int) -> Unit) {
         repeat( size()) {
             action(get(it)!!, it)
         }

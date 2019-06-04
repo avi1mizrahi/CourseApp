@@ -4,25 +4,24 @@ import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.Array
 import io.mockk.*
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
 class ArrayTest {
     private val array = Array(VolatileKeyValueStore())
     private val arrayInt = ArrayInt(VolatileKeyValueStore())
 
-    class mockProxy(var DB : ScopedKeyValueStore) {
+    class MockProxy(var DB : KeyValueStore) {
         val int1 = DB.getIntReference("int1")
     }
 
 
-    private fun createNewMockProxySlot() : mockProxy {
-        val (scopedDB, index) = array.newSlot()
-        return mockProxy(scopedDB)
+    private fun createNewMockProxySlot() : MockProxy {
+        val (scopedDB, _) = array.newSlot()
+        return MockProxy(scopedDB)
     }
 
-    private fun readMockProxySlot(index : Int) : mockProxy? {
-        return mockProxy(array[index]?: return null)
+    private fun readMockProxySlot(index : Int) : MockProxy? {
+        return MockProxy(array[index] ?: return null)
     }
 
     @Test
@@ -92,7 +91,7 @@ class ArrayTest {
 
 
 
-        val each = mockk<(ScopedKeyValueStore) -> Unit>(relaxed = true)
+        val each = mockk<(KeyValueStore) -> Unit>(relaxed = true)
         array.forEach(each)
 
         verifySequence {
@@ -111,7 +110,7 @@ class ArrayTest {
         createNewMockProxySlot()
         array.clear()
 
-        val each = mockk<(ScopedKeyValueStore) -> Unit>()
+        val each = mockk<(KeyValueStore) -> Unit>()
         array.forEach(each)
 
         verify { each.invoke(any()) wasNot called }

@@ -36,7 +36,7 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
 
 
     inner class MessageImpl : Message {
-        private val messageDB : ScopedKeyValueStore
+        private val messageDB : KeyValueStore
 
         override val id: Long
         override val media: MediaType
@@ -48,10 +48,10 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
         lateinit var messagesource : String
 
         // New message
-        constructor(messageDB: ScopedKeyValueStore, id: Long,
+        constructor(messageDB: KeyValueStore, id: Long,
                     media: MediaType, contents: ByteArray) {
             this.messageDB = messageDB
-            initPoxies()
+            initProxies()
 
             this.id = id
             this.media = media
@@ -62,9 +62,9 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
         }
 
         // Read message
-        constructor(messageDB: ScopedKeyValueStore, id: Long) {
+        constructor(messageDB: KeyValueStore, id: Long) {
             this.messageDB = messageDB
-            initPoxies()
+            initProxies()
 
             this.id = id
             this.media = MediaType.values()[mediaProxy.read()!!]
@@ -84,7 +84,7 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
         private lateinit var receivedProxy:KeyValueStore.Object<Int>
         private lateinit var contentProxy:KeyValueStore.Object<ByteArray>
         private lateinit var sourceProxy: KeyValueStore.Object<String>
-        private fun initPoxies() {
+        private fun initProxies() {
             mediaProxy = messageDB.getIntReference("media")
             createdProxy = messageDB.getIntReference("created")
             receivedProxy = messageDB.getIntReference("received")

@@ -11,7 +11,7 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 //users/$id/name -> name
 //nametoid/$name/ -> int32
 
-class UserManager(private val DB: ScopedKeyValueStore) {
+class UserManager(DB: KeyValueStore) {
     private val nameToIdMap = DB.getIntMapReference(listOf("nametoid"))
     private val activeCount = DB.getIntReference(listOf("activecount"))
     private val allUsersByChannelCount =

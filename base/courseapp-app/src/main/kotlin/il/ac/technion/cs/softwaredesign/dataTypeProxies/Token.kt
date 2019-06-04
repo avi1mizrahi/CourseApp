@@ -7,7 +7,7 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import kotlin.random.Random
 
 
-class TokenManager(private val DB: ScopedKeyValueStore) {
+class TokenManager(private val DB: KeyValueStore) {
     private fun generateToken() : String {
         var out = ""
         repeat(32) {
