@@ -5,7 +5,6 @@ import il.ac.technion.cs.softwaredesign.Set
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 
 
-private const val USERSTATS_IDENTIFIER = "usersstats"
 
 //users/$id/token
 //users/$id/password
@@ -13,19 +12,20 @@ private const val USERSTATS_IDENTIFIER = "usersstats"
 //nametoid/$name/ -> int32
 
 class UserManager(private val DB: KeyValueStore) {
-    private val count = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, "count"))
-    private val nameToIdMap = DB.getIntMapReference(listOf("nametoid"))
-
-    private val activeCount = DB.getIntReference(listOf(USERSTATS_IDENTIFIER, "activecount"))
+    private val nameToIdMap = DB.getIntMapReference(listOf("users", "nametoid"))
+    private val activeCount = DB.getIntReference(listOf("users", "activecount"))
     private val allUsersByChannelCount =
-            Heap(ScopedKeyValueStore(DB, listOf(USERSTATS_IDENTIFIER, "usersbychannels")),
+            Heap(ScopedKeyValueStore(DB, listOf("users", "usersbychannels")),
                  { id -> getUserByID(id).getChannelCount() },
                  { id -> -id })
 
+
+    private val allUsers = Array(ScopedKeyValueStore(DB, listOf("users", "allusers")))
+
+
     init {
-        // initialize user count
-        if (count.read() == null) {
-            count.write(0)
+        // initialize counters
+        if (activeCount.read() == null) {
             activeCount.write(0)
         }
 
@@ -36,10 +36,9 @@ class UserManager(private val DB: KeyValueStore) {
             allUsersByChannelCount.getTop10().map { id -> getUserByID(id).getName() }
 
     fun createUser(name: String, password: String): User {
-        val id = getUserCount()
-        incrementUserCount()
+        val (userDB, id) = allUsers.newSlot()
 
-        val ret = getUserByID(id)
+        val ret = User(userDB, id)
         ret.initialize(name, password)
         if (id == 0) ret.setAdmin()
 
@@ -48,19 +47,16 @@ class UserManager(private val DB: KeyValueStore) {
         return ret
     }
 
-    fun getUserCount(): Int = count.read()!!
+    fun getUserCount(): Int = allUsers.size()
 
     fun getActiveCount(): Int = activeCount.read()!!
-
-    private fun incrementUserCount() = count.write(getUserCount() + 1)
 
     fun getUserByName(name: String): User? {
         val id = nameToIdMap.read(name) ?: return null
         return getUserByID(id)
     }
 
-    fun getUserByID(id: Int): User =
-            User(ScopedKeyValueStore(DB, listOf("users", id.toString())), id)
+    fun getUserByID(id: Int): User = User(allUsers[id]!!, id)
 
     private fun addUserID(name: String, id: Int) = nameToIdMap.write(name, id)
 

@@ -6,9 +6,7 @@ import il.ac.technion.cs.softwaredesign.exceptions.NameFormatException
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import org.junit.jupiter.api.Assertions.assertEquals
 
-private const val CHANNELSTATS_IDENTIFIER = "usersstats"
-private const val INDEXCOUNTER_IDENTIFIER = "indexCounter"
-private const val ALLCHANNELS_IDENTIFIER = "allchannels"
+
 
 
 
@@ -28,10 +26,9 @@ private fun isBadChannelName(name : String) : Boolean {
 
 class ChannelManager(private val DB: KeyValueStore) {
 
-    private val indexCounter = DB.getIntReference(listOf(CHANNELSTATS_IDENTIFIER, INDEXCOUNTER_IDENTIFIER))
+    private val allChannels = Array(ScopedKeyValueStore(DB, listOf("channels", "allChannels")))
+    private val nameToId = DB.getIntMapReference(listOf("channels", "nameToId"))
 
-    // Channel name -> index
-    private val allChannels = DB.getIntMapReference(listOf(CHANNELSTATS_IDENTIFIER, ALLCHANNELS_IDENTIFIER))
     private val allChannelsByUserCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByUserCount")),
             {id -> getChannelById(id).getUserCount()},
             {id -> -id})
@@ -42,10 +39,6 @@ class ChannelManager(private val DB: KeyValueStore) {
 
 
     init {
-        if (indexCounter.read() == null)
-            indexCounter.write(0)
-
-
         allChannelsByUserCount.initialize()
         allChannelsByActiveCount.initialize()
     }
@@ -63,17 +56,16 @@ class ChannelManager(private val DB: KeyValueStore) {
     fun createNewChannel(name : String) : Channel {
         assert(getChannelByName(name) == null)
 
-        val id = indexCounter.read()!!
-        indexCounter.write(id + 1)
 
+        val (channelDB, id) = allChannels.newSlot()
+        val channel = Channel(channelDB, id)
 
-        val channel = Channel(ScopedKeyValueStore(DB, listOf("Channels", id.toString())), id)
         channel.initialize(name)
-        allChannels.write(name, id)
+
+
+        nameToId.write(name, id)
         allChannelsByUserCount.add(id)
         allChannelsByActiveCount.add(id)
-
-
 
         return channel
     }
@@ -83,13 +75,13 @@ class ChannelManager(private val DB: KeyValueStore) {
     }
 
     fun getChannelByName(name : String) : Channel? {
-        val channelID = allChannels.read(name) ?: return null
-        return Channel(ScopedKeyValueStore(DB, listOf("Channels", channelID.toString())), channelID)
+        val channelID = nameToId.read(name) ?: return null
+        return Channel(allChannels[channelID]!!, channelID)
     }
 
 
     fun getChannelById(channelID : Int) : Channel {
-        return Channel(ScopedKeyValueStore(DB, listOf("Channels", channelID.toString())), channelID)
+        return Channel(allChannels[channelID]!!, channelID)
     }
 
 //
@@ -100,7 +92,7 @@ class ChannelManager(private val DB: KeyValueStore) {
     fun removeChannel(c : Channel) {
         assert(c.getUserCount() == 0)
 
-        allChannels.delete(c.getName())
+        nameToId.delete(c.getName())
         allChannelsByUserCount.remove(c.getID())
         allChannelsByActiveCount.remove(c.getID())
     }
