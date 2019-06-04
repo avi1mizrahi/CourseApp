@@ -66,13 +66,13 @@ class UserManager(private val DB: ScopedKeyValueStore) {
 
     private fun addUserID(name: String, id: Int) = nameToIdMap.write(name, id)
 
-    inner class User(DB: ScopedKeyValueStore, private val id: Int) {
+    inner class User(DB: KeyValueStore, private val id: Int) {
         private val name = DB.getStringReference("name")
         private val password = DB.getStringReference("password")
         private var token = DB.getStringReference("token")
         private val isAdmin = DB.getStringReference("isAdmin")
-        private var channelList = Set(DB.getNewScope("channels"))
-        private val pendingMessages = ArrayInt(DB.getNewScope("pendingMessagges"))
+        private var channelList = Set(DB.scope("channels"))
+        private val pendingMessages = ArrayInt(DB.scope("pendingMessagges"))
 
         fun initialize(n: String, pass: String) {
             name.write(n)

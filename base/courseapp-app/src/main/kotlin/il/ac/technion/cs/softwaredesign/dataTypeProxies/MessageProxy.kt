@@ -1,5 +1,6 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
+import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.Array
 import il.ac.technion.cs.softwaredesign.messages.MediaType
@@ -10,9 +11,9 @@ import java.time.ZoneOffset
 import java.util.concurrent.CompletableFuture
 
 
-class MessageManager(private val DB: ScopedKeyValueStore) : MessageFactory {
+class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
 
-    private val messages = Array(DB.getNewScope("allmessages"))
+    private val messages = Array(DB.scope("allmessages"))
 
 //    enum class MessageType {
 //        BROADCAST,

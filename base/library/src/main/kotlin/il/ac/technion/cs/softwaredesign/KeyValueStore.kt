@@ -28,10 +28,6 @@ class ScopedKeyValueStore(private val parent: KeyValueStore,
                                   serializer: Serializer<V>) =
             parent.getReference(prefix + key, serializer)
 
-    fun getNewScope(keys : List<String>) : ScopedKeyValueStore = ScopedKeyValueStore(this, keys)
-    fun getNewScope(key : String) : ScopedKeyValueStore = getNewScope(listOf(key))
-
-
     override fun equals(other: Any?): Boolean {
         if (other !is ScopedKeyValueStore) return false
 
@@ -67,3 +63,7 @@ fun KeyValueStore.getStringReference(key: String): KeyValueStore.Object<String> 
 fun KeyValueStore.getByteArrayReference(key: List<String>): KeyValueStore.Object<ByteArray> =
         getReference(key, ByteArraySerializer())
 fun KeyValueStore.getByteArrayReference(key: String): KeyValueStore.Object<ByteArray> = getByteArrayReference(listOf(key))
+
+
+fun KeyValueStore.scope(keys : List<String>) : ScopedKeyValueStore = ScopedKeyValueStore(this, keys)
+fun KeyValueStore.scope(key : String) : ScopedKeyValueStore = this.scope(listOf(key))
