@@ -65,7 +65,7 @@ class CourseAppTest {
 
             assertThrows<InvalidTokenException> {
                 runWithTimeout(ofSeconds(10)) {
-                    app.isUserLoggedIn(token, "matan").join()
+                    app.isUserLoggedIn(token, "matan").joinException()
                 }
             }
         }
@@ -73,11 +73,11 @@ class CourseAppTest {
         @Test
         fun `throw on invalid tokens`() {
             assertThrows<InvalidTokenException> {
-                runWithTimeout(ofSeconds(10)) { app.isUserLoggedIn("a", "any") }
+                runWithTimeout(ofSeconds(10)) { app.isUserLoggedIn("a", "any").joinException() }
             }
 
             assertThrows<InvalidTokenException> {
-                runWithTimeout(ofSeconds(10)) { app.logout("a") }
+                runWithTimeout(ofSeconds(10)) { app.logout("a").joinException() }
             }
         }
 
@@ -100,7 +100,7 @@ class CourseAppTest {
 
             assertThrows<UserAlreadyLoggedInException> {
                 runWithTimeout(ofSeconds(10)) {
-                    app.login("someone", "123").join()
+                    app.login("someone", "123").joinException()
                 }
             }
         }
@@ -114,7 +114,7 @@ class CourseAppTest {
             assertThrows<NoSuchEntityException> {
                 // TODO: which should throw? the login or the future? i.e. do we need the join or not?
                 runWithTimeout(ofSeconds(10)) {
-                    app.login("name", "badpass").join()
+                    app.login("name", "badpass").joinException()
                 }
             }
         }
@@ -177,7 +177,7 @@ class CourseAppTest {
             .join()
 
         assertThrows<UserNotAuthorizedException> {
-            app.makeAdministrator(second, "name1")
+            app.makeAdministrator(second, "name1").joinException()
         }
     }
 
@@ -187,13 +187,13 @@ class CourseAppTest {
         fun `Test Channel name`() {
             val tokenAdmin = app.login("name1", "pass").join()
 
-            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "hello") }
-            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "1234") }
-            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "a1") }
-            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "עברית") }
-            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "#עברית") }
-            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "#hello[") }
-            app.channelJoin(tokenAdmin, "#hello")
+            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "hello").joinException() }
+            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "1234").joinException() }
+            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "a1").joinException() }
+            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "עברית").joinException() }
+            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "#עברית").joinException() }
+            assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "#hello[").joinException() }
+            assertDoesNotThrow { app.channelJoin(tokenAdmin, "#hello").joinException() }
         }
 
         @Test
@@ -202,7 +202,7 @@ class CourseAppTest {
             val tokenSecond = app.login("name2", "pass").join()
 
             app.channelJoin(tokenAdmin, "#ch1").join()
-            assertThrows<UserNotAuthorizedException> { app.channelJoin(tokenSecond, "#ch2") }
+            assertThrows<UserNotAuthorizedException> { app.channelJoin(tokenSecond, "#ch2").joinException() }
         }
 
         @Test
@@ -213,7 +213,7 @@ class CourseAppTest {
             app.channelJoin(tokenAdmin, "#ch1")
                 .thenCompose { app.channelPart(tokenAdmin, "#ch1") }
                 .join()
-            assertThrows<UserNotAuthorizedException> { app.channelJoin(tokenSecond, "#ch1") }
+            assertThrows<UserNotAuthorizedException> { app.channelJoin(tokenSecond, "#ch1").joinException()}
         }
 
 
@@ -227,7 +227,7 @@ class CourseAppTest {
                 .join()
 
             assertThrows<UserNotAuthorizedException> {
-                app.channelKick(admin, "#ch1", "name2")
+                app.channelKick(admin, "#ch1", "name2").joinException()
             }
         }
 
@@ -240,7 +240,7 @@ class CourseAppTest {
                 .thenCompose { app.channelJoin(tokenSecond, "#ch1") }.join()
 
             assertThrows<UserNotAuthorizedException> {
-                app.channelKick(tokenSecond, "#ch1", "name1")
+                app.channelKick(tokenSecond, "#ch1", "name1").joinException()
             }
 
             assertEquals(2, app.numberOfTotalUsersInChannel(tokenSecond, "#ch1").join().toInt())
@@ -271,9 +271,9 @@ class CourseAppTest {
                         .thenApply { admin }
                 }.join()
 
-            assertThrows<NoSuchEntityException> { app.channelPart(tokenAdmin, "#ch1") }
+            assertThrows<NoSuchEntityException> { app.channelPart(tokenAdmin, "#ch1").joinException() }
             assertThrows<NoSuchEntityException> {
-                app.numberOfTotalUsersInChannel(tokenAdmin, "#ch1")
+                app.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").joinException()
             }
         }
 
@@ -294,7 +294,7 @@ class CourseAppTest {
         @Test
         fun `IsUserInChannel throws on bad input`() {
             assertThrows<InvalidTokenException> {
-                app.isUserInChannel("aaa", "#ch1", "name1").join()
+                app.isUserInChannel("aaa", "#ch1", "name1").joinException()
             }
             val tokenAdmin = app.login("name1", "pass").join()
             val tokenOther = app.login("name2", "pass").join()
@@ -304,12 +304,12 @@ class CourseAppTest {
             assertThrows<NoSuchEntityException> {
                 app.isUserInChannel(tokenAdmin,
                                     "#ch2",
-                                    "name1").join()
+                                    "name1").joinException()
             }
             assertThrows<UserNotAuthorizedException> {
                 app.isUserInChannel(tokenOther,
                                     "#ch1",
-                                    "name1").join()
+                                    "name1").joinException()
             }
         }
 
