@@ -9,7 +9,11 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.*
+import il.ac.technion.cs.softwaredesign.messages.Message
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -343,6 +347,108 @@ class CourseAppTest {
 
             assertEquals(60, app.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").join().toInt())
             assertEquals(30, app.numberOfActiveUsersInChannel(tokenAdmin, "#ch1").join().toInt())
+        }
+    }
+
+    @Disabled // TODO
+    @Nested
+    inner class Messages {
+        @Test
+        fun `addListener throws on bad input`() {
+            app.login("who", "ha").join()
+
+            assertThrows<InvalidTokenException> {
+                app.addListener("invalid token", mockk()).joinException()
+            }
+        }
+
+        @Test
+        fun `removeListener throws on bad input`() {
+            val token = app.login("who", "ha").join()
+
+            assertThrows<InvalidTokenException> {
+                app.removeListener("invalid token", mockk()).joinException()
+            }
+
+            app.addListener(token, mockk(name = "A cute listener")).join()
+
+            assertThrows<NoSuchEntityException> {
+                app.removeListener(token, mockk(name = "who's that listener?!")).joinException()
+            }
+        }
+
+        @Test
+        fun `channelSend throws on bad input`() {
+            val token = app.login("who", "ha").join()
+
+            assertThrows<InvalidTokenException> {
+                app.channelSend("invalid token", "#what", mockk()).joinException()
+            }
+
+            assertThrows<NoSuchEntityException> {
+                app.channelSend(token, "#what", mockk()).joinException()
+            }
+
+            app.login("bla", "bla")
+                .thenCompose{app.channelJoin(it, "what") }
+                .join()
+
+            assertThrows<UserNotAuthorizedException> {
+                app.channelSend(token, "#what", mockk()).joinException()
+            }
+        }
+
+        @Test
+        fun `broadcast throws on bad input`() {
+            val notAdmin = app.login("who", "ha")
+                .thenCompose { app.login("someone else", "some password") }
+                .join()
+
+            assertThrows<InvalidTokenException> {
+                app.broadcast("invalid token", mockk()).joinException()
+            }
+
+            assertThrows<UserNotAuthorizedException> {
+                app.broadcast(notAdmin, mockk()).joinException()
+            }
+        }
+
+        @Test
+        fun `privateSend throws on bad input`() {
+            val admin = app.login("who", "ha").join()
+
+            assertThrows<InvalidTokenException> {
+                app.privateSend("invalid token", "some one", mockk()).joinException()
+            }
+
+            assertThrows<NoSuchEntityException> {
+                app.privateSend(admin, "some one", mockk()).joinException()
+            }
+        }
+
+        @Test
+        fun `fetchMessage throws on bad input`() {
+            val admin = app.login("who", "ha").join()
+
+            assertThrows<InvalidTokenException> {
+                app.fetchMessage("invalid token", 4).joinException()
+            }
+
+            assertThrows<NoSuchEntityException> {
+                app.fetchMessage(admin, 4).joinException()
+            }
+
+            val message = mockk<Message>(relaxed = true)
+            every { message.id } returns 4
+
+            app.login("someone", "1234")
+                .thenCompose { token -> app.channelJoin(token, "#wawa").thenApply { token } }
+                .thenCompose { token -> app.channelSend(token, "#wawa", message) }
+                .join()
+
+            assertThrows<UserNotAuthorizedException> {
+                app.fetchMessage(admin, 4).joinException()
+            }
         }
     }
 
