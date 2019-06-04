@@ -1,1 +1,51 @@
-TODO
+Array:
+    a list of unique ScopedKeyValueStores that do not conflict with each other.
+    newSlot:
+        Pushes a new "folder" on the DB and returns a pair of <ScopedKeyValueStore,Index>.
+
+    clear:
+        Clears the array
+        This does not delete the actual "folders" and they should be initialized after every newSlot if this is used
+
+    size:
+        Array size
+
+    forEach:
+        runs an (ScopedKeyValueStore) -> Unit function on every entry.
+
+
+IntMap/StringMap
+    a key-value map of String->Int or String->String. Must be given a unique ScopedKeyValueStore folder
+    works as expected:
+    read(key) -> value?
+    write(key, value) -> Unit
+    delete(key) -> Unit
+
+
+
+Set:
+    A set of Integers.
+    Capable of insertion, deletion and finding a specific index at O(1)
+    add(int)/remove(int) work as expected. Doubles or bad removals are ignored.
+
+    forEach runs a (Int) -> Unit on every integer in the set at O(N)
+
+
+Heap:
+    A min/max heap of Ints sortable with a primary and secondary key.
+    The sorting keys are provided as a (Int) -> Int function.
+    The secondary sorting key must not have collisions.
+
+    add/remove work as expected and update the heap at O(Log(n)) complexity
+    Duplicate adds or bad removals will throw an assertion failure.
+
+    idIncremented/idDecremented must be called if a key has increased/decreased to update the heap. O(Log(n)) complexity
+
+    Top10 returns the 10 top items in the heap (O((10^2)/2) operations).
+
+
+
+
+
+
+
