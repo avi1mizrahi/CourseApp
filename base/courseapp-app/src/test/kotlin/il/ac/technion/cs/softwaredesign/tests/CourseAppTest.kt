@@ -4,6 +4,7 @@ import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
 import com.google.inject.Injector
+import com.google.inject.Provider
 import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.present
@@ -35,10 +36,17 @@ class CourseAppTest {
     init {
         class CourseAppModuleMock : KotlinModule() {
             override fun configure() {
-                bind<KeyValueStore>().toInstance(VolatileKeyValueStore())
+                val keystoreinst = VolatileKeyValueStore()
+                bind<KeyValueStore>().toInstance(keystoreinst)
                 bind<CourseApp>().to<CourseAppImpl>()
                 bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
-                bind<MessageFactory>().to<MessageManager>()
+
+                class ScopedMsgFactoryProvider : Provider<MessageFactory>{
+                    override fun get(): MessageFactory {
+                        return MessageManager(keystoreinst.scope("messages"))
+                    }
+                }
+                bind<MessageFactory>().toProvider(ScopedMsgFactoryProvider())
             }
         }
 
@@ -472,7 +480,7 @@ class CourseAppTest {
             }
         }
 
-        @Test @Disabled // TODO
+        @Test
         fun `fetchMessage throws on bad input`() {
             val admin = app.login("who", "ha").join()
 

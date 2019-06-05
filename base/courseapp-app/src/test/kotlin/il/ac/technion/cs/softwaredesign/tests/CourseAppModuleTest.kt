@@ -259,7 +259,7 @@ class CourseAppStaffTest {
         }
     }
 
-    @Test @Disabled
+    @Test
     fun `private message received successfully`() {
         val listener = mockk<ListenerCallback>()
         every { listener(any(), any()) }.returns(CompletableFuture.completedFuture(Unit))
@@ -310,7 +310,7 @@ class CourseAppStaffTest {
         confirmVerified(listener)
     }
 
-    @Test @Disabled
+    @Test
     fun `there is 1 pending message after privateSend with no listener`() {
         courseApp.login("admin", "admin")
             .thenCompose { courseApp.login("gal", "hunter2") }
