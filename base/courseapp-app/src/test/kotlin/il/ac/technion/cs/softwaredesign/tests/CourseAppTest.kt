@@ -472,6 +472,31 @@ class CourseAppTest {
             }
         }
 
+        @Test @Disabled
+        fun `add listener returns with pending private messages`() {
+            val token = app.login("admin", "admin")
+                .thenCompose { adminToken ->
+                    app.login("gal", "hunter2").thenApply { Pair(adminToken, it) }
+                }.thenCompose { (adminToken, nonAdminToken) ->
+                    messageFactory.create(MediaType.TEXT, "hello, world\n".toByteArray())
+                        .thenCompose { app.privateSend(adminToken, "gal", it) }
+                        .thenApply { nonAdminToken }
+                }.join()
+
+            val listener = mockk<ListenerCallback>()
+            every { listener(any(), any()) }.returns(CompletableFuture.completedFuture(Unit))
+
+            runWithTimeout(ofSeconds(10)) {
+                app.addListener(token, listener).join()
+            }
+
+            verify {
+                listener(match { it == "@admin" },
+                         match { it.contents contentEquals "hello, world\n".toByteArray() })
+            }
+            confirmVerified(listener)
+        }
+
         @Test @Disabled // TODO
         fun `fetchMessage throws on bad input`() {
             val admin = app.login("who", "ha").join()
