@@ -33,12 +33,11 @@ class CourseAppModule : KotlinModule() {
 
         class MessageManagerProvider : Provider<MessageFactory> {
             override fun get(): MessageFactory {
-                return MessageManager(
-                        ScopedKeyValueStore(
-                                KeyValueStoreImpl(
+                return MessageManager(KeyValueStoreImpl(
                                         AsyncStorageAdapter(
-                                                secureStorageProvider.get())),
-                                listOf("messages")))
+                                                secureStorageProvider.get())
+                                    ).scope("messages"))
+
 
             }
         }

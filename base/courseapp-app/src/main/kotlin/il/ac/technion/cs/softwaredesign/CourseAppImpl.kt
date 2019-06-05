@@ -1,10 +1,7 @@
 package il.ac.technion.cs.softwaredesign
 
 import com.google.inject.Inject
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.ChannelManager
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
@@ -40,10 +37,14 @@ class CourseAppImplInitializer @Inject constructor(private val storageFactory: S
 
 class Managers @Inject constructor(db: KeyValueStore) {
 
-    val users = UserManager(ScopedKeyValueStore(db, listOf("users")))
-    val tokens = TokenManager(ScopedKeyValueStore(db, listOf("tokens")))
-    val channels = ChannelManager(ScopedKeyValueStore(db, listOf("channels")))
-    val messages = MessageManager(ScopedKeyValueStore(db, listOf("messages")))
+    val users = UserManager(db.scope("users"))
+    val tokens = TokenManager(db.scope("tokens"))
+    val channels = ChannelManager(db.scope("channels"))
+    val messages = MessageManager(db.scope("messages"))
+
+
+    val messageListenerManager = messages.MessageListenerManager()
+
 }
 
 private fun <T> completedOf(t: T) : CompletableFuture<T> {
@@ -57,50 +58,18 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         CourseApp {
 
 
-    // Map of UserID -> his callbacks
-    private val messageListeners = HashMap<Int, ArrayList<ListenerCallback>>()
-
-    private fun sendToUserOrEnqueuePending(receiver : User, source: String, message : Message) {
-        var messageRead = false
-        messageListeners[receiver.id()].let {
-            it?.forEach {
-                it(source, message)
-                (message as MessageManager.MessageImpl).setReadNow() // TODO
-                messageRead = true
-            }
-        }
-
-        if (!messageRead)
-            receiver.addPendingMessageID(message.id.toInt())
-    }
 
 
     override fun addListener(token: String, callback: ListenerCallback): CompletableFuture<Unit> {
         val u = getUserByTokenOrThrow(token)
-        val id = u.id()
-
-        messageListeners[id] ?: messageListeners.put(id, ArrayList())
-        val list = messageListeners[id]!!
-        list.add(callback)
-
-
-        if (list.size == 1) {
-            u.forEachPendingMessage {
-                val m = managers.messages.readMessageFromDB(it.toLong()) as MessageManager.MessageImpl
-                m.setReadNow()
-                callback(m.getSource(), m)
-            }
-        }
-
+        managers.messageListenerManager.addcallback(u, callback)
         return completedOf(Unit)
     }
 
     override fun removeListener(token: String,
                                 callback: ListenerCallback): CompletableFuture<Unit> {
         val u = getUserByTokenOrThrow(token)
-        val id = u.id()
-        if (messageListeners[id]?.remove(callback) != true) throw NoSuchEntityException()
-
+        managers.messageListenerManager.removeCallback(u, callback)
         return completedOf(Unit)
     }
 
@@ -111,15 +80,15 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         if (!u.isInChannel(c)) throw UserNotAuthorizedException()
 
-
         val source = channel + "@" + u.getName()
         (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
 
         c.forEachUser{
             val receiver = managers.users.getUserByID(it)
-            sendToUserOrEnqueuePending(receiver, source, message)
+            managers.messageListenerManager.sendToUserOrEnqueuePending(receiver, source, message)
         }
-
+        managers.messages.addToTotalChannelMessagesCount()
+        c.addToMessagesCount()
 
         return completedOf(Unit)
     }
@@ -134,7 +103,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
 
         managers.users.forEachUser {
-            sendToUserOrEnqueuePending(it, source, message)
+            managers.messageListenerManager.sendToUserOrEnqueuePending(it, source, message)
         }
 
 
@@ -151,7 +120,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val source = "@" + sender.getName()
         (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
 
-        sendToUserOrEnqueuePending(receiver, source, message)
+        managers.messageListenerManager.sendToUserOrEnqueuePending(receiver, source, message)
 
         return completedOf(Unit)
     }
@@ -160,7 +129,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val u = getUserByTokenOrThrow(token)
         val message = managers.messages.readMessageFromDB(id) ?: throw NoSuchEntityException()
         val source = (message as MessageManager.MessageImpl).getSource()
-        val channelName = source.split("@")[0]
+        val channelName = source.split("@")[0] // TODO what to do when someone requests an id that isn't a channel message?
         val c = managers.channels.getChannelByName(channelName) ?: TODO() // What to do with deleted channels?
         if (!c.hasUser(u)) throw UserNotAuthorizedException()
 
@@ -324,15 +293,16 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
 class CourseAppStatisticsImpl @Inject constructor(private val managers: Managers): CourseAppStatistics {
     override fun pendingMessages(): CompletableFuture<Long> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return CompletableFuture.completedFuture(managers.messageListenerManager.getTotalPrivatePending())
     }
 
     override fun channelMessages(): CompletableFuture<Long> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return CompletableFuture.completedFuture(managers.messages.getTotalChannelMessages())
     }
 
     override fun top10ChannelsByMessages(): CompletableFuture<List<String>> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return CompletableFuture.completedFuture(managers.channels.getTop10ChannelsByMessageCount())
+
     }
 
     override fun totalUsers(): CompletableFuture<Long> = completedOf(managers.users.getUserCount().toLong())

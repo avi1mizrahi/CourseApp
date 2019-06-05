@@ -3,6 +3,7 @@ package il.ac.technion.cs.softwaredesign.dataTypeProxies
 import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.Array
+import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
@@ -11,16 +12,13 @@ import java.time.ZoneOffset
 import java.util.concurrent.CompletableFuture
 
 
-class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
+class MessageManager @Inject constructor(private val DB: KeyValueStore) : MessageFactory {
+
 
     private val messages = Array(DB.scope("allmessages"))
 
-//    enum class MessageType {
-//        BROADCAST,
-//        CHANNEL,
-//        PRIVATE,
-//    }
-
+    // Channel messages counter
+    private val totalChannelMessages = DB.getIntReference("totalChannelMessages")
 
     override fun create(media: MediaType, contents: ByteArray) : CompletableFuture<Message> {
         val (messageDB, index) = this.messages.newSlot()
@@ -28,12 +26,85 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
     }
 
 
+    fun getTotalChannelMessages() = (totalChannelMessages.read() ?: 0).toLong()
+    fun addToTotalChannelMessagesCount() = totalChannelMessages.write(getTotalChannelMessages().toInt() + 1)
+
     fun readMessageFromDB(index : Long) : Message? {
         val messageDB = this.messages[index.toInt()] ?: return null
         return MessageImpl(messageDB, index)
     }
 
+    inner class MessageListenerManager {
 
+        // Private and broadcast messages
+        private val totalPendingPrivateMessages = DB.getIntReference("totalPendingMessages")
+
+        // Map of UserID -> his callbacks
+        private val messageListeners = HashMap<Int, ArrayList<ListenerCallback>>()
+
+        fun getTotalPrivatePending() = (totalPendingPrivateMessages.read() ?: 0).toLong()
+
+
+        private fun addToPendingMessagesCounter(source: String) {
+            if (!source.startsWith("#")) {
+                val count = totalPendingPrivateMessages.read()
+                totalPendingPrivateMessages.write(count?.let { it + 1 }?: 1)
+            }
+        }
+
+        private fun removeFromPendingMessagesCounter(source: String) {
+            if (!source.startsWith("#")) {
+                val count = totalPendingPrivateMessages.read()!!
+                totalPendingPrivateMessages.write(count - 1)
+            }
+        }
+
+
+        fun sendToUserOrEnqueuePending(receiver : UserManager.User, source: String, message : Message) {
+            val messageHasBeenRead = send(source, message as MessageImpl, messageListeners[receiver.id()])
+            if (!messageHasBeenRead) {
+                receiver.addPendingMessageID(message.id.toInt())
+                addToPendingMessagesCounter(source)
+            }
+        }
+
+        // returns if message has been read (if there are callbacks)
+        private fun send(source: String, message : MessageImpl, callbacks : List<ListenerCallback>?) : Boolean {
+            // if null or empty, return false
+            if(callbacks?.isEmpty() != false) return false
+
+            callbacks.forEach{callback -> callback(source, message)}
+            message.setReadNow()
+            return true
+        }
+
+
+
+        fun addcallback(u : UserManager.User, callback : ListenerCallback) {
+            val id = u.id()
+            messageListeners[id] ?: messageListeners.put(id, ArrayList())
+            val list = messageListeners[id]!!
+
+            // only callback in list
+            if (list.isEmpty()) {
+                u.forEachPendingMessage {
+                    val message = readMessageFromDB(it.toLong()) as MessageManager.MessageImpl
+                    val source = message.getSource()
+                    val messageHasBeenRead = send(source, message, listOf(callback))
+                    assert(messageHasBeenRead)
+
+                    removeFromPendingMessagesCounter(source)
+                }
+                u.clearPendingMessages()
+            }
+            list.add(callback)
+        }
+
+        fun removeCallback(u : UserManager.User, callback : ListenerCallback) {
+            val id = u.id()
+            if (messageListeners[id]?.remove(callback) != true) throw NoSuchEntityException()
+        }
+    }
 
     inner class MessageImpl : Message {
         private val messageDB : KeyValueStore
@@ -78,7 +149,6 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
             this.messagesource = getSource()
         }
 
-
         private lateinit var mediaProxy: KeyValueStore.Object<Int>
         private lateinit var createdProxy:KeyValueStore.Object<Int>
         private lateinit var receivedProxy:KeyValueStore.Object<Int>
@@ -93,7 +163,6 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
         }
 
 
-
         private fun write() {
             assert(mediaProxy.read() == null)
             contentProxy.write(contents)
@@ -101,7 +170,6 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
             createdProxy.write(created.toEpochSecond(ZoneOffset.UTC).toInt()) // Good until 2038.
             //receivedProxy.write() // This is not needed as long as we do not delete messages.
         }
-
 
 
         fun setReadNow() {
@@ -113,8 +181,6 @@ class MessageManager @Inject constructor(DB: KeyValueStore) : MessageFactory {
 
         // getSource on an unsent message should be considered a bug
         fun getSource() : String = sourceProxy.read()!!
-
-
 
     }
 

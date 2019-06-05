@@ -37,10 +37,15 @@ class ChannelManager(DB: KeyValueStore) {
             {id -> getChannelById(id).getActiveCount()},
             {id -> -id})
 
+    private val allChannelsByMessageCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByMessageCount")),
+            {id -> getChannelById(id).getMessageCount()},
+            {id -> -id})
+
 
     init {
         allChannelsByUserCount.initialize()
         allChannelsByActiveCount.initialize()
+        allChannelsByMessageCount.initialize()
     }
 
 
@@ -52,6 +57,10 @@ class ChannelManager(DB: KeyValueStore) {
     fun getTop10ChannelsByActiveUserCount() : List<String> {
         return allChannelsByActiveCount.getTop10().map { id -> getChannelById(id).getName() }
     }
+    fun getTop10ChannelsByMessageCount() : List<String> {
+        return allChannelsByMessageCount.getTop10().map { id -> getChannelById(id).getName() }
+    }
+
 
     fun createNewChannel(name : String) : Channel {
         assert(getChannelByName(name) == null)
@@ -66,6 +75,7 @@ class ChannelManager(DB: KeyValueStore) {
         nameToId.write(name, id)
         allChannelsByUserCount.add(id)
         allChannelsByActiveCount.add(id)
+        allChannelsByMessageCount.add(id)
 
         return channel
     }
@@ -95,14 +105,23 @@ class ChannelManager(DB: KeyValueStore) {
         nameToId.delete(c.getName())
         allChannelsByUserCount.remove(c.getID())
         allChannelsByActiveCount.remove(c.getID())
+        allChannelsByMessageCount.remove((c.getID()))
     }
 
     inner class Channel(DB: KeyValueStore, private val id: Int) {
 
-        private val userList = Set(ScopedKeyValueStore(DB, listOf("users")))
-        private val activeList = Set(ScopedKeyValueStore(DB, listOf("activeUsers")))
-        private val operatorList = Set(ScopedKeyValueStore(DB, listOf("operators")))
+        private val userList = Set(DB.scope("users"))
+        private val activeList = Set(DB.scope("activeUsers"))
+        private val operatorList = Set(DB.scope("operators"))
         private val name = DB.getStringReference("name")
+
+        private val messageCount = DB.getIntReference("messageCount")
+        fun getMessageCount() = messageCount.read() ?: 0
+        fun addToMessagesCount() {
+            messageCount.write(getMessageCount() + 1)
+            allChannelsByMessageCount.idIncremented(id)
+        }
+
 
         fun initialize(s : String) {
             name.write(s)

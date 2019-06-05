@@ -134,13 +134,11 @@ class UserManager(DB: KeyValueStore) {
             activeCount.write(activeCount.read()!! - 1)
         }
 
-        fun addPendingMessageID(i : Int) {
-            pendingMessages.push(i)
-        }
+        fun getPendingMessagesCount() = pendingMessages.size()
+        fun clearPendingMessages() = pendingMessages.clear()
+        fun addPendingMessageID(i : Int) = pendingMessages.push(i)
+        fun forEachPendingMessage(action : (Int) -> Unit) = pendingMessages.forEach(action)
 
-        fun forEachPendingMessage(action : (Int) -> Unit) {
-            pendingMessages.forEach(action)
-        }
     }
 }
 
