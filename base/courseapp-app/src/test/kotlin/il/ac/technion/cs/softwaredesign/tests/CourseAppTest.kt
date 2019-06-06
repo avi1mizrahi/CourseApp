@@ -13,7 +13,10 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
 import il.ac.technion.cs.softwaredesign.exceptions.*
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
-import io.mockk.*
+import io.mockk.confirmVerified
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -36,13 +39,9 @@ class CourseAppTest {
                 bind<KeyValueStore>().toInstance(keystoreinst)
                 bind<CourseApp>().to<CourseAppImpl>()
                 bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
-
-                class ScopedMsgFactoryProvider : Provider<MessageFactory>{
-                    override fun get(): MessageFactory {
-                        return MessageManager(keystoreinst.scope("messages"))
-                    }
-                }
-                bind<MessageFactory>().toProvider(ScopedMsgFactoryProvider())
+                bind<MessageFactory>().toProvider(Provider<MessageFactory> {
+                    MessageManager(keystoreinst.scope("messages"))
+                })
             }
         }
 
@@ -128,7 +127,6 @@ class CourseAppTest {
                 .join()
 
             assertThrows<NoSuchEntityException> {
-                // TODO: which should throw? the login or the future? i.e. do we need the join or not?
                 runWithTimeout(ofSeconds(10)) {
                     app.login("name", "badpass").joinException()
                 }
@@ -210,6 +208,7 @@ class CourseAppTest {
             assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "#עברית").joinException() }
             assertThrows<NameFormatException> { app.channelJoin(tokenAdmin, "#hello[").joinException() }
             assertDoesNotThrow { app.channelJoin(tokenAdmin, "#hello").joinException() }
+            assertDoesNotThrow { app.channelJoin(tokenAdmin, "#").joinException() }
         }
 
         @Test
@@ -218,7 +217,10 @@ class CourseAppTest {
             val tokenSecond = app.login("name2", "pass").join()
 
             app.channelJoin(tokenAdmin, "#ch1").join()
-            assertThrows<UserNotAuthorizedException> { app.channelJoin(tokenSecond, "#ch2").joinException() }
+            assertThrows<UserNotAuthorizedException> {
+                app.channelJoin(tokenSecond, "#ch2")
+                    .joinException()
+            }
         }
 
         @Test
@@ -229,7 +231,10 @@ class CourseAppTest {
             app.channelJoin(tokenAdmin, "#ch1")
                 .thenCompose { app.channelPart(tokenAdmin, "#ch1") }
                 .join()
-            assertThrows<UserNotAuthorizedException> { app.channelJoin(tokenSecond, "#ch1").joinException()}
+            assertThrows<UserNotAuthorizedException> {
+                app.channelJoin(tokenSecond, "#ch1")
+                    .joinException()
+            }
         }
 
 
@@ -287,7 +292,10 @@ class CourseAppTest {
                         .thenApply { admin }
                 }.join()
 
-            assertThrows<NoSuchEntityException> { app.channelPart(tokenAdmin, "#ch1").joinException() }
+            assertThrows<NoSuchEntityException> {
+                app.channelPart(tokenAdmin, "#ch1")
+                    .joinException()
+            }
             assertThrows<NoSuchEntityException> {
                 app.numberOfTotalUsersInChannel(tokenAdmin, "#ch1").joinException()
             }
@@ -411,8 +419,8 @@ class CourseAppTest {
             }
 
             app.login("bla", "bla")
-                .thenCompose{bla -> app.makeAdministrator(token, "bla").thenApply { bla } }
-                .thenCompose{app.channelJoin(it, "#what") }
+                .thenCompose { bla -> app.makeAdministrator(token, "bla").thenApply { bla } }
+                .thenCompose { app.channelJoin(it, "#what") }
                 .join()
 
             assertThrows<UserNotAuthorizedException> {
@@ -428,16 +436,20 @@ class CourseAppTest {
 
             val (tokens, message) =
                     app.login("who", "ha")
-                .thenCompose { admin -> app.login("user2", "user2").thenApply { Pair(admin, it) } }
-                .thenCompose { tokens ->
-                    app.addListener(tokens.first, listener)
-                        .thenCompose { app.addListener(tokens.second, listener) }
-                        .thenCompose { app.channelJoin(tokens.first, "#channel") }
-                        .thenCompose { app.channelJoin(tokens.second, "#channel") }
-                        .thenCompose { messageFactory.create(MediaType.TEXT,
-                                                             "1 2".toByteArray())
-                        }.thenApply { Pair(tokens, it) }
-                }.join()
+                        .thenCompose { admin ->
+                            app.login("user2", "user2")
+                                .thenApply { Pair(admin, it) }
+                        }
+                        .thenCompose { tokens ->
+                            app.addListener(tokens.first, listener)
+                                .thenCompose { app.addListener(tokens.second, listener) }
+                                .thenCompose { app.channelJoin(tokens.first, "#channel") }
+                                .thenCompose { app.channelJoin(tokens.second, "#channel") }
+                                .thenCompose {
+                                    messageFactory.create(MediaType.TEXT,
+                                                          "1 2".toByteArray())
+                                }.thenApply { Pair(tokens, it) }
+                        }.join()
 
             app.channelSend(tokens.first, "#channel", message).join()
 
@@ -550,14 +562,16 @@ class CourseAppTest {
             }
 
             val id = app.login("someone", "1234")
-                .thenCompose { token -> app.makeAdministrator(admin, "someone")
+                .thenCompose { token ->
+                    app.makeAdministrator(admin, "someone")
                         .thenCompose { app.channelJoin(token, "#wawa") }
                         .thenCompose {
                             messageFactory.create(MediaType.TEXT,
                                                   "important message".toByteArray())
                         }
-                        .thenCompose { msg -> app.channelSend(token, "#wawa", msg)
-                            .thenApply { msg.id }
+                        .thenCompose { msg ->
+                            app.channelSend(token, "#wawa", msg)
+                                .thenApply { msg.id }
                         }
                 }.join()
 
@@ -588,7 +602,7 @@ class CourseAppTest {
     @Nested
     inner class Statistics {
         @Test
-        fun `Test top 10 channels`() {
+        fun `top 10 channels`() {
             val tokens = ArrayList<String>()
 
             app.login("admin", "pass")
@@ -632,7 +646,7 @@ class CourseAppTest {
         }
 
         @Test
-        fun `Test top 10 Active`() {
+        fun `top 10 Active`() {
             app.login("admin", "pass")
                 .thenAccept {
                     for (j in 1..2) app.channelJoin(it, "#ch$j").join()
@@ -683,7 +697,7 @@ class CourseAppTest {
         }
 
         @Test
-        fun `Test top 10 Users`() {
+        fun `top 10 Users`() {
 
             app.login("admin", "pass")
                 .thenAccept { for (j in 1..20) app.channelJoin(it, "#ch$j").join() }
@@ -705,18 +719,100 @@ class CourseAppTest {
                                    "admin", "name20", "name19", "name18", "name17",
                                    "name16", "name15", "name14", "name13", "name12"))
             }
-
         }
 
         @Test
-        fun `Test user count statistics`() {
+        fun `top 10 Users with less than 10`() {
+            app.login("admin", "pass")
+                .thenAccept { for (j in 1..6) app.channelJoin(it, "#ch$j").join() }
+                .join()
+
+            val tokens = ArrayList<String>()
+            for (i in 1..6) {
+                app.login("name$i", "pass")
+                    .thenAccept {
+                        for (j in 1..i) app.channelJoin(it, "#ch$j").join()
+                        tokens.add(it)
+                    }.join()
+            }
+
+            // admin in all channels and created first. for rest later users have more channels
+            runWithTimeout(ofSeconds(10)) {
+                assertThat(statistics.top10UsersByChannels().join(),
+                           containsElementsInOrder("admin",
+                                                   "name6",
+                                                   "name5",
+                                                   "name4",
+                                                   "name3",
+                                                   "name2",
+                                                   "name1"))
+            }
+        }
+
+        @Test
+        fun top10ChannelsByMessages() {
+            // create 20 channels
+            val token = app.login("admin", "pass")
+                .thenApply {token ->
+                    repeat(20) { app.channelJoin(token, "#c$it").join() }
+                    token
+                }.join()
+
+            // 11111 11111 11111
+            // -----|-----|-----|-----|
+            for (i in 0 until 15) {
+                messageFactory.create(MediaType.TEXT, "@#$".toByteArray())
+                    .thenCompose { app.channelSend(token, "#c$i", it) }.join()
+            }
+
+            // 11111 11111 22222
+            // -----|-----|-----|-----|
+            for (i in 10 until 15) {
+                messageFactory.create(MediaType.TEXT, "@#$".toByteArray())
+                    .thenCompose { app.channelSend(token, "#c$i", it) }.join()
+            }
+
+            // 33333 11111 22222
+            // -----|-----|-----|-----|
+            for (i in 0 until 5) {
+                repeat(2) {
+                    messageFactory.create(MediaType.TEXT, "@#$".toByteArray())
+                        .thenCompose { app.channelSend(token, "#c$i", it) }.join()
+                }
+            }
+
+            // 33333 11111 22222   5
+            // -----|-----|-----|-----|
+            repeat(5) {
+                messageFactory.create(MediaType.TEXT, "@#$".toByteArray())
+                    .thenCompose { app.channelSend(token, "#c18", it) }.join()
+
+            }
+
+            // admin in all channels and created first. for rest later users have more channels
+            runWithTimeout(ofSeconds(10)) {
+                assertThat(statistics.top10ChannelsByMessages().join(),
+                           containsElementsInOrder("#c18",
+                                                   "#c0",
+                                                   "#c1",
+                                                   "#c2",
+                                                   "#c3",
+                                                   "#c4",
+                                                   "#c10",
+                                                   "#c11",
+                                                   "#c12",
+                                                   "#c13"))
+            }
+        }
+
+        @Test
+        fun `user count statistics`() {
             val tokens = ArrayList<String>()
             for (i in 1..20) {
                 app.login("name$i", "pass")
                     .thenAccept { tokens.add(it) }
                     .join()
             }
-
 
             assertEquals(20, statistics.totalUsers().join().toInt())
             assertEquals(20, statistics.loggedInUsers().join().toInt())
@@ -726,7 +822,6 @@ class CourseAppTest {
                 .join()
             assertEquals(20, statistics.totalUsers().join().toInt())
             assertEquals(17, statistics.loggedInUsers().join().toInt())
-
         }
     }
 }
