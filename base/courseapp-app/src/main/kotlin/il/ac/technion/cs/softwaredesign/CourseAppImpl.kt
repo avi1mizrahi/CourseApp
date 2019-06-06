@@ -129,10 +129,9 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val u = getUserByTokenOrThrow(token)
         val message = managers.messages.readMessageFromDB(id) ?: throw NoSuchEntityException()
         val source = (message as MessageManager.MessageImpl).getSource()
-        val channelName = source.split("@")[0] // TODO what to do when someone requests an id that isn't a channel message?
-        val c = managers.channels.getChannelByName(channelName) ?: TODO() // What to do with deleted channels?
+        val channelName = source.split("@")[0]
+        val c = managers.channels.getChannelByName(channelName) ?: throw NoSuchEntityException()
         if (!c.hasUser(u)) throw UserNotAuthorizedException()
-
 
         return completedOf(Pair(source,message))
     }

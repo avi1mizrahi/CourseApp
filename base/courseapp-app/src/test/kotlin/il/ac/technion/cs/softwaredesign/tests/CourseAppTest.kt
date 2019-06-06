@@ -565,6 +565,24 @@ class CourseAppTest {
                 app.fetchMessage(admin, id).joinException()
             }
         }
+
+        @Test
+        fun `fetchMessage throws NoSuchEntityException on non channel message`() {
+            val (token, message) = app.login("who", "ha")
+                .thenCompose { admin ->
+                    app.login("someone", "1234")
+                        .thenApply { Pair(admin, it) }
+                }.thenCompose { (admin, notAdmin) ->
+                    messageFactory.create(MediaType.TEXT, "broad !".toByteArray())
+                        .thenCompose { msg -> app.broadcast(admin, msg)
+                            .thenApply { Pair(notAdmin, msg) }
+                        }
+                }.join()
+
+            assertThrows<NoSuchEntityException> {
+                app.fetchMessage(token, message.id).joinException()
+            }
+        }
     }
 
     @Nested
