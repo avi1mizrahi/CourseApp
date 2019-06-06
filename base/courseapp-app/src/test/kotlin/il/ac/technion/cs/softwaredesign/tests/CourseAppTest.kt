@@ -13,12 +13,8 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
 import il.ac.technion.cs.softwaredesign.exceptions.*
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
-import io.mockk.confirmVerified
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.*
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -480,7 +476,7 @@ class CourseAppTest {
             }
         }
 
-        @Test @Disabled
+        @Test
         fun `add listener returns with pending private messages`() {
             val token = app.login("admin", "admin")
                 .thenCompose { adminToken ->
@@ -501,6 +497,42 @@ class CourseAppTest {
             verify {
                 listener(match { it == "@admin" },
                          match { it.contents contentEquals "hello, world\n".toByteArray() })
+            }
+            confirmVerified(listener)
+        }
+
+        @Test
+        fun `add listener returns with pending broadcast messages`() {
+            val tokens = app.login("admin", "admin")
+                .thenCompose { adminToken ->
+                    app.login("gal", "hunter2")
+                        .thenCompose { token1 ->
+                            app.login("tal", "hunter5")
+                                .thenApply { listOf(adminToken, token1, it) }
+                        }
+                }.thenCompose { tokens ->
+                    messageFactory.create(MediaType.TEXT, "hello".toByteArray())
+                        .thenCompose { app.broadcast(tokens[0], it) }
+                        .thenCompose { messageFactory.create(MediaType.TEXT, "world".toByteArray()) }
+                        .thenCompose { app.broadcast(tokens[0], it) }
+                        .thenApply { tokens }
+                }.join()
+
+            val listener = mockk<ListenerCallback>()
+            every { listener(any(), any()) }.returns(CompletableFuture.completedFuture(Unit))
+
+            runWithTimeout(ofSeconds(10)) {
+                app.addListener(tokens[1], listener).join()
+            }
+            runWithTimeout(ofSeconds(10)) {
+                app.addListener(tokens[2], listener).join()
+            }
+
+            verify(exactly = 2) {
+                listener(match { it == "BROADCAST" },
+                         match { it.contents contentEquals "hello".toByteArray() })
+                listener(match { it == "BROADCAST" },
+                         match { it.contents contentEquals "world".toByteArray() })
             }
             confirmVerified(listener)
         }
