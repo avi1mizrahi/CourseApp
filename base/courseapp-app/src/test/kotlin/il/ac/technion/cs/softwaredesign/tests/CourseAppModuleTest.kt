@@ -11,13 +11,13 @@ import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
+import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration.ofSeconds
@@ -28,29 +28,31 @@ import java.util.concurrent.CompletableFuture
 
 class SecureStorageModuleMock : KotlinModule() {
     override fun configure() {
-        class MockStorage : SyncStorage {
+        class MockStorage : SecureStorage {
             private val encoding = Charsets.UTF_8
 
             private val keyvalDB = HashMap<String, ByteArray>()
 
-            override fun read(key: ByteArray): ByteArray? {
-                return keyvalDB[key.toString(encoding)]
+            override fun read(key: ByteArray): CompletableFuture<ByteArray?> {
+                val bytes = keyvalDB[key.toString(encoding)]
+                if (bytes != null)
+                    Thread.sleep(bytes.size.toLong())
+                return CompletableFuture.completedFuture(bytes)
             }
 
-            override fun write(key: ByteArray, value: ByteArray) {
+            override fun write(key: ByteArray, value: ByteArray): CompletableFuture<Unit> {
                 keyvalDB[key.toString(encoding)] = value
+                return CompletableFuture.completedFuture(Unit)
             }
         }
 
-        class SecureStorageFactoryMock : SyncStorageFactory {
-            override fun open(name : ByteArray) : SyncStorage {
-                return MockStorage()
+        class SecureStorageFactoryMock : SecureStorageFactory {
+            override fun open(name : ByteArray) : CompletableFuture<SecureStorage> {
+                return CompletableFuture.completedFuture(MockStorage())
             }
         }
 
-        bind<SecureStorageFactory>().to<SyncStorageFactoryAdapter>()
-        bind<SyncStorageFactory>().to<SecureStorageFactoryMock>()
-        bind<SyncStorage>().to<AsyncStorageAdapter>()
+        bind<SecureStorageFactory>().to<SecureStorageFactoryMock>()
     }
 
 }

@@ -14,14 +14,6 @@ interface SyncStorage {
     fun write(key: ByteArray, value: ByteArray)
 }
 
-class SyncStorageAdapter(private val syncStorage: SyncStorage) : SecureStorage {
-    override fun read(key: ByteArray): CompletableFuture<ByteArray?> =
-            CompletableFuture.completedFuture(syncStorage.read(key))
-
-    override fun write(key: ByteArray, value: ByteArray): CompletableFuture<Unit> =
-            CompletableFuture.completedFuture(syncStorage.write(key, value))
-}
-
 class AsyncStorageAdapter @Inject constructor(private val secureStorage: SecureStorage) : SyncStorage {
     override fun read(key: ByteArray): ByteArray? =
             secureStorage.read(key).join()
@@ -31,12 +23,3 @@ class AsyncStorageAdapter @Inject constructor(private val secureStorage: SecureS
 
 }
 
-
-interface SyncStorageFactory {
-    fun open(name: ByteArray): SyncStorage
-}
-
-class SyncStorageFactoryAdapter @Inject constructor(private val syncStorageFactory: SyncStorageFactory) : SecureStorageFactory {
-    override fun open(name: ByteArray): CompletableFuture<SecureStorage> =
-            CompletableFuture.completedFuture(SyncStorageAdapter(syncStorageFactory.open(name)))
-}
