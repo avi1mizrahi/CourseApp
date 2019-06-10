@@ -449,7 +449,35 @@ class CourseAppTest {
         }
 
         @Test
-        fun `channelSend message received by all listeners`() {
+        fun `private message received by all listeners`() {
+            val listeners = Array(5) { mockk<ListenerCallback>() }
+
+            listeners.forEach { listener ->
+                every { listener(any(), any()) } returns CompletableFuture.completedFuture(Unit)
+            }
+
+            val (token, message) =
+                    app.login("who", "ha")
+                        .thenAccept { who -> listeners.forEach { app.addListener(who, it).join() } }
+                        .thenCompose { app.login("user2", "user2") }
+                        .thenCompose { user2 ->
+                            messageFactory.create(MediaType.TEXT, "@who".toByteArray())
+                                .thenApply { Pair(user2, it) }
+                        }.join()
+
+            app.privateSend(token, "who", message).join()
+
+            listeners.forEach { listener ->
+                verify(exactly = 1) {
+                    listener(match { it == "@user2" },
+                             match { it.contents contentEquals "@who".toByteArray() })
+                }
+            }
+            confirmVerified()
+        }
+
+        @Test
+        fun `channelSend message received by all users`() {
             val listener = mockk<ListenerCallback>()
 
             every { listener(any(), any()) } returns CompletableFuture.completedFuture(Unit)
@@ -459,8 +487,7 @@ class CourseAppTest {
                         .thenCompose { admin ->
                             app.login("user2", "user2")
                                 .thenApply { Pair(admin, it) }
-                        }
-                        .thenCompose { tokens ->
+                        }.thenCompose { tokens ->
                             app.addListener(tokens.first, listener)
                                 .thenCompose { app.addListener(tokens.second, listener) }
                                 .thenCompose { app.channelJoin(tokens.first, "#channel") }
