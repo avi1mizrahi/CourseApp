@@ -32,9 +32,8 @@ class CourseAppImplInitializer @Inject constructor(private val storageFactory: S
     }
 
     override fun setup(): CompletableFuture<Unit> {
-        storage = storageFactory.open("main".toByteArray())
-            .join()// TODO: remove join
-        return completedOf(Unit) // TODO: workaround
+        storage = storageFactory.open("main".toByteArray()).join()
+        return completedOf(Unit)
     }
 }
 
@@ -51,17 +50,12 @@ class Managers @Inject constructor(db: KeyValueStore) {
 }
 
 private fun <T> completedOf(t: T) : CompletableFuture<T> {
-    // TODO("remove this method")
     return CompletableFuture.completedFuture(t)
 }
 
 
-
 class CourseAppImpl @Inject constructor(private val managers: Managers) :
         CourseApp {
-
-
-
 
     override fun addListener(token: String, callback: ListenerCallback): CompletableFuture<Unit> {
         val u = getUserByTokenOrThrow(token)
@@ -84,7 +78,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         if (!u.isInChannel(c)) throw UserNotAuthorizedException()
 
         val source = channel + "@" + u.getName()
-        (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
+        (message as MessageManager.MessageImpl).setSource(source)
 
         c.forEachUser{
             val receiver = managers.users.getUserByID(it)
@@ -102,13 +96,12 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
         // Make the source string and write it
         val source = "BROADCAST"
-        (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
+        (message as MessageManager.MessageImpl).setSource(source)
 
 
         managers.users.forEachUser {
             managers.messageListenerManager.sendToUserOrEnqueuePending(it, source, message)
         }
-
 
         return completedOf(Unit)
     }
@@ -121,7 +114,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
         // Make the source string and write it
         val source = "@" + sender.getName()
-        (message as MessageManager.MessageImpl).setSource(source) // TODO think how to clean this
+        (message as MessageManager.MessageImpl).setSource(source)
 
         managers.messageListenerManager.sendToUserOrEnqueuePending(receiver, source, message)
 

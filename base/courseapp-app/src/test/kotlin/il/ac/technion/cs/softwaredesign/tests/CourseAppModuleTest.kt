@@ -48,7 +48,6 @@ class SecureStorageModuleMock : KotlinModule() {
             }
         }
 
-        // TODO: new binding for Secure->Sync transform
         bind<SecureStorageFactory>().to<SyncStorageFactoryAdapter>()
         bind<SyncStorageFactory>().to<SecureStorageFactoryMock>()
         bind<SyncStorage>().to<AsyncStorageAdapter>()

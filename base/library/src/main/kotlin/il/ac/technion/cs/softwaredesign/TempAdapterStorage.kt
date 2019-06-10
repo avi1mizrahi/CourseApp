@@ -5,8 +5,9 @@ import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import java.util.concurrent.CompletableFuture
 
-/* TODO: delete. This is an adapter interface for the previous storage, and adapter classes for
-          each conversion. To be removed! */
+/** This is an adapter interface for the previous storage,
+ *   and adapter classes for each conversion
+ */
 
 interface SyncStorage {
     fun read(key: ByteArray): ByteArray?
@@ -38,9 +39,4 @@ interface SyncStorageFactory {
 class SyncStorageFactoryAdapter @Inject constructor(private val syncStorageFactory: SyncStorageFactory) : SecureStorageFactory {
     override fun open(name: ByteArray): CompletableFuture<SecureStorage> =
             CompletableFuture.completedFuture(SyncStorageAdapter(syncStorageFactory.open(name)))
-}
-
-class AsyncStorageFactoryAdapter(private val secureStorageFactory: SecureStorageFactory) : SyncStorageFactory {
-    override fun open(name: ByteArray): SyncStorage =
-            AsyncStorageAdapter(secureStorageFactory.open(name).join())
 }
