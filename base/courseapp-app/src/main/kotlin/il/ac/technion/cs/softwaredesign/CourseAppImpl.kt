@@ -1,7 +1,10 @@
 package il.ac.technion.cs.softwaredesign
 
 import com.google.inject.Inject
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.ChannelManager
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
@@ -222,15 +225,19 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun channelPart(token: String, channel: String): CompletableFuture<Unit> {
-        val u = getUserByTokenOrThrow(token)
-        val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
-
-        if (u.isInChannel(c)) {
-            c.removeUser(u)
-            u.removeFromChannelList(c)
-        } else throw NoSuchEntityException()
-
-        return completedOf(Unit)
+        return CompletableFuture.supplyAsync {
+            getUserByTokenOrThrow(token)
+        }.thenCombine(CompletableFuture.supplyAsync {
+            managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
+        }) { u, c ->
+            if (!u.isInChannel(c)) throw NoSuchEntityException()
+            Pair(u, c)
+        }.thenCompose { (u, c) ->
+            CompletableFuture.allOf(
+                    CompletableFuture.runAsync { c.removeUser(u) } ,
+                    CompletableFuture.runAsync { u.removeFromChannelList(c) }
+            )
+        }.thenApply { Unit }
     }
 
     override fun channelMakeOperator(token: String, channel: String, username: String): CompletableFuture<Unit> {
