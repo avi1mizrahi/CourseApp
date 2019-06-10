@@ -228,7 +228,8 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         if (u.isInChannel(c)) {
             c.removeUser(u)
             u.removeFromChannelList(c)
-        }
+        } else throw NoSuchEntityException()
+
         return completedOf(Unit)
     }
 

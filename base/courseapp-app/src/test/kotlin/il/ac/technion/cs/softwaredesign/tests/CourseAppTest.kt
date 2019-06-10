@@ -302,6 +302,22 @@ class CourseAppTest {
         }
 
         @Test
+        fun `Throws when user leaves channel that is not in it`() {
+            val tokenAdmin = app.login("name1", "pass")
+                .thenCompose { admin ->
+                    app.channelJoin(admin, "#ch1")
+                        .thenCompose { app.login("someone", "asdfasdfa") }
+                        .thenCompose { app.channelJoin(it, "#ch1") }
+                        .thenCompose { app.channelPart(admin, "#ch1") }
+                        .thenApply { admin }
+                }.join()
+
+            assertThrows<NoSuchEntityException> {
+                app.channelPart(tokenAdmin, "#ch1").joinException()
+            }
+        }
+
+        @Test
         fun `IsUserInChannel return desired results`() {
             val tokenAdmin = app.login("name1", "pass")
                 .thenCompose { admin ->
