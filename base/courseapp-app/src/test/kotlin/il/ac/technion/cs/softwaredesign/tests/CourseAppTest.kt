@@ -292,6 +292,10 @@ class CourseAppTest {
                         .thenApply { admin }
                 }.join()
 
+            assertThrows<InvalidTokenException> {
+                app.channelPart("kishkush", "#ch1")
+                    .joinException()
+            }
             assertThrows<NoSuchEntityException> {
                 app.channelPart(tokenAdmin, "#ch1")
                     .joinException()
