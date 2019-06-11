@@ -153,6 +153,8 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
             if (u.isLoggedIn())
                 throw UserAlreadyLoggedInException()
 
+
+            // Cannot be done async, modifies heaps
             u.forEachChannel { managers.channels.getChannelById(it).addActive(u) }
         }
 
@@ -173,6 +175,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         t.delete()
         u.logout()
 
+        // Cannot be done async, modifies heaps
         u.forEachChannel { managers.channels.getChannelById(it).removeActive(u) }
 
         return completedOf(Unit)

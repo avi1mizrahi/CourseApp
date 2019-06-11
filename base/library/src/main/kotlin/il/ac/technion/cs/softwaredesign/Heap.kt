@@ -20,13 +20,18 @@ class Heap(DB: KeyValueStore,
     private val indexToIdMap = DB.getIntMapReference(NODES_IDENTIFIER)
     private val idToIndexMap = DB.getIntMapReference(OBJECTS_IDENTIFIER)
 
-    fun add(id: Int) {
-        //assert(!exists(id))
 
+    fun addMinimum(id:Int) {
         val index = count()
         updateNode(index, id)
         setCount(index + 1)
-        pushUp(index, id)
+    }
+
+    fun add(id: Int) {
+        val index = count()
+        updateNode(index, id)
+        setCount(index + 1)
+        pushUp(index, id) // Not needed, node is minimum
     }
 
     fun remove(id: Int){

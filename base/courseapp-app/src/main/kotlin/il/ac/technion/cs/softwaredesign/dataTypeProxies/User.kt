@@ -41,7 +41,7 @@ class UserManager(DB: KeyValueStore) {
         if (id == 0) ret.setAdmin()
 
         addUserID(name, id)
-        statistics_allUsersByChannelCount.add(id)
+        statistics_allUsersByChannelCount.addMinimum(id)
         return ret
     }
 

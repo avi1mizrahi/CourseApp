@@ -67,9 +67,9 @@ class ChannelManager(DB: KeyValueStore) {
 
 
         nameToId.write(name, id)
-        statistics_allChannelsByUserCount.add(id)
-        statistics_allChannelsByActiveCount.add(id)
-        statistics_allChannelsByMessageCount.add(id)
+        statistics_allChannelsByUserCount.addMinimum(id)
+        statistics_allChannelsByActiveCount.addMinimum(id)
+        statistics_allChannelsByMessageCount.addMinimum(id)
 
         return channel
     }
