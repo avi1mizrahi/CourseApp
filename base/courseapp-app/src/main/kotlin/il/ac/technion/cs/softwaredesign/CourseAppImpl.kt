@@ -84,7 +84,8 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
             val receiver = managers.users.getUserByID(it)
             managers.messageListenerManager.deliverToUserOrEnqueuePending(receiver, source, message)
         }
-        managers.messages.addToTotalChannelMessagesCount()
+
+        managers.messages.statistics_addToTotalChannelMessagesCount()
         c.addToMessagesCount()
 
         return completedOf(Unit)
@@ -291,15 +292,15 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
 class CourseAppStatisticsImpl @Inject constructor(private val managers: Managers): CourseAppStatistics {
     override fun pendingMessages(): CompletableFuture<Long> {
-        return CompletableFuture.completedFuture(managers.messageListenerManager.getTotalPrivatePending())
+        return CompletableFuture.completedFuture(managers.messageListenerManager.statistics_getTotalPrivatePending())
     }
 
     override fun channelMessages(): CompletableFuture<Long> {
-        return CompletableFuture.completedFuture(managers.messages.getTotalChannelMessages())
+        return CompletableFuture.completedFuture(managers.messages.statistics_getTotalChannelMessages())
     }
 
     override fun top10ChannelsByMessages(): CompletableFuture<List<String>> {
-        return CompletableFuture.completedFuture(managers.channels.getTop10ChannelsByMessageCount())
+        return CompletableFuture.completedFuture(managers.channels.statistics_getTop10ChannelsByMessageCount())
 
     }
 
@@ -307,9 +308,9 @@ class CourseAppStatisticsImpl @Inject constructor(private val managers: Managers
 
     override fun loggedInUsers(): CompletableFuture<Long> = completedOf(managers.users.getActiveCount().toLong())
 
-    override fun top10ChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.getTop10ChannelsByUserCount())
+    override fun top10ChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.statistics_getTop10ChannelsByUserCount())
 
-    override fun top10ActiveChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.getTop10ChannelsByActiveUserCount())
+    override fun top10ActiveChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.statistics_getTop10ChannelsByActiveUserCount())
 
     override fun top10UsersByChannels(): CompletableFuture<List<String>> = completedOf(managers.users.getTop10UsersByChannel())
 }

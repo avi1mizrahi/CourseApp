@@ -27,7 +27,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
     private val broadcasts = ArrayInt(DB.scope("broadcasts"))
 
     // Channel messages counter
-    private val totalChannelMessages = DB.getIntReference("totalChannelMessages")
+    private val statistics_totalChannelMessages = DB.getIntReference("totalChannelMessages")
 
     override fun create(media: MediaType, contents: ByteArray) : CompletableFuture<Message> {
         val (messageDB, index) = this.messages.newSlot()
@@ -35,8 +35,8 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
     }
 
 
-    fun getTotalChannelMessages() = (totalChannelMessages.read() ?: 0).toLong()
-    fun addToTotalChannelMessagesCount() = totalChannelMessages.write(getTotalChannelMessages().toInt() + 1)
+    fun statistics_getTotalChannelMessages() = (statistics_totalChannelMessages.read() ?: 0).toLong()
+    fun statistics_addToTotalChannelMessagesCount() = statistics_totalChannelMessages.write(statistics_getTotalChannelMessages().toInt() + 1)
 
     fun readMessageFromDB(index : Long) : Message? {
 
@@ -63,7 +63,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         // Map of UserID -> his callbacks
         private val messageListeners = HashMap<Int, ArrayList<ListenerCallback>>()
 
-        fun getTotalPrivatePending() = (statistics_totalPendingPrivateMessages.read() ?: 0).toLong()
+        fun statistics_getTotalPrivatePending() = (statistics_totalPendingPrivateMessages.read() ?: 0).toLong()
 
 
         private fun statistics_addToPendingPrivateAndBroadcastMessages(i : Int) {

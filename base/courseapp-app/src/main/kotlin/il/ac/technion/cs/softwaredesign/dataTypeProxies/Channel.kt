@@ -44,14 +44,14 @@ class ChannelManager(DB: KeyValueStore) {
 
 
 
-    fun getTop10ChannelsByUserCount() : List<String> {
+    fun statistics_getTop10ChannelsByUserCount() : List<String> {
         return statistics_allChannelsByUserCount.getTop10().map { id -> getChannelById(id).getName() }
     }
 
-    fun getTop10ChannelsByActiveUserCount() : List<String> {
+    fun statistics_getTop10ChannelsByActiveUserCount() : List<String> {
         return statistics_allChannelsByActiveCount.getTop10().map { id -> getChannelById(id).getName() }
     }
-    fun getTop10ChannelsByMessageCount() : List<String> {
+    fun statistics_getTop10ChannelsByMessageCount() : List<String> {
         return statistics_allChannelsByMessageCount.getTop10().map { id -> getChannelById(id).getName() }
     }
 
