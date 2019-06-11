@@ -12,10 +12,19 @@ import java.time.ZoneOffset
 import java.util.concurrent.CompletableFuture
 
 
+private fun isSourceBroadcast(source : String) = source == "BROADCAST"
+private fun isSourceChannel(source : String) = source.startsWith("#")
+private fun isSourcePrivate(source : String) = !isSourceChannel(source) && !isSourceBroadcast(source)
+
+
 class MessageManager @Inject constructor(private val DB: KeyValueStore) : MessageFactory {
 
 
+
     private val messages = Array(DB.scope("allmessages"))
+
+    // ordered list of index -> messageID
+    private val broadcasts = ArrayInt(DB.scope("broadcasts"))
 
     // Channel messages counter
     private val totalChannelMessages = DB.getIntReference("totalChannelMessages")
@@ -40,50 +49,78 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         return MessageImpl(messageDB, index)
     }
 
+
+    fun addBroadcastToList(message: Message) {
+        broadcasts.push(message.id.toInt())
+    }
+
     inner class MessageListenerManager {
 
+        // TODO this could be cached.
         // Private and broadcast messages
-        private val totalPendingPrivateMessages = DB.getIntReference("totalPendingMessages")
+        private val statistics_totalPendingPrivateMessages = DB.getIntReference("totalPendingMessages")
 
         // Map of UserID -> his callbacks
         private val messageListeners = HashMap<Int, ArrayList<ListenerCallback>>()
 
-        fun getTotalPrivatePending() = (totalPendingPrivateMessages.read() ?: 0).toLong()
+        fun getTotalPrivatePending() = (statistics_totalPendingPrivateMessages.read() ?: 0).toLong()
 
 
-        private fun addToPendingMessagesCounter(source: String) {
-            if (!source.startsWith("#")) {
-                val count = totalPendingPrivateMessages.read()
-                totalPendingPrivateMessages.write(count?.let { it + 1 }?: 1)
-            }
+        private fun statistics_addToPendingPrivateAndBroadcastMessages(i : Int) {
+            val count = statistics_totalPendingPrivateMessages.read()
+            statistics_totalPendingPrivateMessages.write(count?.let { it + i }?: i)
         }
 
-        private fun removeFromPendingMessagesCounter(source: String) {
-            if (!source.startsWith("#")) {
-                val count = totalPendingPrivateMessages.read()!!
-                totalPendingPrivateMessages.write(count - 1)
-            }
+        private fun statistics_removeFromPendingPrivateAndBroadcastMessages(i : Int) {
+            val count = statistics_totalPendingPrivateMessages.read()!!
+            statistics_totalPendingPrivateMessages.write(count - i)
         }
 
 
-        fun sendToUserOrEnqueuePending(receiver : UserManager.User, source: String, message : Message) {
-            val messageHasBeenRead = send(source, message as MessageImpl, messageListeners[receiver.id()])
-            if (!messageHasBeenRead) {
-                receiver.addPendingMessageID(message.id.toInt())
-                addToPendingMessagesCounter(source)
+        fun deliverBroadcastToAllListeners(message : Message, userManager: UserManager) {
+            // Statistics stuff
+            val totalUnread = userManager.getUserCount() - messageListeners.size
+            statistics_addToPendingPrivateAndBroadcastMessages(totalUnread)
+            //
+
+
+            messageListeners.forEach { id, callbacks ->
+                val u = userManager.getUserByID(id)
+                u.setLastReadBroadcast(broadcasts.count() - 1)
+
+                deliver("BROADCAST", message, callbacks)
             }
         }
 
-        // returns if message has been read (if there are callbacks)
-        private fun send(source: String, message : MessageImpl, callbacks : List<ListenerCallback>?) : Boolean {
-            // if null or empty, return false
-            if(callbacks?.isEmpty() != false) return false
+        fun deliverToUserOrEnqueuePending(receiver : UserManager.User, source: String, message : Message) {
 
+            var callbacks = messageListeners[receiver.id()]
+            if (callbacks != null && !callbacks.isEmpty()) {
+                deliver(source, message, callbacks)
+
+
+                if (isSourceBroadcast(source))
+                    receiver.setLastReadBroadcast(broadcasts.count() - 1)
+            }
+            else {
+                // We enqueue channel and private messages only
+                if (isSourcePrivate(source) || isSourceChannel(source)) {
+                    receiver.addPendingMessageID(message.id.toInt())
+                }
+
+
+                if (isSourcePrivate(source) || isSourceBroadcast(source)) {
+                    statistics_addToPendingPrivateAndBroadcastMessages(1)
+                }
+
+            }
+        }
+
+
+
+        private fun deliver(source: String, message : Message, callbacks : List<ListenerCallback>)  {
             callbacks.forEach{callback -> callback(source, message)}
-            message.setReadNow()
-            return true
         }
-
 
 
         fun addcallback(u : UserManager.User, callback : ListenerCallback) {
@@ -93,15 +130,29 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
 
             // only callback in list
             if (list.isEmpty()) {
-                u.forEachPendingMessage {
-                    val message = readMessageFromDB(it.toLong()) as MessageManager.MessageImpl
-                    val source = message.getSource()
-                    val messageHasBeenRead = send(source, message, listOf(callback))
-                    assert(messageHasBeenRead)
 
-                    removeFromPendingMessagesCounter(source)
+                fun doForEachMessage(id : Int) {
+                    val message = readMessageFromDB(id.toLong()) as MessageManager.MessageImpl
+                    val source = message.getSource()
+                    deliver(source, message, listOf(callback))
+
+                    if (isSourcePrivate(source) || isSourceBroadcast(source)) {
+                        statistics_removeFromPendingPrivateAndBroadcastMessages(1)
+                    }
                 }
+
+                // Send Broadcasts
+                val lastReadBroadcast = u.getLastReadBroadcast()
+                broadcasts.forEachFrom({it -> doForEachMessage(it)}, lastReadBroadcast + 1)
+                // Send private and channel messages
+                u.forEachPendingMessage {it -> doForEachMessage(it)}
+
+
+                // Clear channel/private messages queue
                 u.clearPendingMessages()
+                // Set Broadcast to last message read
+                u.setLastReadBroadcast(broadcasts.count() - 1)
+
             }
             list.add(callback)
         }

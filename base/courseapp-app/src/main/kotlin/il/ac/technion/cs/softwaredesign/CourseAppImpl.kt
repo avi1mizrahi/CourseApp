@@ -82,7 +82,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
         c.forEachUser{
             val receiver = managers.users.getUserByID(it)
-            managers.messageListenerManager.sendToUserOrEnqueuePending(receiver, source, message)
+            managers.messageListenerManager.deliverToUserOrEnqueuePending(receiver, source, message)
         }
         managers.messages.addToTotalChannelMessagesCount()
         c.addToMessagesCount()
@@ -97,11 +97,9 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         // Make the source string and write it
         val source = "BROADCAST"
         (message as MessageManager.MessageImpl).setSource(source)
+        managers.messages.addBroadcastToList(message)
 
-
-        managers.users.forEachUser {
-            managers.messageListenerManager.sendToUserOrEnqueuePending(it, source, message)
-        }
+        managers.messageListenerManager.deliverBroadcastToAllListeners(message, managers.users)
 
         return completedOf(Unit)
     }
@@ -116,7 +114,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val source = "@" + sender.getName()
         (message as MessageManager.MessageImpl).setSource(source)
 
-        managers.messageListenerManager.sendToUserOrEnqueuePending(receiver, source, message)
+        managers.messageListenerManager.deliverToUserOrEnqueuePending(receiver, source, message)
 
         return completedOf(Unit)
     }

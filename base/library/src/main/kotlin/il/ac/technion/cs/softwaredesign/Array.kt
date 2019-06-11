@@ -21,20 +21,32 @@ class ArrayInt(private val db: KeyValueStore) {
                 p1, p2 ->
                 action(p1.getIntReference("val").read()!!, p2)
             }
+
+
+    fun forEachFrom(action: (Int) -> Unit, start:Int) =
+            internalArr.forEachFrom ({ it->
+                action(it.getIntReference("val").read()!!)
+            } , start)
+    fun forEachFrom(action: (Int, Int) -> Unit, start:Int) =
+            internalArr.forEachFrom ({
+                p1, p2 ->
+                action(p1.getIntReference("val").read()!!, p2)
+            }, start)
 }
+
 
 class Array(private val DB: KeyValueStore) : DataStructure(DB) {
     // Create a new slot
     fun newSlot(): Pair<KeyValueStore,Int>  {
         val position = count()
         setCount(position + 1)
-        return Pair(ScopedKeyValueStore(DB, listOf(position.toString())), position)
+        return Pair(DB.scope(position.toString()), position)
     }
 
     operator fun get(i: Int): KeyValueStore? {
         val size = count()
         if (i < 0 || i >= size) return null
-        return ScopedKeyValueStore(DB, listOf(i.toString()))
+        return DB.scope(i.toString())
     }
 
     fun clear() = setCount(0)
@@ -47,6 +59,18 @@ class Array(private val DB: KeyValueStore) : DataStructure(DB) {
 
     fun forEach(action: (KeyValueStore, Int) -> Unit) {
         repeat( count()) {
+            action(get(it)!!, it)
+        }
+    }
+
+    fun forEachFrom(action: (KeyValueStore) -> Unit, start: Int) {
+        for (it in start until count()) {
+            action(get(it)!!)
+        }
+    }
+
+    fun forEachFrom(action: (KeyValueStore, Int) -> Unit, start: Int) {
+        for (it in start until count()) {
             action(get(it)!!, it)
         }
     }

@@ -65,17 +65,23 @@ class UserManager(DB: KeyValueStore) {
     private fun addUserID(name: String, id: Int) = nameToIdMap.write(name, id)
 
     inner class User(DB: KeyValueStore, private val id: Int) {
+
         private val name = DB.getStringReference("name")
         private val password = DB.getStringReference("password")
         private var token = DB.getStringReference("token")
         private val isAdmin = DB.getStringReference("isAdmin")
         private var channelList = Set(DB.scope("channels"))
-        private val pendingMessages = ArrayInt(DB.scope("pendingMessagges"))
+
+        private val pendingMessages = ArrayInt(DB.scope("pendingMessages"))
+        private val lastReadBroadcast = DB.getIntReference("lastReadBroadcast")
 
         fun initialize(n: String, pass: String) {
             name.write(n)
             password.write(pass)
         }
+
+        fun getLastReadBroadcast() = lastReadBroadcast.read() ?: -1
+        fun setLastReadBroadcast(count : Int) = lastReadBroadcast.write(count)
 
         fun getChannelCount(): Int = channelList.count()
 
@@ -115,7 +121,6 @@ class UserManager(DB: KeyValueStore) {
         fun getPassword(): String? = password.read()
 
         fun logInAndAssignToken(token: Token) {
-            assert(!isLoggedIn())
             setToken(token)
 
             activeCount.write(activeCount.read()!! + 1)
@@ -123,7 +128,6 @@ class UserManager(DB: KeyValueStore) {
 
         // Assign the token to this user
         fun logout() {
-            assert(isLoggedIn())
             removeToken()
 
             activeCount.write(activeCount.read()!! - 1)
