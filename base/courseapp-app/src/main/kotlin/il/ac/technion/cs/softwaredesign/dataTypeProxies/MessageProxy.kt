@@ -30,6 +30,12 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
     fun addToTotalChannelMessagesCount() = totalChannelMessages.write(getTotalChannelMessages().toInt() + 1)
 
     fun readMessageFromDB(index : Long) : Message? {
+
+        // TODO there are 2 instances of MessageManager. Their caches are not synchronized.
+        this.messages.forceCacheRefresh()
+        //
+
+
         val messageDB = this.messages[index.toInt()] ?: return null
         return MessageImpl(messageDB, index)
     }

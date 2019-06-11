@@ -45,7 +45,7 @@ class UserManager(DB: KeyValueStore) {
         return ret
     }
 
-    fun getUserCount(): Int = allUsers.size()
+    fun getUserCount(): Int = allUsers.count()
 
     fun getActiveCount(): Int = activeCount.read()!!
 
@@ -131,7 +131,7 @@ class UserManager(DB: KeyValueStore) {
             activeCount.write(activeCount.read()!! - 1)
         }
 
-        fun getPendingMessagesCount() = pendingMessages.size()
+        fun getPendingMessagesCount() = pendingMessages.count()
         fun clearPendingMessages() = pendingMessages.clear()
         fun addPendingMessageID(i : Int) = pendingMessages.push(i)
         fun forEachPendingMessage(action : (Int) -> Unit) = pendingMessages.forEach(action)

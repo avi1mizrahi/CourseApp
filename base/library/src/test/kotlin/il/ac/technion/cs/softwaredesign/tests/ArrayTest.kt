@@ -34,20 +34,20 @@ class ArrayTest {
 
     @Test
     fun `empty is size 0`() {
-        assertEquals(0, array.size())
+        assertEquals(0, array.count())
     }
 
     @Test
     fun `push affect size`() {
         createNewMockProxySlot()
 
-        assertEquals(1, array.size())
+        assertEquals(1, array.count())
 
         repeat(13) {
             createNewMockProxySlot()
         }
 
-        assertEquals(14, array.size())
+        assertEquals(14, array.count())
     }
 
     @Test
@@ -66,7 +66,7 @@ class ArrayTest {
         array.newSlot()
         array.clear()
 
-        assertEquals(0, array.size())
+        assertEquals(0, array.count())
     }
 
     @Test
@@ -80,7 +80,7 @@ class ArrayTest {
         array.newSlot()
         array.newSlot()
 
-        assertEquals(2, array.size())
+        assertEquals(2, array.count())
     }
 
     @Test
@@ -121,7 +121,7 @@ class ArrayTest {
     fun `ArrayInt insertion`() {
         arrayInt.push(3)
 
-        assertEquals(1, arrayInt.size())
+        assertEquals(1, arrayInt.count())
         assertEquals(3, arrayInt[0])
     }
 
@@ -130,7 +130,7 @@ class ArrayTest {
         arrayInt.push(3)
         arrayInt.clear()
 
-        assertEquals(0, arrayInt.size())
+        assertEquals(0, arrayInt.count())
     }
     @Test
     fun `ArrayInt for each`() {

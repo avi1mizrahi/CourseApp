@@ -81,7 +81,7 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
         }
     }
 
-    override fun exists(id: Int) : Boolean {
+    fun exists(id: Int) : Boolean {
         return DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).read() != null
     }
 

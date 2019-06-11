@@ -113,7 +113,7 @@ class Heap(DB: KeyValueStore,
         pushDown(getObjectsNode(id)!!, id)
     }
 
-    override fun exists(id: Int) : Boolean {
+    fun exists(id: Int) : Boolean {
         return getObjectsNode(id) != null
     }
 
