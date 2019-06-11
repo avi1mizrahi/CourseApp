@@ -16,10 +16,6 @@ class HeapTest {
         return getPrimaryOverride!!.invoke(id)
     }
 
-    @BeforeEach
-    fun `init`() {
-        heap.initialize()
-    }
 
     @Test
     fun `IDIncremented works`() {

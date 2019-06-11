@@ -28,8 +28,6 @@ class UserManager(DB: KeyValueStore) {
         if (activeCount.read() == null) {
             activeCount.write(0)
         }
-
-        allUsersByChannelCount.initialize()
     }
 
     fun getTop10UsersByChannel(): List<String> =
@@ -77,7 +75,6 @@ class UserManager(DB: KeyValueStore) {
         fun initialize(n: String, pass: String) {
             name.write(n)
             password.write(pass)
-            channelList.initialize()
         }
 
         fun getChannelCount(): Int = channelList.count()

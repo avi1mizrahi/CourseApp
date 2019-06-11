@@ -6,7 +6,6 @@ package il.ac.technion.cs.softwaredesign
 // finding is O(1) because the nodes are named after the keys!
 // Works as a set, no duplicates.
 
-//$ListName/Initialized -> bool
 //$ListName/Count -> int32
 //$ListName/First -> int32
 //$ListName/nodes/$id/Exists -> bool

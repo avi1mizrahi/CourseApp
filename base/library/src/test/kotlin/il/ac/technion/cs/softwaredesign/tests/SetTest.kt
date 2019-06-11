@@ -10,11 +10,6 @@ internal class SetTest {
 
     private val list = Set(VolatileKeyValueStore())
 
-    @BeforeEach
-    fun `init`() {
-        list.initialize()
-    }
-
     @Test
     fun `nothing exists in empty list`() {
         val ret = list.exists(5)

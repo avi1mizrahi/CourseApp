@@ -42,12 +42,6 @@ class ChannelManager(DB: KeyValueStore) {
             {id -> -id})
 
 
-    init {
-        allChannelsByUserCount.initialize()
-        allChannelsByActiveCount.initialize()
-        allChannelsByMessageCount.initialize()
-    }
-
 
 
     fun getTop10ChannelsByUserCount() : List<String> {
@@ -125,9 +119,6 @@ class ChannelManager(DB: KeyValueStore) {
 
         fun initialize(s : String) {
             name.write(s)
-            userList.initialize()
-            activeList.initialize()
-            operatorList.initialize()
         }
 
 
