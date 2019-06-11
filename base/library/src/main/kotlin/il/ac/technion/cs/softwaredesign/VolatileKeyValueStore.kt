@@ -1,7 +1,9 @@
 package il.ac.technion.cs.softwaredesign
 
+import java.util.concurrent.ConcurrentHashMap
+
 class VolatileKeyValueStore : KeyValueStore {
-    private val map = mutableMapOf<List<String>, Any>()
+    private val map = ConcurrentHashMap<List<String>, Any>()
 
     override fun <V> getReference(key: List<String>,
                                   serializer: Serializer<V>): KeyValueStore.Object<V> =
