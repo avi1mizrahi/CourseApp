@@ -12,6 +12,7 @@ import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
 import il.ac.technion.cs.softwaredesign.exceptions.*
 import il.ac.technion.cs.softwaredesign.messages.MediaType
+import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import io.mockk.confirmVerified
 import io.mockk.every
@@ -22,7 +23,10 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Duration.ofSeconds
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.concurrent.CompletableFuture
+import kotlin.concurrent.thread
 
 
 class CourseAppTest {
@@ -392,6 +396,7 @@ class CourseAppTest {
 
     @Nested
     inner class Messages {
+
         @Test
         fun `addListener throws on bad input`() {
             app.login("who", "ha").join()
@@ -505,7 +510,162 @@ class CourseAppTest {
                          match { it.contents contentEquals "1 2".toByteArray() })
             }
             confirmVerified()
+
+            assertEquals(statistics.pendingMessages().join(), 0)
+            assertEquals(statistics.channelMessages().join(), 1)
         }
+
+        @Test
+        fun `pending messages is updated when a user starts listening`() {
+            val admin = app.login("who", "ha").join()
+            val other = app.login("user2", "user2").join()
+
+            val m = messageFactory.create(MediaType.TEXT, "1 2".toByteArray()).join()
+            app.broadcast(admin,  m).join()
+
+            assertEquals(statistics.pendingMessages().join(), 2)
+            assertEquals(statistics.channelMessages().join(), 0)
+
+            app.addListener(admin) { _, _ -> CompletableFuture.completedFuture(Unit)}
+
+            assertEquals(statistics.pendingMessages().join(), 1)
+            assertEquals(statistics.channelMessages().join(), 0)
+
+            app.addListener(other) { _, _ -> CompletableFuture.completedFuture(Unit)}
+
+            assertEquals(statistics.pendingMessages().join(), 0)
+            assertEquals(statistics.channelMessages().join(), 0)
+
+            val m2 = messageFactory.create(MediaType.TEXT, "1 2".toByteArray()).join()
+            app.broadcast(admin,  m2).join()
+
+            assertEquals(statistics.pendingMessages().join(), 0)
+            assertEquals(statistics.channelMessages().join(), 0)
+        }
+
+        @Test
+        fun `message read time is set to first reader - private`() {
+            val admin = app.login("who", "ha").join()
+            val other = app.login("user2", "user2").join()
+
+            val m = messageFactory.create(MediaType.TEXT, "1 2".toByteArray()).join()
+
+            var receivedm : Message? = null
+
+
+            app.addListener(other) {
+                _, received -> receivedm = received
+                CompletableFuture.completedFuture(Unit)
+            }.join()
+
+
+            val before = LocalDateTime.now()
+            Thread.sleep(1000)
+            app.privateSend(admin, "user2",  m).join()
+            Thread.sleep(1000)
+            val after = LocalDateTime.now()
+
+
+            assert(receivedm!!.received!! > before)
+            assert(receivedm!!.received!! < after)
+        }
+
+        @Test
+        fun `message read time is set to first reader - channel`() {
+            val admin = app.login("who", "ha").join()
+            val other = app.login("user2", "user2").join()
+            val other2 = app.login("user3", "user3").join()
+
+            app.channelJoin(admin, "#ch").join()
+            app.channelJoin(other, "#ch").join()
+            app.channelJoin(other2, "#ch").join()
+
+            val m = messageFactory.create(MediaType.TEXT, "1 2".toByteArray()).join()
+
+            var receivedm : Message? = null
+
+            app.addListener(other) {
+                _, _ -> CompletableFuture.completedFuture(Unit)
+            }
+
+
+            val before = LocalDateTime.now()
+            Thread.sleep(1000)
+            app.channelSend(admin, "#ch",  m).join()
+            Thread.sleep(1000)
+            val after = LocalDateTime.now()
+            app.addListener(other2) {
+                _, received -> receivedm = received
+                CompletableFuture.completedFuture(Unit)
+            }.join()
+
+
+            assert(receivedm!!.received!! > before)
+            assert(receivedm!!.received!! < after)
+        }
+
+
+        @Test
+        fun `message read time is set to first reader - broadcast`() {
+            val admin = app.login("who", "ha").join()
+            val other = app.login("user2", "user2").join()
+            val other2 = app.login("user3", "user3").join()
+
+
+            val m = messageFactory.create(MediaType.TEXT, "1 2".toByteArray()).join()
+
+            var receivedm : Message? = null
+
+            app.addListener(other) {
+                _, _ -> CompletableFuture.completedFuture(Unit)
+            }
+
+
+            val before = LocalDateTime.now()
+            Thread.sleep(1000)
+            app.broadcast(admin,  m).join()
+            Thread.sleep(1000)
+            val after = LocalDateTime.now()
+            app.addListener(other2) {
+                _, received -> receivedm = received
+                CompletableFuture.completedFuture(Unit)
+            }.join()
+
+
+            assert(receivedm!!.received!! > before)
+            assert(receivedm!!.received!! < after)
+        }
+
+
+
+        @Test
+        fun `broadcast message received by all users`() {
+            val listener = mockk<ListenerCallback>()
+
+            every { listener(any(), any()) } returns CompletableFuture.completedFuture(Unit)
+
+            val admin = app.login("who", "ha").join()
+            val other = app.login("user2", "user2").join()
+
+            app.addListener(admin, listener).join()
+            app.addListener(other, listener).join()
+
+            val m = messageFactory.create(MediaType.TEXT, "1 2".toByteArray()).join()
+            app.broadcast(admin,  m).join()
+
+
+            verify(exactly = 2) {
+                listener(match { it == "BROADCAST" },
+                        match { it.contents contentEquals "1 2".toByteArray() })
+            }
+            confirmVerified()
+
+
+            assertEquals(statistics.pendingMessages().join(), 0)
+            assertEquals(statistics.channelMessages().join(), 0)
+        }
+
+
 
         @Test
         fun `broadcast throws on bad input`() {
