@@ -26,7 +26,8 @@ IntMap/StringMap
 Set:
     A set of Integers.
     Capable of insertion, deletion and finding a specific index at O(1)
-    add(int)/remove(int) work as expected. Doubles or bad removals are ignored.
+    add(int)/remove(int) work as expected.
+    Doubles or bad removals will break the database.
 
     forEach runs a (Int) -> Unit on every integer in the set at O(N)
 

@@ -135,7 +135,6 @@ class ChannelManager(DB: KeyValueStore) {
         }
 
         fun addOp(user : User) {
-            assert(!isOp(user))
             operatorList.add(user.id())
         }
 
@@ -143,13 +142,11 @@ class ChannelManager(DB: KeyValueStore) {
 
 
         fun addActive(user : User) {
-            assert(!isActive(user))
             activeList.add(user.id())
             allChannelsByActiveCount.idIncremented(id)
         }
 
         fun removeActive(user : User) {
-            assert(isActive(user))
             activeList.remove(user.id())
             allChannelsByActiveCount.idDecremented(id)
         }
@@ -157,7 +154,6 @@ class ChannelManager(DB: KeyValueStore) {
         private fun isActive(user : User) : Boolean = activeList.exists(user.id())
 
         fun addUser(user : User) {
-            assert(!hasUser(user))
             val userid = user.id()
 
             userList.add(userid)
@@ -171,12 +167,13 @@ class ChannelManager(DB: KeyValueStore) {
         }
 
         fun removeUser(user : User) {
-            assert(hasUser(user))
             val userid = user.id()
 
             userList.remove(userid)
             allChannelsByUserCount.idDecremented(id)
-            operatorList.remove(userid)
+
+            if (operatorList.exists(userid))
+                operatorList.remove(userid)
 
             assertEquals(activeList.exists(userid), user.isLoggedIn())
             if (user.isLoggedIn())  {

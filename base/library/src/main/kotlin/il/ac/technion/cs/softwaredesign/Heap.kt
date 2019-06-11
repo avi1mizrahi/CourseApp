@@ -21,6 +21,8 @@ class Heap(DB: KeyValueStore,
     private val idToIndexMap = DB.getIntMapReference(OBJECTS_IDENTIFIER)
 
     fun add(id: Int) {
+        //assert(!exists(id))
+
         val index = count()
         updateNode(index, id)
         setCount(index + 1)
@@ -28,6 +30,8 @@ class Heap(DB: KeyValueStore,
     }
 
     fun remove(id: Int){
+        //assert(exists(id))
+
         var currentIndex = getObjectsNode(id)!!
 
         // push node to root. don't bother updating it

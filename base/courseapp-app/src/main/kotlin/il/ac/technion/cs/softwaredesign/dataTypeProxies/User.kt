@@ -80,14 +80,12 @@ class UserManager(DB: KeyValueStore) {
         fun getChannelCount(): Int = channelList.count()
 
         fun addToChannelList(channel: ChannelManager.Channel) {
-            assert(!isInChannel(channel))
             channelList.add(channel.getID())
 
             allUsersByChannelCount.idIncremented(id)
         }
 
         fun removeFromChannelList(channel: ChannelManager.Channel) {
-            assert(isInChannel(channel))
             channelList.remove(channel.getID())
 
             allUsersByChannelCount.idDecremented(id)

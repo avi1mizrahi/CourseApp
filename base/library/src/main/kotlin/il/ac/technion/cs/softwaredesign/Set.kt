@@ -22,7 +22,7 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
     private val first = DB.getIntReference(FIRST_IDENTIFIER)
 
     fun add(id: Int) {
-        if (exists(id)) return
+        //assert(!exists(id))
 
         setExists(id)
 
@@ -49,7 +49,7 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
 
     fun remove(id: Int)
     {
-        if (!exists(id)) return
+        //assert(exists(id))
 
         val currentCount = count()
         unsetExists(id)
