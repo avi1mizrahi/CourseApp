@@ -5,9 +5,7 @@ import il.ac.technion.cs.softwaredesign.Set
 import il.ac.technion.cs.softwaredesign.exceptions.NameFormatException
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import org.junit.jupiter.api.Assertions.assertEquals
-
-
-
+import java.util.concurrent.CompletableFuture
 
 
 // Valid names for channels start with `#`, then have any number of English alphanumeric characters, underscores
@@ -57,15 +55,13 @@ class ChannelManager(DB: KeyValueStore) {
 
 
     fun createNewChannel(name : String) : Channel {
-        assert(getChannelByName(name) == null)
-
 
         val (channelDB, id) = allChannels.newSlot()
         val channel = Channel(channelDB, id)
 
         channel.initialize(name)
 
-
+        // No need to async, no read()
         nameToId.write(name, id)
         statistics_allChannelsByUserCount.addMinimum(id)
         statistics_allChannelsByActiveCount.addMinimum(id)
@@ -94,12 +90,16 @@ class ChannelManager(DB: KeyValueStore) {
 //    }
 
     fun removeChannel(c : Channel) {
-        assert(c.getUserCount() == 0)
+        //assert(c.getUserCount() == 0)
 
-        nameToId.delete(c.getName())
-        statistics_allChannelsByUserCount.remove(c.getID())
-        statistics_allChannelsByActiveCount.remove(c.getID())
-        statistics_allChannelsByMessageCount.remove((c.getID()))
+
+        CompletableFuture.allOf(
+                CompletableFuture.runAsync {nameToId.delete(c.getName())},
+                CompletableFuture.runAsync {statistics_allChannelsByUserCount.remove(c.getID())},
+                CompletableFuture.runAsync {statistics_allChannelsByActiveCount.remove(c.getID())},
+                CompletableFuture.runAsync {statistics_allChannelsByMessageCount.remove(c.getID())}
+
+        ).join()
     }
 
     inner class Channel(DB: KeyValueStore, private val id: Int) {
@@ -155,31 +155,38 @@ class ChannelManager(DB: KeyValueStore) {
 
         fun addUser(user : User) {
             val userid = user.id()
-
-            userList.add(userid)
-            statistics_allChannelsByUserCount.idIncremented(id)
-
-            if (user.isLoggedIn()) {
-                activeList.add(userid)
-                statistics_allChannelsByActiveCount.idIncremented(id)
-            }
-
+            CompletableFuture.allOf(
+                    CompletableFuture.runAsync {
+                        userList.add(userid)
+                        statistics_allChannelsByUserCount.idIncremented(id)
+                    },
+                    CompletableFuture.runAsync {
+                        if (user.isLoggedIn()) {
+                            activeList.add(userid)
+                            statistics_allChannelsByActiveCount.idIncremented(id)
+                        }
+                    }
+            ).join()
         }
 
         fun removeUser(user : User) {
             val userid = user.id()
 
-            userList.remove(userid)
-            statistics_allChannelsByUserCount.idDecremented(id)
+            CompletableFuture.allOf(
+                    CompletableFuture.runAsync {
+                        userList.remove(userid)
+                        statistics_allChannelsByUserCount.idDecremented(id)
+                    },
+                    CompletableFuture.runAsync {
+                        if (operatorList.exists(userid))
+                            operatorList.remove(userid)
+                    },
+                    CompletableFuture.runAsync {
+                        activeList.remove(userid)
+                        statistics_allChannelsByActiveCount.idDecremented(id)
+                    }
 
-            if (operatorList.exists(userid))
-                operatorList.remove(userid)
-
-            assertEquals(activeList.exists(userid), user.isLoggedIn())
-            if (user.isLoggedIn())  {
-                activeList.remove(userid)
-                statistics_allChannelsByActiveCount.idDecremented(id)
-            }
+            ).join()
 
             if (getUserCount() == 0) {
                 removeChannel(this)

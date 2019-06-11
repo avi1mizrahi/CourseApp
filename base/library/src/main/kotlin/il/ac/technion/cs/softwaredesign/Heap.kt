@@ -31,7 +31,7 @@ class Heap(DB: KeyValueStore,
         val index = count()
         updateNode(index, id)
         setCount(index + 1)
-        pushUp(index, id) // Not needed, node is minimum
+        pushUp(index, id)
     }
 
     fun remove(id: Int){
