@@ -119,7 +119,8 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
 
 
         private fun deliver(source: String, message : Message, callbacks : List<ListenerCallback>)  {
-            callbacks.forEach{callback -> callback(source, message)}
+            val futures = callbacks.map{callback -> callback(source, message)}
+            CompletableFuture.allOf(*futures.toTypedArray())
         }
 
 
