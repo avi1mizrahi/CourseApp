@@ -85,6 +85,8 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
 
 
             messageListeners.forEach { id, callbacks ->
+                (message as MessageImpl).setReadNow() // maximum one read() call
+
                 val u = userManager.getUserByID(id)
                 u.setLastReadBroadcast(broadcasts.count() - 1)
 
