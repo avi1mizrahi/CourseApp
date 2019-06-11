@@ -80,6 +80,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val source = channel + "@" + u.getName()
         (message as MessageManager.MessageImpl).setSource(source)
 
+
         c.forEachUser{
             val receiver = managers.users.getUserByID(it)
             managers.messageListenerManager.deliverToUserOrEnqueuePending(receiver, source, message)
@@ -154,7 +155,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
                 throw UserAlreadyLoggedInException()
 
 
-            // Cannot be done async, modifies heaps
+            // Cannot be done async, modifies shared heaps
             u.forEachChannel { managers.channels.getChannelById(it).addActive(u) }
         }
 
@@ -170,12 +171,12 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val u = managers.users.getUserByID(t.getUserid()!!) // User has to exist, we just checked
 
         // User must have a token and it must be this token
-        assert(u.getCurrentToken()!! == t.getString())
+        //assert(u.getCurrentToken()!! == t.getString())
 
         t.delete()
         u.logout()
 
-        // Cannot be done async, modifies heaps
+        // Cannot be done async, modifies shared heaps
         u.forEachChannel { managers.channels.getChannelById(it).removeActive(u) }
 
         return completedOf(Unit)

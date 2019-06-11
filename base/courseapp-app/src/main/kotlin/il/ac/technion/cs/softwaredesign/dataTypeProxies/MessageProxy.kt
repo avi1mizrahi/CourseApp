@@ -10,6 +10,7 @@ import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 
 
 private fun isSourceBroadcast(source : String) = source == "BROADCAST"
@@ -61,7 +62,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         private val statistics_totalPendingPrivateMessages = DB.getIntReference("totalPendingMessages")
 
         // Map of UserID -> his callbacks
-        private val messageListeners = HashMap<Int, ArrayList<ListenerCallback>>()
+        private val messageListeners = ConcurrentHashMap<Int, ArrayList<ListenerCallback>>()
 
         fun statistics_getTotalPrivatePending() = (statistics_totalPendingPrivateMessages.read() ?: 0).toLong()
 
@@ -111,11 +112,9 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
                     receiver.addPendingMessageID(message.id.toInt())
                 }
 
-
                 if (isSourcePrivate(source) || isSourceBroadcast(source)) {
                     statistics_addToPendingPrivateAndBroadcastMessages(1)
                 }
-
             }
         }
 
