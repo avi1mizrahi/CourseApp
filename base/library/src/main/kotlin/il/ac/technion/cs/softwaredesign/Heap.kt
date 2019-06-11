@@ -19,23 +19,15 @@ class Heap(DB: KeyValueStore,
 
     private val indexToIdMap = DB.getIntMapReference(NODES_IDENTIFIER)
     private val idToIndexMap = DB.getIntMapReference(OBJECTS_IDENTIFIER)
-    private var cachedCount : Int = -1
 
     fun add(id: Int) {
-        assert(!exists(id))
-        cachedCount = count()
-
-        val index = cachedCount
+        val index = count()
         updateNode(index, id)
         setCount(index + 1)
-        cachedCount++
         pushUp(index, id)
     }
 
     fun remove(id: Int){
-        assert(exists(id))
-        cachedCount = count()
-
         var currentIndex = getObjectsNode(id)!!
 
         // push node to root. don't bother updating it
@@ -46,12 +38,11 @@ class Heap(DB: KeyValueStore,
             currentIndex = parentIndex
         }
 
-        val replacementNodeIndex = cachedCount - 1
+        val replacementNodeIndex = count() - 1
         val replacementNodeID = getNodesObject(replacementNodeIndex)!!
 
         updateNode(0, replacementNodeID)
-        setCount(cachedCount - 1)
-        cachedCount--
+        setCount(count() - 1)
         pushDown(0, replacementNodeID)
 
 
@@ -59,10 +50,8 @@ class Heap(DB: KeyValueStore,
     }
 
     fun getTop10() : List<Int> {
-        cachedCount = count()
-
         val ret = ArrayList<Int>()
-        if (cachedCount == 0)
+        if (count() == 0)
             return ret
 
         // Index -> ID
@@ -117,12 +106,10 @@ class Heap(DB: KeyValueStore,
     }
 
     fun idIncremented(id : Int) {
-        cachedCount = count()
         pushUp(getObjectsNode(id)!!, id)
     }
 
     fun idDecremented(id : Int) {
-        cachedCount = count()
         pushDown(getObjectsNode(id)!!, id)
     }
 
@@ -208,12 +195,12 @@ class Heap(DB: KeyValueStore,
 
     private fun getLeft(index : Int) : Int? {
         val left = index * 2 + 1
-        if (left >= cachedCount) return null
+        if (left >= count()) return null
         return left
     }
     private fun getRight(index : Int) : Int? {
         val right = index * 2 + 2
-        if (right >= cachedCount) return null
+        if (right >= count()) return null
         return right
     }
     private fun getParent(index : Int) : Int? {

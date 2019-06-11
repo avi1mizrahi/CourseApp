@@ -10,11 +10,19 @@ const val NODES_IDENTIFIER = "nodes"
 abstract class DataStructure(DB: KeyValueStore) {
 
     private var count = DB.getIntReference(COUNT_IDENTIFIER)
+    private var cachedCount : Int = -1
 
+    fun setCount(c: Int) {
+        count.write(c)
+        cachedCount = c
+    }
 
-    fun setCount(c: Int) = count.write(c)
+    fun count(): Int {
+        if (cachedCount == -1)
+            cachedCount = count.read() ?: 0
 
-    fun count(): Int = count.read() ?: 0
+        return cachedCount
+    }
 
     abstract fun exists(id: Int): Boolean
 }

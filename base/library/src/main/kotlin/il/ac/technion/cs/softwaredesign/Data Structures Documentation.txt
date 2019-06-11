@@ -37,7 +37,7 @@ Heap:
     The secondary sorting key must not have collisions.
 
     add/remove work as expected and update the heap at O(Log(n)) complexity
-    Duplicate adds or bad removals will throw an assertion failure.
+    Duplicate adds or bad removals will break the data structure.
 
     idIncremented/idDecremented must be called if a key has increased/decreased to update the heap. O(Log(n)) complexity
 
