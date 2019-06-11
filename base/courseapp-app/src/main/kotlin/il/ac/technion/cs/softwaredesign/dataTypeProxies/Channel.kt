@@ -29,15 +29,15 @@ class ChannelManager(DB: KeyValueStore) {
     private val allChannels = Array(ScopedKeyValueStore(DB, listOf("allChannels")))
     private val nameToId = DB.getIntMapReference(listOf("nameToId"))
 
-    private val allChannelsByUserCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByUserCount")),
+    private val statistics_allChannelsByUserCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByUserCount")),
             {id -> getChannelById(id).getUserCount()},
             {id -> -id})
 
-    private val allChannelsByActiveCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByActiveUserCount")),
+    private val statistics_allChannelsByActiveCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByActiveUserCount")),
             {id -> getChannelById(id).getActiveCount()},
             {id -> -id})
 
-    private val allChannelsByMessageCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByMessageCount")),
+    private val statistics_allChannelsByMessageCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByMessageCount")),
             {id -> getChannelById(id).getMessageCount()},
             {id -> -id})
 
@@ -45,14 +45,14 @@ class ChannelManager(DB: KeyValueStore) {
 
 
     fun getTop10ChannelsByUserCount() : List<String> {
-        return allChannelsByUserCount.getTop10().map { id -> getChannelById(id).getName() }
+        return statistics_allChannelsByUserCount.getTop10().map { id -> getChannelById(id).getName() }
     }
 
     fun getTop10ChannelsByActiveUserCount() : List<String> {
-        return allChannelsByActiveCount.getTop10().map { id -> getChannelById(id).getName() }
+        return statistics_allChannelsByActiveCount.getTop10().map { id -> getChannelById(id).getName() }
     }
     fun getTop10ChannelsByMessageCount() : List<String> {
-        return allChannelsByMessageCount.getTop10().map { id -> getChannelById(id).getName() }
+        return statistics_allChannelsByMessageCount.getTop10().map { id -> getChannelById(id).getName() }
     }
 
 
@@ -67,9 +67,9 @@ class ChannelManager(DB: KeyValueStore) {
 
 
         nameToId.write(name, id)
-        allChannelsByUserCount.add(id)
-        allChannelsByActiveCount.add(id)
-        allChannelsByMessageCount.add(id)
+        statistics_allChannelsByUserCount.add(id)
+        statistics_allChannelsByActiveCount.add(id)
+        statistics_allChannelsByMessageCount.add(id)
 
         return channel
     }
@@ -97,9 +97,9 @@ class ChannelManager(DB: KeyValueStore) {
         assert(c.getUserCount() == 0)
 
         nameToId.delete(c.getName())
-        allChannelsByUserCount.remove(c.getID())
-        allChannelsByActiveCount.remove(c.getID())
-        allChannelsByMessageCount.remove((c.getID()))
+        statistics_allChannelsByUserCount.remove(c.getID())
+        statistics_allChannelsByActiveCount.remove(c.getID())
+        statistics_allChannelsByMessageCount.remove((c.getID()))
     }
 
     inner class Channel(DB: KeyValueStore, private val id: Int) {
@@ -113,7 +113,7 @@ class ChannelManager(DB: KeyValueStore) {
         fun getMessageCount() = messageCount.read() ?: 0
         fun addToMessagesCount() {
             messageCount.write(getMessageCount() + 1)
-            allChannelsByMessageCount.idIncremented(id)
+            statistics_allChannelsByMessageCount.idIncremented(id)
         }
 
 
@@ -143,12 +143,12 @@ class ChannelManager(DB: KeyValueStore) {
 
         fun addActive(user : User) {
             activeList.add(user.id())
-            allChannelsByActiveCount.idIncremented(id)
+            statistics_allChannelsByActiveCount.idIncremented(id)
         }
 
         fun removeActive(user : User) {
             activeList.remove(user.id())
-            allChannelsByActiveCount.idDecremented(id)
+            statistics_allChannelsByActiveCount.idDecremented(id)
         }
 
         private fun isActive(user : User) : Boolean = activeList.exists(user.id())
@@ -157,11 +157,11 @@ class ChannelManager(DB: KeyValueStore) {
             val userid = user.id()
 
             userList.add(userid)
-            allChannelsByUserCount.idIncremented(id)
+            statistics_allChannelsByUserCount.idIncremented(id)
 
             if (user.isLoggedIn()) {
                 activeList.add(userid)
-                allChannelsByActiveCount.idIncremented(id)
+                statistics_allChannelsByActiveCount.idIncremented(id)
             }
 
         }
@@ -170,7 +170,7 @@ class ChannelManager(DB: KeyValueStore) {
             val userid = user.id()
 
             userList.remove(userid)
-            allChannelsByUserCount.idDecremented(id)
+            statistics_allChannelsByUserCount.idDecremented(id)
 
             if (operatorList.exists(userid))
                 operatorList.remove(userid)
@@ -178,7 +178,7 @@ class ChannelManager(DB: KeyValueStore) {
             assertEquals(activeList.exists(userid), user.isLoggedIn())
             if (user.isLoggedIn())  {
                 activeList.remove(userid)
-                allChannelsByActiveCount.idDecremented(id)
+                statistics_allChannelsByActiveCount.idDecremented(id)
             }
 
             if (getUserCount() == 0) {

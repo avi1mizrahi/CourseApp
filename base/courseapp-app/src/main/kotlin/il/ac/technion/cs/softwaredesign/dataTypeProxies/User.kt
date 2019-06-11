@@ -14,7 +14,7 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 class UserManager(DB: KeyValueStore) {
     private val nameToIdMap = DB.getIntMapReference(listOf("nametoid"))
     private val activeCount = DB.getIntReference(listOf("activecount"))
-    private val allUsersByChannelCount =
+    private val statistics_allUsersByChannelCount =
             Heap(ScopedKeyValueStore(DB, listOf("usersbychannels")),
                  { id -> getUserByID(id).getChannelCount() },
                  { id -> -id })
@@ -31,7 +31,7 @@ class UserManager(DB: KeyValueStore) {
     }
 
     fun getTop10UsersByChannel(): List<String> =
-            allUsersByChannelCount.getTop10().map { id -> getUserByID(id).getName() }
+            statistics_allUsersByChannelCount.getTop10().map { id -> getUserByID(id).getName() }
 
     fun createUser(name: String, password: String): User {
         val (userDB, id) = allUsers.newSlot()
@@ -41,7 +41,7 @@ class UserManager(DB: KeyValueStore) {
         if (id == 0) ret.setAdmin()
 
         addUserID(name, id)
-        allUsersByChannelCount.add(id)
+        statistics_allUsersByChannelCount.add(id)
         return ret
     }
 
@@ -56,11 +56,11 @@ class UserManager(DB: KeyValueStore) {
 
     fun getUserByID(id: Int): User = User(allUsers[id]!!, id)
 
-    fun forEachUser( func: (User) -> Unit) {
-        allUsers.forEach { db, index ->
-            func(User(db, index))
-        }
-    }
+//    fun forEachUser( func: (User) -> Unit) {
+//        allUsers.forEach { db, index ->
+//            func(User(db, index))
+//        }
+//    }
 
     private fun addUserID(name: String, id: Int) = nameToIdMap.write(name, id)
 
@@ -88,13 +88,13 @@ class UserManager(DB: KeyValueStore) {
         fun addToChannelList(channel: ChannelManager.Channel) {
             channelList.add(channel.getID())
 
-            allUsersByChannelCount.idIncremented(id)
+            statistics_allUsersByChannelCount.idIncremented(id)
         }
 
         fun removeFromChannelList(channel: ChannelManager.Channel) {
             channelList.remove(channel.getID())
 
-            allUsersByChannelCount.idDecremented(id)
+            statistics_allUsersByChannelCount.idDecremented(id)
         }
 
         fun isInChannel(channel: ChannelManager.Channel): Boolean =
