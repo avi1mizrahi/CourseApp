@@ -96,6 +96,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
 
             var callbacks = messageListeners[receiver.id()]
             if (callbacks != null && !callbacks.isEmpty()) {
+                (message as MessageImpl).setReadNow()
                 deliver(source, message, callbacks)
 
 
@@ -115,7 +116,6 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
 
             }
         }
-
 
 
         private fun deliver(source: String, message : Message, callbacks : List<ListenerCallback>)  {
@@ -230,8 +230,17 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         }
 
 
+        // Read time must be set to first reader. this bool prevents extra reads.
+        private var cachedMessageAlreadyRead = false
         fun setReadNow() {
-            receivedProxy.write(LocalDateTime.now().toEpochSecond(ZoneOffset.UTC).toInt())
+            if (!cachedMessageAlreadyRead && receivedProxy.read()==null)
+            {
+                val time = LocalDateTime.now()
+                received = time
+                receivedProxy.write(time.toEpochSecond(ZoneOffset.UTC).toInt())
+                cachedMessageAlreadyRead = true
+            }
+
         }
 
 
