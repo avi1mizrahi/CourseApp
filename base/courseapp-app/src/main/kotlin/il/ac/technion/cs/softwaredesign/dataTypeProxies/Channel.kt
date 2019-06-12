@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture
 // Valid names for channels start with `#`, then have any number of English alphanumeric characters, underscores
 // (`_`) and hashes (`#`).
 private fun isBadChannelName(name : String) : Boolean {
-    val alphanumeric = ('a'..'z') + ('A'..'Z') + ('0'..'9')
+    val alphanumeric = ('a'..'z') + ('A'..'Z') + ('0'..'9') + '_'
 
     if (!name.startsWith("#"))
         return true
