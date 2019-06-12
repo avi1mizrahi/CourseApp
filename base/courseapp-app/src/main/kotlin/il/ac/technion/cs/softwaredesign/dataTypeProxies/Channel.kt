@@ -61,10 +61,9 @@ class ChannelManager(DB: KeyValueStore) {
 
         channel.initialize(name)
 
-        // No need to async, no read()
         nameToId.write(name, id)
         statistics_allChannelsByUserCount.addMinimum(id)
-        statistics_allChannelsByActiveCount.addMinimum(id)
+        statistics_allChannelsByActiveCount.add(id)
         statistics_allChannelsByMessageCount.addMinimum(id)
 
         return channel
@@ -162,8 +161,7 @@ class ChannelManager(DB: KeyValueStore) {
                     },
                     CompletableFuture.runAsync {
                         if (user.isLoggedIn()) {
-                            activeList.add(userid)
-                            statistics_allChannelsByActiveCount.idIncremented(id)
+                            addActive(user)
                         }
                     }
             ).join()
