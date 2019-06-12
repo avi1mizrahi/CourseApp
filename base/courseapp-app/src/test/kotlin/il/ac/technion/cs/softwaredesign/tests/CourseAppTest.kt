@@ -414,7 +414,7 @@ class CourseAppTest {
                 val id = it + 3000
                 val token = app.login("u$id", "ha").join()
                 app.channelJoin(token, "#ch").join()
-                app.addListener(token, callback)
+                app.addListener(token, callback).join()
             }
 
             val token = app.login("sender", "ha").join()
