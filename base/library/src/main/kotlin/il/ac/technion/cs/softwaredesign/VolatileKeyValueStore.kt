@@ -2,6 +2,10 @@ package il.ac.technion.cs.softwaredesign
 
 import java.util.concurrent.ConcurrentHashMap
 
+
+/**
+ * A mocked key-value store used for tests
+ */
 class VolatileKeyValueStore : KeyValueStore {
     private val map = ConcurrentHashMap<List<String>, Any>()
 

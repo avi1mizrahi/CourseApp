@@ -2,6 +2,9 @@ package il.ac.technion.cs.softwaredesign
 
 import java.nio.ByteBuffer
 
+/**
+ * An interface for serializing a DB key or value to a ByteArray.
+ */
 interface Serializer<T> {
     fun dump(t: T): ByteArray
     fun load(byteArray: ByteArray): T
