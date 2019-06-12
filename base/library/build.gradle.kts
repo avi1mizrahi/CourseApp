@@ -38,3 +38,8 @@ dependencies {
 
     runtime("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
 }
+
+tasks.dokka {
+    outputFormat = "html"
+    outputDirectory = "$buildDir/javadoc"
+}

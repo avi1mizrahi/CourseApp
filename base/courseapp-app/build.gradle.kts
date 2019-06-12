@@ -23,3 +23,8 @@ dependencies {
 
     testImplementation("io.mockk:mockk:$mockkVersion")
 }
+
+tasks.dokka {
+    outputFormat = "html"
+    outputDirectory = "$buildDir/javadoc"
+}

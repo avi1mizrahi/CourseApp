@@ -5,6 +5,15 @@ plugins {
     kotlin("jvm") version "1.3.31"
 }
 
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath("org.jetbrains.dokka:dokka-gradle-plugin:0.9.18")
+    }
+}
+
 allprojects {
     repositories {
         jcenter()
@@ -21,6 +30,8 @@ allprojects {
 
 subprojects {
     apply(plugin = "kotlin")
+    apply(plugin = "org.jetbrains.dokka")
+
     dependencies {
         val junitVersion: String? by extra
         implementation(kotlin("stdlib-jdk8"))
