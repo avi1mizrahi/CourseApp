@@ -67,32 +67,45 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         fun statistics_getTotalPrivatePending() = (statistics_totalPendingPrivateMessages.read() ?: 0).toLong()
 
 
+        // Synchronized allows only one thread at a time access run this function
+        @Synchronized
         private fun statistics_addToPendingPrivateAndBroadcastMessages(i : Int) {
             val count = statistics_totalPendingPrivateMessages.read()
             statistics_totalPendingPrivateMessages.write(count?.let { it + i }?: i)
         }
 
-        private fun statistics_removeFromPendingPrivateAndBroadcastMessages(i : Int) {
-            val count = statistics_totalPendingPrivateMessages.read()!!
-            statistics_totalPendingPrivateMessages.write(count - i)
-        }
 
-
-        fun deliverBroadcastToAllListeners(message : Message, userManager: UserManager) {
+        fun deliverBroadcastToAllListeners(message : Message, userManager: UserManager) : CompletableFuture<Unit> {
             // Statistics stuff
             val totalUnread = userManager.getUserCount() - messageListeners.size
             statistics_addToPendingPrivateAndBroadcastMessages(totalUnread)
             //
 
 
+            val futures = ArrayList<CompletableFuture<*>>()
             messageListeners.forEach { id, callbacks ->
+
                 (message as MessageImpl).setReadNow() // maximum one read() call
 
                 val u = userManager.getUserByID(id)
                 u.setLastReadBroadcast(broadcasts.count() - 1)
 
-                deliver("BROADCAST", message, callbacks)
+                futures.addAll(deliver("BROADCAST", message, callbacks))
             }
+            return CompletableFuture.allOf(*futures.toTypedArray()).thenApply { Unit }
+        }
+
+        fun sendToChannel(channel : ChannelManager.Channel, userManager: UserManager, source: String, message: Message) : CompletableFuture<Unit> {
+            val futures = ArrayList<CompletableFuture<*>>()
+            channel.forEachUser{userid ->
+
+                val future = CompletableFuture.runAsync {
+                    val receiver = userManager.getUserByID(userid)
+                    deliverToUserOrEnqueuePending(receiver, source, message)
+                }
+                futures.add(future)
+            }
+            return CompletableFuture.allOf(*(futures.toTypedArray())).thenApply { Unit }
         }
 
         fun deliverToUserOrEnqueuePending(receiver : UserManager.User, source: String, message : Message) {
@@ -100,7 +113,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
             var callbacks = messageListeners[receiver.id()]
             if (callbacks != null && !callbacks.isEmpty()) {
                 (message as MessageImpl).setReadNow()
-                deliver(source, message, callbacks)
+                CompletableFuture.allOf(*deliver(source, message, callbacks).toTypedArray()).join()
 
 
                 if (isSourceBroadcast(source))
@@ -119,9 +132,10 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         }
 
 
-        private fun deliver(source: String, message : Message, callbacks : List<ListenerCallback>)  {
-            val futures = callbacks.map{callback -> callback(source, message)}
-            CompletableFuture.allOf(*futures.toTypedArray())
+
+
+        private fun deliver(source: String, message : Message, callbacks : List<ListenerCallback>) : List<CompletableFuture<Unit>>  {
+            return callbacks.map{callback -> callback(source, message)}
         }
 
 
@@ -136,10 +150,10 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
                 fun doForEachMessage(id : Int) {
                     val message = readMessageFromDB(id.toLong()) as MessageManager.MessageImpl
                     val source = message.getSource()
-                    deliver(source, message, listOf(callback))
+                    CompletableFuture.allOf(*deliver(source, message, listOf(callback)).toTypedArray()).join()
 
                     if (isSourcePrivate(source) || isSourceBroadcast(source)) {
-                        statistics_removeFromPendingPrivateAndBroadcastMessages(1)
+                        statistics_addToPendingPrivateAndBroadcastMessages(-1)
                     }
                 }
 

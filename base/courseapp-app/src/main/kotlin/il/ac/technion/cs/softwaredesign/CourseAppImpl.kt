@@ -81,15 +81,9 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         (message as MessageManager.MessageImpl).setSource(source)
 
 
-        c.forEachUser{
-            val receiver = managers.users.getUserByID(it)
-            managers.messageListenerManager.deliverToUserOrEnqueuePending(receiver, source, message)
-        }
-
-        managers.messages.statistics_addToTotalChannelMessagesCount()
-        c.addToMessagesCount()
-
-        return completedOf(Unit)
+        return managers.messageListenerManager.sendToChannel(c, managers.users, source, message)
+                .thenApply { managers.messages.statistics_addToTotalChannelMessagesCount()  }
+                .thenApply { c.addToMessagesCount() }
     }
 
     override fun broadcast(token: String, message: Message): CompletableFuture<Unit> {
@@ -101,9 +95,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         (message as MessageManager.MessageImpl).setSource(source)
         managers.messages.addBroadcastToList(message)
 
-        managers.messageListenerManager.deliverBroadcastToAllListeners(message, managers.users)
-
-        return completedOf(Unit)
+        return managers.messageListenerManager.deliverBroadcastToAllListeners(message, managers.users)
     }
 
     override fun privateSend(token: String,

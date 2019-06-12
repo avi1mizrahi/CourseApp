@@ -26,6 +26,7 @@ import java.time.Duration.ofSeconds
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 
@@ -398,6 +399,36 @@ class CourseAppTest {
     inner class Messages {
 
         @Test
+        fun `stress test async channelsend`() {
+
+            val count = AtomicInteger()
+            count.set(0)
+            val callback = {_ : String ,_ : Message -> count.incrementAndGet(); CompletableFuture.completedFuture(Unit) }
+
+
+            repeat(2048) {
+                val token = app.login("u$it", "ha").join()
+                app.channelJoin(token, "#ch").join()
+            }
+            repeat(2048) {
+                val id = it + 3000
+                val token = app.login("u$id", "ha").join()
+                app.channelJoin(token, "#ch").join()
+                app.addListener(token, callback)
+            }
+
+            val token = app.login("sender", "ha").join()
+            app.channelJoin(token, "#ch").join()
+
+            app.channelSend(token, "#ch", messageFactory.create(MediaType.TEXT, "1".toByteArray()).join()).join()
+
+
+            assertEquals(2048, count.get())
+            assertEquals(1, statistics.channelMessages().join())
+            assertEquals(0, statistics.pendingMessages().join())
+        }
+
+        @Test
         fun `addListener throws on bad input`() {
             app.login("who", "ha").join()
 
@@ -419,6 +450,20 @@ class CourseAppTest {
             assertThrows<NoSuchEntityException> {
                 app.removeListener(token, mockk(name = "who's that listener?!")).joinException()
             }
+        }
+
+        @Test
+        fun `removed listener gets no callbacks`() {
+            val admin = app.login("admin", "ha").join()
+            val callback = mockk<ListenerCallback>()
+
+            every { callback(any(), any()) } throws AssertionError()
+            app.addListener(admin, callback).join()
+
+
+            val token = app.login("who", "ha").join()
+            app.removeListener(admin, callback).join()
+            app.privateSend(token, "admin", messageFactory.create(MediaType.TEXT, "1".toByteArray()).join()).join()
         }
 
         @Test
