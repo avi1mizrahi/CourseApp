@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture
 // Valid names for channels start with `#`, then have any number of English alphanumeric characters, underscores
 // (`_`) and hashes (`#`).
 private fun isBadChannelName(name : String) : Boolean {
-    val alphanumeric = ('a'..'z') + ('A'..'Z') + ('0'..'9') + '_'
+    val alphanumeric = ('a'..'z') + ('A'..'Z') + ('0'..'9') + '_' + '#'
 
     if (!name.startsWith("#"))
         return true
@@ -154,12 +154,16 @@ class ChannelManager(DB: KeyValueStore) {
 
         fun addUser(user : User) {
             val userid = user.id()
-            userList.add(userid)
-            statistics_allChannelsByUserCount.idIncremented(id)
-
-            if (user.isLoggedIn())
-                addActive(user)
-
+            CompletableFuture.allOf(
+                    CompletableFuture.runAsync {
+                        userList.add(userid)
+                        statistics_allChannelsByUserCount.idIncremented(id)
+                    },
+                    CompletableFuture.runAsync {
+                        if (user.isLoggedIn())
+                            addActive(user)
+                    }
+            ).join()
         }
 
         fun removeUser(user : User) {
