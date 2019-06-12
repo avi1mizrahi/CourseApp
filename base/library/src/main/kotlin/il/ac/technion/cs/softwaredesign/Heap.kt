@@ -4,6 +4,26 @@ package il.ac.technion.cs.softwaredesign
 
 private const val OBJECTS_IDENTIFIER = "objects"
 
+
+/**
+ *
+ *  A min/max heap of Ints sortable with a primary and secondary key.
+ * The sorting keys are provided as a (Int) -> Int function.
+ * The secondary sorting key must not have collisions.
+ *
+ * duplicate adds or removals will break the data structure.
+ * idIncremented/idDecremented must be called if a key has increased/decreased to update the heap. O(Log(n)) complexity
+ * Top10 returns the 10 top items in the heap (O((10^2)/2) operations).
+ *
+ *
+ * @property DB a scoped DB that will be used pointing to a unique folder
+ * @property PrimaryKeySource a function that will be called to get the primary key to sort by
+ * @property SecondaryKeySource a function that will be called to get the secondary key to sort by
+ * @constructor Creates an empty Heap.
+ *
+ *
+ */
+
 class Heap(DB: KeyValueStore,
            private val PrimaryKeySource: (Int) -> Int,
            private val SecondaryKeySource: (Int) -> Int) :
@@ -20,13 +40,24 @@ class Heap(DB: KeyValueStore,
     private val indexToIdMap = DB.getIntMapReference(NODES_IDENTIFIER)
     private val idToIndexMap = DB.getIntMapReference(OBJECTS_IDENTIFIER)
 
-
+    /**
+     * Adds an object to the heap. Assume ID has a minimum score (in our case, high object ID (new) with 0 message counts)
+     * Duplicate adds will break the data structure
+     * @param id
+     * @return Unit
+     */
     fun addMinimum(id:Int) {
         val index = count()
         updateNode(index, id)
         setCount(index + 1)
     }
 
+    /**
+     * Adds an object to the heap.
+     * Duplicate adds will break the data structure
+     * @param id
+     * @return Unit
+     */
     fun add(id: Int) {
         val index = count()
         updateNode(index, id)
@@ -34,6 +65,13 @@ class Heap(DB: KeyValueStore,
         pushUp(index, id)
     }
 
+
+    /**
+     * Removes an object from the heap.
+     * Bad removals will throw kotlin null pointer exception
+     * @param id
+     * @return Unit
+     */
     fun remove(id: Int){
         //assert(exists(id))
 
@@ -58,6 +96,11 @@ class Heap(DB: KeyValueStore,
         deleteObjectsNode(id)
     }
 
+
+    /**
+     * Gets the top 10 items in the heap.
+     * @return List of the top 10
+     */
     fun getTop10() : List<Int> {
         val ret = ArrayList<Int>()
         if (count() == 0)
@@ -114,13 +157,30 @@ class Heap(DB: KeyValueStore,
 
     }
 
+    /**
+     * Signal the heap that an ID's score has increased
+     * @param id
+     * @return Unit
+     */
+
     fun idIncremented(id : Int) {
         pushUp(getObjectsNode(id)!!, id)
     }
 
+    /**
+     * Signal the heap that an ID's score has decreased
+     * @param id
+     * @return Unit
+     */
     fun idDecremented(id : Int) {
         pushDown(getObjectsNode(id)!!, id)
     }
+
+    /**
+     * ask the heap if the id exists in it. this is done in O(1)
+     * @param id
+     * @return true if the id exists
+     */
 
     fun exists(id: Int) : Boolean {
         return getObjectsNode(id) != null

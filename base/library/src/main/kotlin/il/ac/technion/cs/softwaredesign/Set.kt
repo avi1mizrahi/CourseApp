@@ -1,17 +1,13 @@
 package il.ac.technion.cs.softwaredesign
 
-// A Linked list implementation that uses the key-value DB.
-// O(1) find, add, and remove.
-// Allow to getAll
-// finding is O(1) because the nodes are named after the keys!
-// Works as a set, no duplicates.
-
-//$ListName/Count -> int32
-//$ListName/First -> int32
-//$ListName/nodes/$id/Exists -> bool
-//$ListName/nodes/$id/Previous -> int32
-//$ListName/nodes/$id/Next -> int32
-
+/** A Linked list implementation that uses the key-value DB.
+ * O(1) find, add, and remove.
+ * Allow to getAll
+ * finding is O(1) because the nodes are named after the keys!
+ * Duplicates will break the data structure.
+ *
+ *
+**/
 
 private const val PREVIOUS_IDENTIFIER = "previous"
 private const val NEXT_IDENTIFIER = "next"
@@ -21,6 +17,10 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
 
     private val first = DB.getIntReference(FIRST_IDENTIFIER)
 
+
+    /**
+     * Adds an item to the set. Duplicate additions will break the DB
+     */
     fun add(id: Int) {
         //assert(!exists(id))
 
@@ -47,6 +47,9 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
         setCount(currentCount + 1)
     }
 
+    /**
+     * Removes an item from the set. Bad removals will break the DB
+     */
     fun remove(id: Int)
     {
         //assert(exists(id))
@@ -73,6 +76,10 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
         setCount(currentCount - 1)
     }
 
+
+    /**
+     * run an action on each of the items in the set
+     */
     fun forEach(action: (Int) -> Unit) {
         var current = getFirst()
         while (current != null) {
@@ -81,6 +88,9 @@ class Set(private val DB: KeyValueStore) : DataStructure(DB) {
         }
     }
 
+    /**
+     *  check if an item exists in the set
+     */
     fun exists(id: Int) : Boolean {
         return DB.getStringReference(listOf(NODES_IDENTIFIER, id.toString(), EXISTS_IDENTIFIER)).read() != null
     }
