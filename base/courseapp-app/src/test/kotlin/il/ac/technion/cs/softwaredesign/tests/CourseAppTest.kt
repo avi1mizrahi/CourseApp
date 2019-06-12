@@ -1074,6 +1074,12 @@ class CourseAppTest {
                 .join()
             assertEquals(20, statistics.totalUsers().join().toInt())
             assertEquals(17, statistics.loggedInUsers().join().toInt())
+
+
+            app.login("name25", "pass").join()
+
+            assertEquals(21, statistics.totalUsers().join().toInt())
+            assertEquals(18, statistics.loggedInUsers().join().toInt())
         }
     }
 }

@@ -156,27 +156,27 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun login(username: String, password: String): CompletableFuture<String> {
-        var u = managers.users.getUserByName(username)
+        return CompletableFuture.supplyAsync {managers.users.getUserByName(username)}
+                .thenApply {it ->
 
-        // User does not exist
-        if (u == null) {
-            u = managers.users.createUser(username, password)
-        } else {
-            if (u.getPassword() != password)
-                throw NoSuchEntityException()
+                    var u = it
+                    if (u == null) {
+                        u = managers.users.createUser(username, password)
+                    } else {
+                        if (u.getPassword() != password)
+                            throw NoSuchEntityException()
 
-            if (u.isLoggedIn())
-                throw UserAlreadyLoggedInException()
+                        if (u.isLoggedIn())
+                            throw UserAlreadyLoggedInException()
 
+                        u.forEachChannel { chid -> managers.channels.getChannelById(chid).addActive(u) }
+                    }
 
-            // Cannot be done async, modifies shared heaps
-            u.forEachChannel { managers.channels.getChannelById(it).addActive(u) }
-        }
+                    val t = managers.tokens.generateNewTokenForUser(u)
+                    u.logInAndAssignToken(t)
 
-
-        val t = managers.tokens.generateNewTokenForUser(u)
-        u.logInAndAssignToken(t)
-        return completedOf(t.getString())
+                    t.getString()
+                }
     }
 
     override fun logout(token: String): CompletableFuture<Unit> {
@@ -320,9 +320,9 @@ class CourseAppStatisticsImpl @Inject constructor(private val managers: Managers
 
     }
 
-    override fun totalUsers(): CompletableFuture<Long> = completedOf(managers.users.getUserCount().toLong())
+    override fun totalUsers(): CompletableFuture<Long> = completedOf(managers.users.statistics_getUserCount().toLong())
 
-    override fun loggedInUsers(): CompletableFuture<Long> = completedOf(managers.users.getActiveCount().toLong())
+    override fun loggedInUsers(): CompletableFuture<Long> = completedOf(managers.users.statistics_getActiveCount().toLong())
 
     override fun top10ChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.statistics_getTop10ChannelsByUserCount())
 

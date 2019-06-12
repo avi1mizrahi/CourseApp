@@ -69,6 +69,18 @@ class UserManager(DB: KeyValueStore) {
 
     private fun addUserID(name: String, id: Int) = nameToIdMap.write(name, id)
 
+
+
+    // These refresh cache
+    fun statistics_getUserCount() : Int {
+        allUsers.forceCacheRefresh()
+        return getUserCount()
+    }
+    fun statistics_getActiveCount() : Int {
+        activeCountCache = -1
+        return getActiveCount()
+    }
+
     inner class User(DB: KeyValueStore, private val id: Int) {
 
         private val name = DB.getStringReference("name")
@@ -128,14 +140,14 @@ class UserManager(DB: KeyValueStore) {
         fun logInAndAssignToken(token: Token) {
             setToken(token)
 
-            setActiveCount(activeCount.read()!! + 1)
+            setActiveCount(getActiveCount() + 1)
         }
 
         // Assign the token to this user
         fun logout() {
             removeToken()
 
-            setActiveCount(activeCount.read()!! - 1)
+            setActiveCount(getActiveCount() - 1)
         }
 
         fun getPendingMessagesCount() = pendingMessages.count()
