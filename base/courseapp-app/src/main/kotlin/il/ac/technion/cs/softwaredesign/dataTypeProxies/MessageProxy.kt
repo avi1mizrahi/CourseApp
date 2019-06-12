@@ -51,7 +51,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
     }
 
 
-    fun getLastBroadcastID() = broadcasts.count()
+    fun getLastBroadcastID() = broadcasts.count() - 1
 
     fun addBroadcastToList(message: Message) {
         broadcasts.push(message.id.toInt())
