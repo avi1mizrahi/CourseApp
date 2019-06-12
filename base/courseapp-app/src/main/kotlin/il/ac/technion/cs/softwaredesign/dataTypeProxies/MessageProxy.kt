@@ -18,8 +18,10 @@ private fun isSourceChannel(source : String) = source.startsWith("#")
 private fun isSourcePrivate(source : String) = !isSourceChannel(source) && !isSourceBroadcast(source)
 
 
+/**
+ * A manager handling message related logic.
+ */
 class MessageManager @Inject constructor(private val DB: KeyValueStore) : MessageFactory {
-
 
 
     private val messages = Array(DB.scope("allmessages"))
@@ -30,33 +32,55 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
     // Channel messages counter
     private val statistics_totalChannelMessages = DB.getIntReference("totalChannelMessages")
 
+
     override fun create(media: MediaType, contents: ByteArray) : CompletableFuture<Message> {
         val (messageDB, index) = this.messages.newSlot()
         return CompletableFuture.completedFuture(MessageImpl(messageDB, index.toLong(), media, contents))
     }
 
-
+    /**
+     * Statistics: Return total channel message count
+     */
     fun statistics_getTotalChannelMessages() = (statistics_totalChannelMessages.read() ?: 0).toLong()
+
+    /**
+     * Statistics: Increment the total message count
+     */
     fun statistics_addToTotalChannelMessagesCount() = statistics_totalChannelMessages.write(statistics_getTotalChannelMessages().toInt() + 1)
 
+
+    /**
+     * Read a message from the DB and return an object encapsulating the Message inteface
+     * @param index ID of the message to read
+     * @return Object with the Message interface or null if ID does not exist
+     */
     fun readMessageFromDB(index : Long) : Message? {
 
         // TODO there are 2 instances of MessageManager. Their caches are not synchronized.
         this.messages.forceCacheRefresh()
         //
 
-
         val messageDB = this.messages[index.toInt()] ?: return null
         return MessageImpl(messageDB, index)
     }
 
-
+    /**
+     * Get an index representing the last broadcast made.
+     * This is NOT the message ID.
+     */
     fun getLastBroadcastID() = broadcasts.count() - 1
 
+    /**
+     * Push a broadcast message to the broadcast list
+     */
     fun addBroadcastToList(message: Message) {
         broadcasts.push(message.id.toInt())
     }
 
+
+    /**
+     * A manager handling message listenrs
+     */
     inner class MessageListenerManager {
 
         // TODO this could be cached.
@@ -66,6 +90,9 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         // Map of UserID -> his callbacks
         private val messageListeners = ConcurrentHashMap<Int, ArrayList<ListenerCallback>>()
 
+        /**
+         * Statistics: Get total pending private messages.
+         */
         fun statistics_getTotalPrivatePending() = (statistics_totalPendingPrivateMessages.read() ?: 0).toLong()
 
 
@@ -77,12 +104,18 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         }
 
 
+        /**
+         * Deliver a broadcast to all listening users
+         *
+         * @param message to deliver. Must be a broadcast
+         * @param userManager a reference to the UserManager.
+         * @return A future that completes when the callbacks all complete.
+         */
         fun deliverBroadcastToAllListeners(message : Message, userManager: UserManager) : CompletableFuture<Unit> {
             // Statistics stuff
             val totalUnread = userManager.getUserCount() - messageListeners.size
             statistics_addToPendingPrivateAndBroadcastMessages(totalUnread)
             //
-
 
             val futures = ArrayList<CompletableFuture<*>>()
             messageListeners.forEach { id, callbacks ->
@@ -97,6 +130,16 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
             return CompletableFuture.allOf(*futures.toTypedArray()).thenApply { Unit }
         }
 
+        /**
+         * Deliver a message to all users of a channel
+         *
+         *
+         * @param channel The channel to send to
+         * @param userManager reference to the user manager
+         * @param source Source of the message
+         * @param message The message
+         * @return A future that completes when the callbacks all complete.
+         */
         fun sendToChannel(channel : ChannelManager.Channel, userManager: UserManager, source: String, message: Message) : CompletableFuture<Unit> {
             val futures = ArrayList<CompletableFuture<*>>()
             channel.forEachUser{userid ->
@@ -110,6 +153,16 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
             return CompletableFuture.allOf(*(futures.toTypedArray())).thenApply { Unit }
         }
 
+
+        /**
+         * Deliever a message or put it on the user's pending list if its not a broadcast
+         *
+         *
+         *
+         * @param reciever the recieving user.
+         * @param source Source of the message
+         * @param message The message
+         */
         fun deliverToUserOrEnqueuePending(receiver : UserManager.User, source: String, message : Message) {
 
             var callbacks = messageListeners[receiver.id()]
@@ -134,13 +187,17 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         }
 
 
-
-
         private fun deliver(source: String, message : Message, callbacks : List<ListenerCallback>) : List<CompletableFuture<Unit>>  {
             return callbacks.map{callback -> callback(source, message)}
         }
 
 
+        /**
+         * Adds a message callback to a given user. All pending messages including broadcasts will be sent to the listener
+         *
+         * @param u the User
+         * @param callback the callback to add
+         */
         fun addcallback(u : UserManager.User, callback : ListenerCallback) {
             val id = u.id()
             messageListeners[id] ?: messageListeners.put(id, ArrayList())
@@ -175,12 +232,22 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
             list.add(callback)
         }
 
+        /**
+         * Remove a callback
+         *
+         * @param u the User
+         * @param callback the callback to add
+         */
         fun removeCallback(u : UserManager.User, callback : ListenerCallback) {
             val id = u.id()
             if (messageListeners[id]?.remove(callback) != true) throw NoSuchEntityException()
         }
     }
 
+    /**
+     * A class inherting the Message interface with pointers to DB keys.
+
+     */
     inner class MessageImpl : Message {
         private val messageDB : KeyValueStore
 
@@ -194,6 +261,10 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         lateinit var messagesource : String
 
         // New message
+        /**
+         * This constructor is called when a new message is created.
+         * This is intended to only be called by MessageManager.create()
+         */
         constructor(messageDB: KeyValueStore, id: Long,
                     media: MediaType, contents: ByteArray) {
             this.messageDB = messageDB
@@ -208,6 +279,10 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         }
 
         // Read message
+        /**
+         * This constructor reads an existing message from the DB with a given index.
+         * This should only be called by the manager's ReadMessageFromDB
+         */
         constructor(messageDB: KeyValueStore, id: Long) {
             this.messageDB = messageDB
             initProxies()
@@ -249,6 +324,11 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
 
         // Read time must be set to first reader. this bool prevents extra reads.
         private var cachedMessageAlreadyRead = false
+
+        /**
+         * Set the message read time to now if its not already set.
+         * Uses an internal cache to prevent needless set calls.
+         */
         fun setReadNow() {
             if (!cachedMessageAlreadyRead && receivedProxy.read()==null)
             {
@@ -260,10 +340,16 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
 
         }
 
-
+        /**
+         * Set the source of the message and writes it to the DB
+         */
         fun setSource(s : String) = sourceProxy.write(s)
 
-        // getSource on an unsent message should be considered a bug
+        /**
+         * Gets the source of the message on the DB or throws if a source isn't set.
+         * getSource on an unsent message should be considered a bug
+         */
+
         fun getSource() : String = sourceProxy.read()!!
 
     }
