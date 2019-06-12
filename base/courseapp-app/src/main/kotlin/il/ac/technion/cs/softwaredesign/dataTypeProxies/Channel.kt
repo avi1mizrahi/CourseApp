@@ -154,17 +154,12 @@ class ChannelManager(DB: KeyValueStore) {
 
         fun addUser(user : User) {
             val userid = user.id()
-            CompletableFuture.allOf(
-                    CompletableFuture.runAsync {
-                        userList.add(userid)
-                        statistics_allChannelsByUserCount.idIncremented(id)
-                    },
-                    CompletableFuture.runAsync {
-                        if (user.isLoggedIn()) {
-                            addActive(user)
-                        }
-                    }
-            ).join()
+            userList.add(userid)
+            statistics_allChannelsByUserCount.idIncremented(id)
+
+            if (user.isLoggedIn())
+                addActive(user)
+
         }
 
         fun removeUser(user : User) {
