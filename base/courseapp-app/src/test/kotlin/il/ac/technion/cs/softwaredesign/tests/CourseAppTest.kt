@@ -631,7 +631,7 @@ class CourseAppTest {
 
             app.addListener(other) {
                 _, _ -> CompletableFuture.completedFuture(Unit)
-            }
+            }.join()
 
 
             val before = LocalDateTime.now()
@@ -663,7 +663,7 @@ class CourseAppTest {
 
             app.addListener(other) {
                 _, _ -> CompletableFuture.completedFuture(Unit)
-            }
+            }.join()
 
 
             val before = LocalDateTime.now()
