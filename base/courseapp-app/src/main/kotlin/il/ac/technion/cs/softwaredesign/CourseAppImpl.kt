@@ -332,5 +332,5 @@ class CourseAppStatisticsImpl @Inject constructor(private val managers: Managers
 
     override fun top10ActiveChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.statistics_getTop10ChannelsByActiveUserCount())
 
-    override fun top10UsersByChannels(): CompletableFuture<List<String>> = completedOf(managers.users.getTop10UsersByChannel())
+    override fun top10UsersByChannels(): CompletableFuture<List<String>> = completedOf(managers.users.statistics_getTop10UsersByChannel())
 }

@@ -12,7 +12,6 @@ abstract class DataStructure(DB: KeyValueStore) {
     private var cachedCount : Int = -1
 
 
-    // TODO for next HW
     fun forceCacheRefresh(){
         cachedCount = count.read() ?: 0
     }

@@ -3,7 +3,7 @@ package il.ac.technion.cs.softwaredesign
 /**
  *  Int-only implementation of the below Array
  */
-class ArrayInt(private val db: KeyValueStore) {
+class ArrayInt(db: KeyValueStore) {
 
     private val internalArr = Array(db)
     fun push(value: Int) {
