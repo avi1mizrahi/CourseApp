@@ -162,6 +162,9 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
                     var u = it
                     if (u == null) {
                         u = managers.users.createUser(username, password)
+
+                        u.setLastReadBroadcast(managers.messages.getLastBroadcastID()) // TODO a bit ugly to put it here
+
                     } else {
                         if (u.getPassword() != password)
                             throw NoSuchEntityException()
