@@ -266,10 +266,11 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     override fun channelKick(token: String, channel: String, username: String): CompletableFuture<Unit> {
         val op = getUserByTokenOrThrow(token).joinException()
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
-        val targetUser = managers.users.getUserByName(username) ?: throw NoSuchEntityException()
-        if (!c.hasUser(targetUser)) throw NoSuchEntityException()
 
         if (!c.isOp(op)) throw UserNotAuthorizedException()
+
+        val targetUser = managers.users.getUserByName(username) ?: throw NoSuchEntityException()
+        if (!c.hasUser(targetUser)) throw NoSuchEntityException()
 
         c.removeUser(targetUser)
         targetUser.removeFromChannelList(c)
