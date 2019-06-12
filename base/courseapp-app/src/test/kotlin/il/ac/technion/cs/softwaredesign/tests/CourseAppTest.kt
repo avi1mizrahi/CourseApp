@@ -571,12 +571,12 @@ class CourseAppTest {
             assertEquals(statistics.pendingMessages().join(), 2)
             assertEquals(statistics.channelMessages().join(), 0)
 
-            app.addListener(admin) { _, _ -> CompletableFuture.completedFuture(Unit)}
+            app.addListener(admin) { _, _ -> CompletableFuture.completedFuture(Unit)}.join()
 
             assertEquals(statistics.pendingMessages().join(), 1)
             assertEquals(statistics.channelMessages().join(), 0)
 
-            app.addListener(other) { _, _ -> CompletableFuture.completedFuture(Unit)}
+            app.addListener(other) { _, _ -> CompletableFuture.completedFuture(Unit)}.join()
 
             assertEquals(statistics.pendingMessages().join(), 0)
             assertEquals(statistics.channelMessages().join(), 0)

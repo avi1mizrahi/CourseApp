@@ -14,7 +14,16 @@ import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionException
 
+
+fun <T> CompletableFuture<T>.joinException(): T {
+    try {
+        return this.join()
+    } catch (e: CompletionException) {
+        throw e.cause!!
+    }
+}
 
 /**
  * This is the class implementing CourseApp, a course discussion group system.
@@ -58,22 +67,22 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         CourseApp {
 
     override fun addListener(token: String, callback: ListenerCallback): CompletableFuture<Unit> {
-        val u = getUserByTokenOrThrow(token)
-        managers.messageListenerManager.addcallback(u, callback)
-        return completedOf(Unit)
+        return getUserByTokenOrThrow(token).thenApply { u ->
+            managers.messageListenerManager.addcallback(u, callback)
+        }
     }
 
     override fun removeListener(token: String,
                                 callback: ListenerCallback): CompletableFuture<Unit> {
-        val u = getUserByTokenOrThrow(token)
-        managers.messageListenerManager.removeCallback(u, callback)
-        return completedOf(Unit)
+        return getUserByTokenOrThrow(token).thenApply { u->
+            managers.messageListenerManager.removeCallback(u, callback)
+        }
     }
 
     override fun channelSend(token: String,
                              channel: String,
                              message: Message): CompletableFuture<Unit> {
-        val u = getUserByTokenOrThrow(token)
+        val u = getUserByTokenOrThrow(token).joinException()
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         if (!u.isInChannel(c)) throw UserNotAuthorizedException()
 
@@ -87,7 +96,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun broadcast(token: String, message: Message): CompletableFuture<Unit> {
-        val u = getUserByTokenOrThrow(token)
+        val u = getUserByTokenOrThrow(token).joinException()
         if (!u.isAdmin()) throw UserNotAuthorizedException()
 
         // Make the source string and write it
@@ -101,7 +110,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     override fun privateSend(token: String,
                              user: String,
                              message: Message): CompletableFuture<Unit> {
-        val sender = getUserByTokenOrThrow(token)
+        val sender = getUserByTokenOrThrow(token).joinException()
         val receiver = managers.users.getUserByName(user) ?: throw NoSuchEntityException()
 
         // Make the source string and write it
@@ -114,18 +123,31 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun fetchMessage(token: String, id: Long): CompletableFuture<Pair<String, Message>> {
-        val u = getUserByTokenOrThrow(token)
-        val message = managers.messages.readMessageFromDB(id) ?: throw NoSuchEntityException()
-        val source = (message as MessageManager.MessageImpl).getSource()
-        val channelName = source.split("@")[0]
-        val c = managers.channels.getChannelByName(channelName) ?: throw NoSuchEntityException()
-        if (!c.hasUser(u)) throw UserNotAuthorizedException()
 
-        return completedOf(Pair(source,message))
+        lateinit var u : User
+        lateinit var message : Message
+        lateinit var source : String
+        lateinit var c : ChannelManager.Channel
+
+
+        val getUser = CompletableFuture.runAsync { u = getUserByTokenOrThrow(token).joinException() }
+        val getMessageAndChannel = CompletableFuture.runAsync {  message = managers.messages.readMessageFromDB(id) ?: throw NoSuchEntityException() }
+                .thenRun{
+                    source = (message as MessageManager.MessageImpl).getSource()
+                    val channelName = source.split("@")[0]
+                    c = managers.channels.getChannelByName(channelName) ?: throw NoSuchEntityException()
+                }
+
+        return CompletableFuture.allOf(getUser, getMessageAndChannel)
+                .thenApply {
+                    if (!c.hasUser(u)) throw UserNotAuthorizedException()
+
+                    Pair(source,message)
+                }
     }
 
-    private fun getUserByTokenOrThrow(t: String): User {
-        return getUserByToken(t) ?: throw InvalidTokenException()
+    private fun getUserByTokenOrThrow(t: String): CompletableFuture<User> {
+        return CompletableFuture.supplyAsync {getUserByToken(t) ?: throw InvalidTokenException()}
     }
 
     private fun getUserByToken(t: String): User? {
@@ -182,18 +204,17 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun makeAdministrator(token: String, username: String): CompletableFuture<Unit> {
-        val oldAdmin = getUserByTokenOrThrow(token)
-        if (!oldAdmin.isAdmin()) throw UserNotAuthorizedException()
+        return getUserByTokenOrThrow(token).thenApply {
+            if (!it.isAdmin())
+                throw UserNotAuthorizedException()
+        }
+                .thenApply {managers.users.getUserByName(username) ?: throw NoSuchEntityException()}
+                .thenApply {it.setAdmin() }
 
-        val newAdmin = managers.users.getUserByName(username) ?: throw NoSuchEntityException()
-
-        newAdmin.setAdmin()
-
-        return completedOf(Unit)
     }
 
     override fun channelJoin(token: String, channel: String): CompletableFuture<Unit> {
-        val u = getUserByTokenOrThrow(token)
+        val u = getUserByTokenOrThrow(token).joinException()
 
         managers.channels.throwIfBadChannelName(channel)
         var c = managers.channels.getChannelByName(channel)
@@ -213,9 +234,8 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun channelPart(token: String, channel: String): CompletableFuture<Unit> {
-        return CompletableFuture.supplyAsync {
-            getUserByTokenOrThrow(token)
-        }.thenCombine(CompletableFuture.supplyAsync {
+        return getUserByTokenOrThrow(token)
+                .thenCombine(CompletableFuture.supplyAsync {
             managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         }) { u, c ->
             if (!u.isInChannel(c)) throw NoSuchEntityException()
@@ -229,7 +249,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun channelMakeOperator(token: String, channel: String, username: String): CompletableFuture<Unit> {
-        val actingUser = getUserByTokenOrThrow(token)
+        val actingUser = getUserByTokenOrThrow(token).joinException()
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
 
         if (!c.isOp(actingUser) && !actingUser.isAdmin()) throw UserNotAuthorizedException()
@@ -244,7 +264,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun channelKick(token: String, channel: String, username: String): CompletableFuture<Unit> {
-        val op = getUserByTokenOrThrow(token)
+        val op = getUserByTokenOrThrow(token).joinException()
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         val targetUser = managers.users.getUserByName(username) ?: throw NoSuchEntityException()
         if (!c.hasUser(targetUser)) throw NoSuchEntityException()
@@ -257,7 +277,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun isUserInChannel(token: String, channel: String, username: String): CompletableFuture<Boolean?> {
-        val user = getUserByTokenOrThrow(token)
+        val user = getUserByTokenOrThrow(token).joinException()
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
 
         if (!c.hasUser(user) && !user.isAdmin()) throw UserNotAuthorizedException()
@@ -267,7 +287,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun numberOfActiveUsersInChannel(token: String, channel: String): CompletableFuture<Long> {
-        val user = getUserByTokenOrThrow(token)
+        val user = getUserByTokenOrThrow(token).joinException()
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         if (!c.hasUser(user) && !user.isAdmin()) throw UserNotAuthorizedException()
 
@@ -275,7 +295,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
     }
 
     override fun numberOfTotalUsersInChannel(token: String, channel: String): CompletableFuture<Long> {
-        val user = getUserByTokenOrThrow(token)
+        val user = getUserByTokenOrThrow(token).joinException()
         val c = managers.channels.getChannelByName(channel) ?: throw NoSuchEntityException()
         if (!c.hasUser(user) && !user.isAdmin()) throw UserNotAuthorizedException()
 

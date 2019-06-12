@@ -13,6 +13,8 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 
 class UserManager(DB: KeyValueStore) {
     private val nameToIdMap = DB.getIntMapReference(listOf("nametoid"))
+
+    private var activeCountCache = -1
     private val activeCount = DB.getIntReference(listOf("activecount"))
     private val statistics_allUsersByChannelCount =
             Heap(ScopedKeyValueStore(DB, listOf("usersbychannels")),
@@ -21,14 +23,6 @@ class UserManager(DB: KeyValueStore) {
 
 
     private val allUsers = Array(ScopedKeyValueStore(DB, listOf("allusers")))
-
-
-    init {
-        // initialize counters
-        if (activeCount.read() == null) {
-            activeCount.write(0)
-        }
-    }
 
     fun getTop10UsersByChannel(): List<String> =
             statistics_allUsersByChannelCount.getTop10().map { id -> getUserByID(id).getName() }
@@ -45,9 +39,20 @@ class UserManager(DB: KeyValueStore) {
         return ret
     }
 
-    fun getUserCount(): Int = allUsers.count()
+    fun getUserCount(): Int = allUsers.count() // has inner cache
 
-    fun getActiveCount(): Int = activeCount.read()!!
+    private fun setActiveCount(i : Int) {
+        activeCount.write(i)
+        activeCountCache = i
+    }
+
+    fun getActiveCount(): Int  {
+        if (activeCountCache == -1)
+            activeCountCache = activeCount.read() ?: 0
+
+        return activeCountCache
+
+    }
 
     fun getUserByName(name: String): User? {
         val id = nameToIdMap.read(name) ?: return null
@@ -123,14 +128,14 @@ class UserManager(DB: KeyValueStore) {
         fun logInAndAssignToken(token: Token) {
             setToken(token)
 
-            activeCount.write(activeCount.read()!! + 1)
+            setActiveCount(activeCount.read()!! + 1)
         }
 
         // Assign the token to this user
         fun logout() {
             removeToken()
 
-            activeCount.write(activeCount.read()!! - 1)
+            setActiveCount(activeCount.read()!! - 1)
         }
 
         fun getPendingMessagesCount() = pendingMessages.count()
