@@ -78,14 +78,14 @@ interface CourseAppStatistics {
     fun top10UsersByChannels(): CompletableFuture<List<String>>
 
     /**
-     * Return a sorted list of the top 10 users in the system by message volume. The list will be sorted in
+     * Return a sorted list of the top 10 channels in the system by message volume. The list will be sorted in
      * descending order.
      *
      * If two channels have the exact same number of messages, they will be sorted in ascending appearance order.
      *
-     * If there are less than 10 users in the system, a shorter list will be returned.
+     * If there are less than 10 channels in the system, a shorter list will be returned.
      *
-     * @return A sorted list of users by channel count.
+     * @return A sorted list of channels by message count.
      */
     fun top10ChannelsByMessages(): CompletableFuture<List<String>>
 }
