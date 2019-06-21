@@ -1,5 +1,6 @@
 package il.ac.technion.cs.softwaredesign
 
+import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.calculator.calculate
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
@@ -8,7 +9,6 @@ import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
-import kotlin.random.Random
 
 
 private fun getSenderFromChannelMessageSource(source : String) : String {
@@ -19,22 +19,47 @@ private fun getChannelFromChannelMessageSource(source : String) : String {
 }
 
 
-class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory) : CourseBots {
+private val MASTERPASSWORD = "password"
+class CourseBotManager @Inject constructor(val app : CourseApp, val messageFactory : MessageFactory) : CourseBots {
+
+    // TODO an Array of bot and their data and token on the DB
+
+    // Bots that are locally known and are logged in at this moment
+    val activeBots = ArrayList<CourseBotInstance>()
     override fun bot(name: String?): CompletableFuture<CourseBot> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val uniqueBotID = 0 // TODO
+
+
+        if (name != null) {
+            val ret = activeBots.find { it.name == name }
+            if (ret != null) return CompletableFuture.completedFuture(ret)
+        }
+
+
+        val username = name ?: "Anna$uniqueBotID"
+        return app.login(username, MASTERPASSWORD).thenApply { token ->
+            val bot = CourseBotInstance()
+            bot.initialize(token, username)
+            activeBots.add(bot)
+
+
+            bot
+        }
+
     }
+
+
 
     override fun bots(channel: String?): CompletableFuture<List<String>> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return TODO()
     }
 
+    inner class CourseBotInstance : CourseBot{
 
-    inner class CourseBotInstance() : CourseBot{
+        // TODO What to serialize and keep up to date on the DB at all times and what to cache?
+
         lateinit var token : String
-
-
-
-
+        lateinit var name : String
         private val onMessage : ListenerCallback = {
             source, message ->
 
@@ -48,22 +73,42 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
             ).thenApply { Unit }
         }
 
-        init {
+
+        fun initialize(token : String, name : String) {
+            this.name = name
+            this.token = token
             app.addListener(token, onMessage)
         }
+
+
+        // TODO Save things that are not being saved in real time
+        private fun saveToDB() {
+
+        }
+
         fun destroy(){
             app.removeListener(token, onMessage)
+            saveToDB()
         }
 
 
-        private fun resetStatisticsForChannel(channelName: String) {
+        // TODO a Set of channels on the DB: need O(1) add/remove/exists, O(N) getAll
+        val channels = ArrayList<String>()
 
+        // TODO Reset:
+        // messageCounters
+        private fun resetStatisticsForChannel(channelName: String) {
+            messageCounters.forEach {
+                if (it.value[channelName] != null)
+                    it.value.remove(channelName)
+            }
         }
         private fun addChannel(channelName: String) {
-
+            channels.add(channelName)
         }
         private fun removeChannel(channelName: String) {
             resetStatisticsForChannel(channelName)
+            channels.remove(channelName)
         }
 
 
@@ -80,31 +125,34 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
         }
 
         override fun channels(): CompletableFuture<List<String>> {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            return CompletableFuture.completedFuture(channels)
         }
 
 
         ///////////////// Message counter
+
+        // (Regex?, MediaType?) -> (Channel) -> (Count)
+        // TODO a map of maps on the DB. Pair<String?, MediaType?> can be a folder containing channels
+        // MediaTypeEnum_SomeRegex/ChannelName -> Count
+        val messageCounters = HashMap<Pair<String?, MediaType?>, HashMap<String, Int>>()
+
         private fun handleMessageForCounting(source: String, message: Message) {
             val channel = getChannelFromChannelMessageSource(source)
-            val messagestr = message.contents.toString()
+            val messagestr = message.contents.toString(Charsets.UTF_8)
             messageCounters.forEach {
                 val regex = it.key.first
                 val mediatype = it.key.second
 
                 if (mediatype != null && mediatype != message.media)
-                    return
+                    return@forEach
 
-                if (regex != null && !kotlin.text.Regex.fromLiteral(regex).matches(messagestr.toString()))
-                    return
+                if (regex != null && !kotlin.text.Regex.fromLiteral(regex).matches(messagestr))
+                    return@forEach
 
                 it.value[channel] = (it.value[channel] ?: 0) + 1
             }
         }
 
-
-        // (Regex?, MediaType?) -> (Channel) -> (Count)
-        val messageCounters = HashMap<Pair<String?, MediaType?>, HashMap<String, Int>>()
         override fun beginCount(regex: String?, mediaType: MediaType?): CompletableFuture<Unit> {
             if (regex == null && mediaType == null) throw IllegalArgumentException()
 
@@ -118,8 +166,10 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
         }
 
         //////////////////// Calc
+        // TODO Save to DB
+        var calcTrigger : String? = null
         private fun handleMessageForCalc(source: String, message: Message) {
-            val messagestr = message.contents.toString()
+            val messagestr = message.contents.toString(Charsets.UTF_8)
             if (!messagestr.startsWith(calcTrigger ?: return)) {
                 return
             }
@@ -131,7 +181,6 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
 
         }
 
-        var calcTrigger : String? = null
         override fun setCalculationTrigger(trigger: String?): CompletableFuture<String?> {
             val old = this.calcTrigger
             this.calcTrigger = trigger
@@ -139,24 +188,49 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
         }
 
 
-        /////////////////// Tips TODO
+        /////////////////// Tips
+        // TODO Save to DB
+        var tipTrigger : String? = null
+        // Username -> Money
+        // TODO Heap
+        val tips = HashMap<String, Int>()
         private fun handleMessageForTip(source: String, message: Message) {
+            val data = message.contents.toString(Charsets.UTF_8)
+            if (this.tipTrigger == null || !data.startsWith(this.tipTrigger!!))
+                return
 
+
+            val split = data.split(" ")
+            val amount = split[1].toIntOrNull() ?: return
+            val target = split.subList(2, split.size).joinToString(" ")
+            val sender = getSenderFromChannelMessageSource(source)
+
+
+
+            // TODO what to do with negative?
+            // Remove from sender
+            tips[sender] = (tips[sender] ?: 0) - amount
+
+            // Add to target
+            tips[target] = (tips[target] ?: 0) + amount
         }
 
-        var tipTrigger : String? = null
+
         override fun setTipTrigger(trigger: String?): CompletableFuture<String?> {
             val old = this.tipTrigger
             this.tipTrigger = trigger
             return CompletableFuture.completedFuture(old)
         }
 
+
         override fun richestUser(channel: String): CompletableFuture<String?> {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            TODO("not implemented") // just return heap's biggest
         }
 
 
         /////////////////// Last Seen
+        // Username ->  Time
+        // TODO simple map on the DB
         var seenTime = HashMap<String, LocalDateTime>()
         private fun handleMessageLastSeen(source: String, message: Message) {
             val sender = getSenderFromChannelMessageSource(source)
@@ -169,32 +243,47 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
 
 
 
-        // Most messages
+        ////////////// Most messages
+
+        // Channel Name -> (Username -> Message count)
+        // TODO heap
+        val activeUserCounter = HashMap<String, HashMap<String, Int>>()
         private fun handleMessageForMostActive(source: String, message: Message) {
             val user = getSenderFromChannelMessageSource(source)
+            val channel = getChannelFromChannelMessageSource(source)
 
 
-            //TODO
+            if (activeUserCounter[channel] == null)
+                activeUserCounter[channel] = HashMap()
+
+
+           activeUserCounter[channel]!![user] = (activeUserCounter[channel]!![user]?: 0) + 1
         }
         override fun mostActiveUser(channel: String): CompletableFuture<String?> {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            TODO("not implemented") // just return heap maximum
         }
 
 
 
 
         /////////////////// Survey
+        // TODO Array on the DB of String to a "folder" for a active survey object
+        private val activeSurvies = HashMap<Int, Survey>()
         private fun handleMessageForSurvies(source: String, message: Message) {
             activeSurvies.forEach {
                 it.value.onMessage(source, message)
             }
         }
 
-        private inner class Survey(var channel : String, var question: String, val answers: List<String>, val randomtoken: String) {
+        // Handles an ongoing survey
+        private inner class Survey(var channel : String, val answers: List<String>, val UniqueSurveyID: Int) {
+
             // Answer -> Vote count
+            // TODO Heap
             val results = HashMap<String, Int>()
 
             // User name -> Answer
+            // TODO simple map
             val votes = HashMap<String, String>()
             init {
                 answers.forEach {
@@ -203,7 +292,10 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
             }
 
             fun onMessage(source: String, message: Message) {
-                val answer = results.keys.find { message.contents.toString().contains(it)  } ?: return
+                if (getChannelFromChannelMessageSource(source) != channel)
+                    return
+
+                val answer = results.keys.find { message.contents.toString(Charsets.UTF_8).contains(it)  } ?: return
                 val username = getSenderFromChannelMessageSource(source)
 
                 // Remove old vote
@@ -225,23 +317,30 @@ class CourseBotManager(val app : CourseApp, val messageFactory : MessageFactory)
                 return res
             }
         }
-        private val activeSurvies = HashMap<String, Survey>()
-        override fun runSurvey(channel: String, question: String, answers: List<String>): CompletableFuture<String> {
-            // TODO throw if bot is not in channel
 
-            val randomidentifier = Random.nextLong(0, Long.MAX_VALUE).toString()
-            activeSurvies[randomidentifier] = (Survey(channel, question, answers, randomidentifier))
+
+        var TODO_surveycounter = 0
+        override fun runSurvey(channel: String, question: String, answers: List<String>): CompletableFuture<String> {
+            // Throw if channel does not exist
+            if (channels.find { it == channel } == null) throw NoSuchEntityException()
+
+            // TODO unique identifier
+            val uniqueSurveyID = TODO_surveycounter
+            TODO_surveycounter += 1
+            activeSurvies[uniqueSurveyID] = (Survey(channel, answers, uniqueSurveyID))
 
             return messageFactory.create(MediaType.TEXT, question.toByteArray()).thenApply {
                 app.channelSend(token, channel, it)
             }.thenApply {
-                randomidentifier
+                uniqueSurveyID.toString()
             }
         }
 
         override fun surveyResults(identifier: String): CompletableFuture<List<Long>> {
-            val results = (activeSurvies[identifier] ?: throw NoSuchEntityException()).getResults()
-            activeSurvies.remove(identifier)
+            val uniqueID = identifier.toIntOrNull() ?: throw NoSuchEntityException()
+
+            val results = (activeSurvies[uniqueID] ?: throw NoSuchEntityException()).getResults()
+            activeSurvies.remove(uniqueID)
             return CompletableFuture.completedFuture(results)
         }
 
