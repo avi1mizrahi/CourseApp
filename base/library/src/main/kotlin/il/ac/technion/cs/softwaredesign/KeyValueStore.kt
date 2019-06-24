@@ -37,12 +37,10 @@ fun KeyValueStore.getIntReference(key: List<String>): KeyValueStore.Object<Int> 
         getReference(key, IntSerializer())
 fun KeyValueStore.getIntReference(key: String): KeyValueStore.Object<Int> = getIntReference(listOf(key))
 
-
 fun KeyValueStore.getStringReference(key: List<String>): KeyValueStore.Object<String> =
         getReference(key, StringSerializer())
 fun KeyValueStore.getStringReference(key: String): KeyValueStore.Object<String> = getStringReference(listOf(key))
 
-// TODO tests for byteArray
 fun KeyValueStore.getByteArrayReference(key: List<String>): KeyValueStore.Object<ByteArray> =
         getReference(key, ByteArraySerializer())
 fun KeyValueStore.getByteArrayReference(key: String): KeyValueStore.Object<ByteArray> = getByteArrayReference(listOf(key))

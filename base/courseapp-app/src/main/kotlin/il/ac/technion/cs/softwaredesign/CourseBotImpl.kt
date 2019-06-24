@@ -21,6 +21,13 @@ private fun getChannelFromChannelMessageSource(source : String) : String {
 
 private val MASTERPASSWORD = "password"
 class CourseBotManager @Inject constructor(val app : CourseApp, val messageFactory : MessageFactory) : CourseBots {
+    override fun prepare(): CompletableFuture<Unit> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun start(): CompletableFuture<Unit> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 
     // TODO an Array of bot and their data and token on the DB
 
@@ -153,12 +160,16 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
             }
         }
 
-        override fun beginCount(regex: String?, mediaType: MediaType?): CompletableFuture<Unit> {
+        override fun beginCount(channel: String?,
+                                regex: String?,
+                                mediaType: MediaType?): CompletableFuture<Unit> {
+            TODO("channel unused")
             if (regex == null && mediaType == null) throw IllegalArgumentException()
 
             messageCounters[Pair(regex, mediaType)] = HashMap()
             return CompletableFuture.completedFuture(Unit)
         }
+
         override fun count(channel: String?, regex: String?, mediaType: MediaType?): CompletableFuture<Long> {
             if (regex == null && mediaType == null) throw IllegalArgumentException()
             val ret = messageCounters[Pair(regex, mediaType)]?.get(channel) ?: 0
