@@ -9,6 +9,7 @@ import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
+import kotlin.collections.Set
 
 
 private fun getSenderFromChannelMessageSource(source : String) : String {
@@ -360,16 +361,21 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
 
         private inner class Survies : BotEventObserver {
+
             /////////////////// Survey
-            // TODO Array on the DB of String to a "folder" for a active survey object
+            // TODO think what to put on DB and what not
             private val activeSurvies = HashMap<Int, Survey>()
+            private val activeSurviesByChannel = HashMap<String, Set<Survey>>()
+
+
             override fun onMessage(source: String, message: Message) {
-                activeSurvies.forEach {
-                    it.value.onMessage(source, message)
+                val channel = getChannelFromChannelMessageSource(source)
+                activeSurviesByChannel[channel]?.forEach {
+                    it.onMessage(source, message)
                 }
             }
             // Handles an ongoing survey
-            private inner class Survey(var channel : String, val answers: List<String>, val UniqueSurveyID: Int) {
+            private inner class Survey(val answers: List<String>, val UniqueSurveyID: Int) {
 
                 // Answer -> Vote count
                 // TODO Heap
@@ -385,8 +391,6 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 }
 
                 fun onMessage(source: String, message: Message) {
-                    if (getChannelFromChannelMessageSource(source) != channel)
-                        return
 
                     val answer = results.keys.find { message.contents.toString(Charsets.UTF_8).contains(it)  } ?: return
                     val username = getSenderFromChannelMessageSource(source)
@@ -418,7 +422,10 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 // TODO unique identifier
                 val uniqueSurveyID = TODO_surveycounter
                 TODO_surveycounter += 1
-                activeSurvies[uniqueSurveyID] = (Survey(channel, answers, uniqueSurveyID))
+
+                activeSurvies[uniqueSurveyID] = (Survey(answers, uniqueSurveyID))
+                // TODO add to survies by channel set
+
 
                 return messageFactory.create(MediaType.TEXT, question.toByteArray()).thenApply {
                     app.channelSend(token, channel, it)
