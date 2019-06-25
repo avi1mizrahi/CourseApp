@@ -93,7 +93,7 @@ class UserManager(DB: KeyValueStore) {
      * Refresh the cache and get the user count.
      */
     fun statistics_getUserCount() : Int {
-        allUsers.forceCacheRefresh()
+        //allUsers.forceCacheRefresh()
         return getUserCount()
     }
 

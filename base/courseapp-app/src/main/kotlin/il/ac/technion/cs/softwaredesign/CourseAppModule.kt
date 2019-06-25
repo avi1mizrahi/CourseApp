@@ -9,20 +9,32 @@ import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 
 class CourseAppModule : KotlinModule() {
 
+
     override fun configure() {
 
         bind<CourseAppInitializer>().to<CourseAppImplInitializer>()
-        bind<SecureStorage>().toProvider(Provider { CourseAppImplInitializer.storage })
+        bind<SecureStorage>().toProvider(Provider {
+            CourseAppImplInitializer.storage
+        })
         bind<KeyValueStore>().to<KeyValueStoreImpl>()
+
+
         bind<CourseApp>().to<CourseAppImpl>()
         bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
-
         bind<SyncStorage>().to<AsyncStorageAdapter>()
 
-        bind<MessageFactory>().toProvider(Provider {
-            MessageManager(KeyValueStoreImpl(AsyncStorageAdapter(CourseAppImplInitializer.storage)).scope(
-                    "messages"))
-        })
+        bind<Managers>().toProvider(Provider {CourseAppImplInitializer.managers})
+        bind<MessageFactory>().toProvider(Provider {CourseAppImplInitializer.managers.messages})
+
+
+
+//        bind<Managers>().toProvider(Provider {
+//            Managers(KeyValueStoreImpl(AsyncStorageAdapter(CourseAppImplInitializer.storage)))
+//        })
+//        bind<MessageFactory>().toProvider(Provider {
+//            MessageManager(KeyValueStoreImpl(AsyncStorageAdapter(CourseAppImplInitializer.storage)).scope(
+//                    "messages"))
+//        })
     }
 
 }

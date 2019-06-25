@@ -14,7 +14,7 @@ abstract class DataStructure(DB: KeyValueStore) {
     private var count = DB.getIntReference(COUNT_IDENTIFIER)
     private var cachedCount : Int = -1
 
-
+    @Deprecated("All should be singletons now")
     fun forceCacheRefresh(){
         cachedCount = count.read() ?: 0
     }

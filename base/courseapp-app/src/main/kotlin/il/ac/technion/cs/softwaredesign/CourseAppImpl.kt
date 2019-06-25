@@ -38,10 +38,14 @@ class CourseAppImplInitializer @Inject constructor(private val storageFactory: S
         CourseAppInitializer {
     companion object {
         lateinit var storage: SecureStorage
+        lateinit var managers: Managers
     }
 
     override fun setup(): CompletableFuture<Unit> {
         storage = storageFactory.open("main".toByteArray()).join()
+        managers = Managers(KeyValueStoreImpl(AsyncStorageAdapter(CourseAppImplInitializer.storage)))
+
+
         return completedOf(Unit)
     }
 }

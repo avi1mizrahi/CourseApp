@@ -44,14 +44,19 @@ class CourseAppTest {
         class CourseAppModuleMock : KotlinModule() {
             override fun configure() {
                 val keystoreinst = VolatileKeyValueStore()
-                val app = CourseAppImpl(Managers(keystoreinst))
+
+                val managers = Managers(keystoreinst)
+                bind<Managers>().toInstance(managers)
+                bind<MessageFactory>().toInstance(managers.messages)
+
 
                 bind<KeyValueStore>().toInstance(keystoreinst)
-                bind<CourseApp>().toInstance(app)
+                bind<CourseApp>().to<CourseAppImpl>()
                 bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
-                bind<MessageFactory>().toProvider(Provider<MessageFactory> {
-                    MessageManager(keystoreinst.scope("messages"))
-                })
+
+
+
+
                 bind<CourseBots>().to<CourseBotManager>()
             }
         }
