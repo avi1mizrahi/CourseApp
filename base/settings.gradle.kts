@@ -9,5 +9,6 @@ sourceControl {
 }
 
 include("library")
+include("library5")
 include("courseapp-app")
 include("courseapp-test")

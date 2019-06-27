@@ -14,6 +14,7 @@ val mockkVersion: String? by extra
 
 dependencies {
     compile(project(":library"))
+    compile(project(":library5"))
     compile("com.google.inject", "guice", guiceVersion)
     compile("com.authzee.kotlinguice4", "kotlin-guice", kotlinGuiceVersion)
     
