@@ -52,21 +52,25 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
     @Inject
     private lateinit var storageFactory : SecureStorageFactory
+    private lateinit var storage : SecureStorage
 
-    private val storage = storageFactory.open("bots".toByteArray()).join()
+
 //    private val dicts = DictionaryFactory(storageFactory, "dicts")
 //    private val lists = LinkedListFactory(storageFactory, "lists")
 //    private val heaps = MaxHeapFactory(storageFactory, "heaps")
 
 
 
-    val DBbotList = newLinkedList(storage, "All bots")
+    private lateinit var DBbotList: LinkedList
 
     override fun prepare(): CompletableFuture<Unit> {
         return CompletableFuture.completedFuture(Unit)
     }
 
     override fun start(): CompletableFuture<Unit> {
+        storage = storageFactory.open("bots".toByteArray()).join()
+        DBbotList = newLinkedList(storage, "All bots")
+
         DBbotList.forEach { name ->
             app.login(name, MASTERPASSWORD)
                     .thenApply { token -> allBots[name] = CourseBotInstance(name, token)  }
@@ -111,6 +115,9 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
     inner class CourseBotInstance(val token: String, val name: String) : CourseBot{
 
+        private val botScope :SecureStorage =
+                ScopedStorage(storage, "bots" + 0.toByte() + name + 0.toByte())
+
         private val calculatorComponent = Calculator()
         private val messageCounterComponent  = MessageCounter()
         private val tipsComponent = Tips()
@@ -122,10 +129,9 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 lastSeenComponent, activeUsersComponent, surviesComponent)
 
 
-        private val botScope :SecureStorage =
-                ScopedStorage(storage, "bots" + 0.toByte() + name + 0.toByte())
+
+
         private abstract inner class BotEventObserver(name: String) {
-//            open fun onFirstInit() : Unit = Unit
             open fun onInit() : Unit = Unit
             open fun onMessage(source : String, message : Message) : Unit = Unit
             open fun onChannelPart(channelName : String) : Unit = Unit

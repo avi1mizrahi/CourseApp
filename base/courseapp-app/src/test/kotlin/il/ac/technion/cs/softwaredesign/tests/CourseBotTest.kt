@@ -10,6 +10,8 @@ import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
+import il.ac.technion.cs.softwaredesign.storage.SecureStorage
+import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -40,6 +42,32 @@ class CourseBotTest {
                 bind<CourseApp>().to<CourseAppImpl>()
                 bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
 
+
+                // Bots
+                class MockStorage : SecureStorage {
+                    private val encoding = Charsets.UTF_8
+
+                    private val keyvalDB = HashMap<String, ByteArray>()
+
+                    override fun read(key: ByteArray): CompletableFuture<ByteArray?> {
+                        val bytes = keyvalDB[key.toString(encoding)]
+                        if (bytes != null)
+                            Thread.sleep(bytes.size.toLong())
+                        return CompletableFuture.completedFuture(bytes)
+                    }
+
+                    override fun write(key: ByteArray, value: ByteArray): CompletableFuture<Unit> {
+                        keyvalDB[key.toString(encoding)] = value
+                        return CompletableFuture.completedFuture(Unit)
+                    }
+                }
+
+                class SecureStorageFactoryMock : SecureStorageFactory {
+                    override fun open(name : ByteArray) : CompletableFuture<SecureStorage> {
+                        return CompletableFuture.completedFuture(MockStorage())
+                    }
+                }
+                bind<SecureStorageFactory>().to<SecureStorageFactoryMock>()
                 bind<CourseBots>().to<CourseBotManager>()
             }
         }
@@ -49,6 +77,9 @@ class CourseBotTest {
         statistics = injector.getInstance()
         messageFactory = injector.getInstance()
         bots = injector.getInstance()
+
+
+        bots.start()
     }
 
     @Nested
