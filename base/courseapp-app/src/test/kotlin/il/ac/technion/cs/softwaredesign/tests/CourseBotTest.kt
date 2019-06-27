@@ -8,6 +8,8 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
+import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
@@ -16,14 +18,17 @@ import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.time.Duration.ofSeconds
 import java.util.concurrent.CompletableFuture
 
 
 inline fun <reified T> completedOf(t: T) = CompletableFuture.completedFuture(t)
+inline fun <reified T> failedOf(t: Throwable) = CompletableFuture.failedFuture<T>(t)
 
 class CourseBotTest {
     // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
@@ -79,6 +84,73 @@ class CourseBotTest {
     }
 
     @Nested
+    inner class Channels {
+        @Test
+        fun `throws when can't join`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.channelJoin(any(), any()) } returns failedOf(UserNotAuthorizedException())
+
+            val bot = bots.bot().join()
+
+            assertThrows<UserNotAuthorizedException> { bot.join("#WTF").joinException() }
+        }
+
+        @Test
+        fun `throws when can't part`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.channelPart(any(), any()) } returns failedOf(NoSuchEntityException())
+
+            val bot = bots.bot().join()
+
+            assertThrows<NoSuchEntityException> { bot.part("#WTF").joinException() }
+        }
+
+        @Test
+        fun `join and part`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.channelJoin(any(), any()) } returns completedOf(Unit)
+            every { app.channelPart(any(), any()) } returns completedOf(Unit)
+
+            val bot = bots.bot().join()
+            bot.join("#c").join()
+
+            assertDoesNotThrow { bot.part("#c").joinException() }
+        }
+
+        @Test
+        fun `list channels`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.channelJoin(any(), any()) } returns completedOf(Unit)
+
+            val theBot = bots.bot().thenCompose { bot ->
+                bot.join("#c1")
+                    .thenCompose { bot.join("#c2") }
+                    .thenCompose { bot.join("#c22") }
+                    .thenCompose { bot.join("#c14") }
+                    .thenApply { bot }
+            }.join()
+
+            // another bot
+            bots.bot().thenCompose { bot ->
+                bot.join("#c1")
+                    .thenCompose { bot.join("#c22222") }
+                    .thenCompose { bot.join("#c2111112") }
+                    .thenCompose { bot.join("#c14") }
+                    .thenApply { bot }
+            }.join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                theBot.channels().join()
+            }, equalTo(listOf("#c1", "#c2", "#c22", "#c14")))
+        }
+
+    }
+
+    @Nested
     inner class Counter {
 
     }
@@ -103,57 +175,82 @@ class CourseBotTest {
 
     }
 
-    @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
-    @Test
-    fun `default name`() {
-        every { app.login("Anna0", any()) } returns completedOf("1")
-        every { app.login("Anna1", any()) } returns completedOf("2")
-        every { app.login("Anna2", any()) } returns completedOf("3")
+    @Nested
+    inner class General {
+        @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
+        @Test
+        fun `default name`() {
+            every { app.login("Anna0", any()) } returns completedOf("1")
+            every { app.login("Anna1", any()) } returns completedOf("2")
+            every { app.login("Anna2", any()) } returns completedOf("3")
 
-        every { app.addListener("1", any()) } returns completedOf(Unit)
-        every { app.addListener("2", any()) } returns completedOf(Unit)
-        every { app.addListener("3", any()) } returns completedOf(Unit)
+            every { app.addListener("1", any()) } returns completedOf(Unit)
+            every { app.addListener("2", any()) } returns completedOf(Unit)
+            every { app.addListener("3", any()) } returns completedOf(Unit)
 
-        every { app.channelJoin("1", any()) } returns completedOf(Unit)
-        every { app.channelJoin("2", any()) } returns completedOf(Unit)
-        every { app.channelJoin("3", any()) } returns completedOf(Unit)
+            every { app.channelJoin("1", any()) } returns completedOf(Unit)
+            every { app.channelJoin("2", any()) } returns completedOf(Unit)
+            every { app.channelJoin("3", any()) } returns completedOf(Unit)
 
-        bots.bot().thenCompose { it.join("#c1") }.join()
-        bots.bot().thenCompose { it.join("#c1") }.join()
-        bots.bot("Anna0").thenCompose { it.join("#c1") }.join()
-        bots.bot().thenCompose { it.join("#c1") }.join()
+            bots.bot().thenCompose { it.join("#c1") }.join()
+            bots.bot().thenCompose { it.join("#c1") }.join()
+            bots.bot("Anna0").thenCompose { it.join("#c1") }.join()
+            bots.bot().thenCompose { it.join("#c1") }.join()
 
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            bots.bots("#c1").join()
-        }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bots.bots("#c1").join()
+            }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
 
-        verify(atLeast = 3) {
-            app.login(any(), any())
-            app.addListener(any(), any())
-            app.channelJoin(any(), any())
+            verify(atLeast = 3) {
+                app.login(any(), any())
+                app.addListener(any(), any())
+                app.channelJoin(any(), any())
+            }
+
+            confirmVerified()
         }
 
-        confirmVerified()
-    }
+        @Test
+        fun `custom name`() {
+            every { app.login("beni sela", any()) } returns completedOf("1")
 
-    @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
-    @Test
-    fun `list bots from all channels`() {
-        every { app.login("Anna0", any()) } returns completedOf("1")
-        every { app.login("Anna1", any()) } returns completedOf("2")
-        every { app.login("Anna2", any()) } returns completedOf("3")
-        every { app.login("Anna3", any()) } returns completedOf("4")
+            every { app.addListener("1", any()) } returns completedOf(Unit)
+            every { app.channelJoin("1", any()) } returns completedOf(Unit)
 
-        every { app.addListener(any(), any()) } returns completedOf(Unit)
-        every { app.channelJoin(any(), any()) } returns completedOf(Unit)
+            bots.bot("beni sela").thenCompose { it.join("#c1") }.join()
 
-        bots.bot().thenCompose { it.join("#c1") }.join()
-        bots.bot().thenCompose { it.join("#c2") }.join()
-        bots.bot().thenCompose { it.join("#c1") }.join()
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bots.bots("#c1").join()
+            }, equalTo(listOf("beni sela")))
 
-        assertThat(runWithTimeout(ofSeconds(10)) {
-            bots.bots().join()
-        }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
+            verify(atLeast = 1) {
+                app.login(any(), any())
+                app.addListener(any(), any())
+                app.channelJoin(any(), any())
+            }
+
+            confirmVerified()
+        }
+
+        @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
+        @Test
+        fun `list bots from all channels`() {
+            every { app.login("Anna0", any()) } returns completedOf("1")
+            every { app.login("Anna1", any()) } returns completedOf("2")
+            every { app.login("Anna2", any()) } returns completedOf("3")
+            every { app.login("Anna3", any()) } returns completedOf("4")
+
+            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.channelJoin(any(), any()) } returns completedOf(Unit)
+
+            bots.bot().thenCompose { it.join("#c1") }.join()
+            bots.bot().thenCompose { it.join("#c2") }.join()
+            bots.bot().thenCompose { it.join("#c1") }.join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bots.bots().join()
+            }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
+        }
     }
 }
 
