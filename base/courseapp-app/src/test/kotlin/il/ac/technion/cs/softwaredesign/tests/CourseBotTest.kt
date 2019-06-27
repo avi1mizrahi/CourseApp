@@ -147,12 +147,34 @@ class CourseBotTest {
                 theBot.channels().join()
             }, equalTo(listOf("#c1", "#c2", "#c22", "#c14")))
         }
-
     }
 
+    @Disabled // TODO
     @Nested
     inner class Counter {
+        @Test
+        fun `beginCount throws IllegalArgumentException on bad input`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf(Unit)
 
+            val bot = bots.bot().join()
+
+            assertThrows<IllegalArgumentException> {
+                bot.beginCount("#hh", null, null).joinException()
+            }
+        }
+
+        @Test
+        fun `count throws IllegalArgumentException without prior begin`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf(Unit)
+
+            val bot = bots.bot().join()
+
+            assertThrows<IllegalArgumentException> {
+                bot.count("#hh", null, null).joinException()
+            }
+        }
     }
 
     @Nested
