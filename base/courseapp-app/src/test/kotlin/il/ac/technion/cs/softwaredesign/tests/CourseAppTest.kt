@@ -46,8 +46,6 @@ class CourseAppTest {
                 bind<KeyValueStore>().toInstance(keystoreinst)
                 bind<CourseApp>().to<CourseAppImpl>()
                 bind<CourseAppStatistics>().to<CourseAppStatisticsImpl>()
-
-                bind<CourseBots>().to<CourseBotManager>()
             }
         }
 
