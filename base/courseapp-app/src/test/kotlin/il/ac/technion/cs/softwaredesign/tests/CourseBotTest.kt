@@ -12,6 +12,7 @@ import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
+import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -22,7 +23,141 @@ import java.time.Duration.ofSeconds
 import java.util.concurrent.CompletableFuture
 
 
+inline fun <reified T> completedOf(t: T) = CompletableFuture.completedFuture(t)
+
 class CourseBotTest {
+    // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
+    private val injector: Injector
+    private val app: CourseApp = mockk()
+    private val statistics: CourseAppStatistics = mockk()
+    private val messageFactory: MessageFactory = mockk(relaxed = true)
+    private val bots: CourseBots
+
+    init {
+        class CourseAppModuleMock : KotlinModule() {
+            override fun configure() {
+                val keystoreinst = VolatileKeyValueStore()
+
+                bind<KeyValueStore>().toInstance(keystoreinst)
+                bind<CourseApp>().toInstance(app)
+                bind<CourseAppStatistics>().toInstance(statistics)
+                bind<MessageFactory>().toInstance(messageFactory)
+
+                // Bots
+                class MockStorage : SecureStorage {
+                    private val encoding = Charsets.UTF_8
+
+                    private val keyvalDB = HashMap<String, ByteArray>()
+
+                    override fun read(key: ByteArray): CompletableFuture<ByteArray?> {
+                        val bytes = keyvalDB[key.toString(encoding)]
+                        if (bytes != null)
+                            Thread.sleep(bytes.size.toLong())
+                        return CompletableFuture.completedFuture(bytes)
+                    }
+
+                    override fun write(key: ByteArray, value: ByteArray): CompletableFuture<Unit> {
+                        keyvalDB[key.toString(encoding)] = value
+                        return CompletableFuture.completedFuture(Unit)
+                    }
+                }
+
+                class SecureStorageFactoryMock : SecureStorageFactory {
+                    override fun open(name : ByteArray) : CompletableFuture<SecureStorage> {
+                        return CompletableFuture.completedFuture(MockStorage())
+                    }
+                }
+                bind<SecureStorageFactory>().to<SecureStorageFactoryMock>()
+                bind<CourseBots>().to<CourseBotManager>()
+            }
+        }
+
+        injector = Guice.createInjector(CourseAppModuleMock())
+        bots = injector.getInstance()
+
+        bots.start()
+    }
+
+    @Nested
+    inner class Counter {
+
+    }
+
+    @Nested
+    inner class Calculator {
+
+    }
+
+    @Nested
+    inner class Tipping {
+
+    }
+
+    @Nested
+    inner class Stocker {
+
+    }
+
+    @Nested
+    inner class Survey {
+
+    }
+
+    @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
+    @Test
+    fun `default name`() {
+        every { app.login("Anna0", any()) } returns completedOf("1")
+        every { app.login("Anna1", any()) } returns completedOf("2")
+        every { app.login("Anna2", any()) } returns completedOf("3")
+
+        every { app.addListener("1", any()) } returns completedOf(Unit)
+        every { app.addListener("2", any()) } returns completedOf(Unit)
+        every { app.addListener("3", any()) } returns completedOf(Unit)
+
+        every { app.channelJoin("1", any()) } returns completedOf(Unit)
+        every { app.channelJoin("2", any()) } returns completedOf(Unit)
+        every { app.channelJoin("3", any()) } returns completedOf(Unit)
+
+        bots.bot().thenCompose { it.join("#c1") }.join()
+        bots.bot().thenCompose { it.join("#c1") }.join()
+        bots.bot("Anna0").thenCompose { it.join("#c1") }.join()
+        bots.bot().thenCompose { it.join("#c1") }.join()
+
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            bots.bots("#c1").join()
+        }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
+
+        verify(atLeast = 3) {
+            app.login(any(), any())
+            app.addListener(any(), any())
+            app.channelJoin(any(), any())
+        }
+
+        confirmVerified()
+    }
+
+    @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
+    @Test
+    fun `list bots from all channels`() {
+        every { app.login("Anna0", any()) } returns completedOf("1")
+        every { app.login("Anna1", any()) } returns completedOf("2")
+        every { app.login("Anna2", any()) } returns completedOf("3")
+        every { app.login("Anna3", any()) } returns completedOf("4")
+
+        every { app.addListener(any(), any()) } returns completedOf(Unit)
+        every { app.channelJoin(any(), any()) } returns completedOf(Unit)
+
+        bots.bot().thenCompose { it.join("#c1") }.join()
+        bots.bot().thenCompose { it.join("#c2") }.join()
+        bots.bot().thenCompose { it.join("#c1") }.join()
+
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            bots.bots().join()
+        }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
+    }
+}
+
+class CourseBotStaffTest {
     // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
     private val injector: Injector
     private val app: CourseApp // TODO: use mock instead of our full impl?
@@ -79,201 +214,167 @@ class CourseBotTest {
         messageFactory = injector.getInstance()
         bots = injector.getInstance()
 
-
         bots.start()
     }
 
-    @Nested
-    inner class Counter {
+    @Test
+    fun `Can create a bot and add make it join channels`() {
+        val token = app.login("gal", "hunter2").join()
 
-    }
-
-    @Nested
-    inner class Calculator {
-
-    }
-
-    @Nested
-    inner class Tipping {
-
-    }
-
-    @Nested
-    inner class Stocker {
-
-    }
-
-    @Nested
-    inner class Survey {
-
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            val bot = app.channelJoin(token, "#channel")
+                .thenCompose { bots.bot() }
+                .join()
+            bot.join("#channel").join()
+            bot.channels().join()
+        }, equalTo(listOf("#channel")))
     }
 
     @Test
-    fun `list bots`() {
+    fun `Can list bots in a channel`() {
+        app.login("gal", "hunter2")
+            .thenCompose { adminToken ->
+                app.channelJoin(adminToken, "#channel")
+                    .thenCompose { bots.bot().thenCompose { it.join("#channel") } }
+            }.join()
 
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            bots.bots("#channel").join()
+        }, equalTo(listOf("Anna0")))
     }
 
-    @Nested
-    inner class StaffBots {
-        @Test
-        fun `Can create a bot and add make it join channels`() {
-            val token = app.login("gal", "hunter2").join()
+    @Test
+    fun `A user in the channel can ask the bot to do calculation`() {
+        val listener = mockk<ListenerCallback>(relaxed = true)
 
-            assertThat(runWithTimeout(ofSeconds(10)) {
-                val bot = app.channelJoin(token, "#channel")
-                    .thenCompose { bots.bot() }
-                    .join()
-                bot.join("#channel").join()
-                bot.channels().join()
-            }, equalTo(listOf("#channel")))
+        every { listener(any(), any()) } returns CompletableFuture.completedFuture(Unit)
+
+        app.login("gal", "hunter2")
+            .thenCompose { adminToken ->
+                app.channelJoin(adminToken, "#channel")
+                    .thenCompose {
+                        bots.bot().thenCompose { bot ->
+                            bot.join("#channel")
+                                .thenApply { bot.setCalculationTrigger("calculate") }
+                        }
+                    }
+                    .thenCompose { app.login("matan", "s3kr3t") }
+                    .thenCompose { token ->
+                        app.channelJoin(token, "#channel")
+                            .thenApply { token }
+                    }
+                    .thenCompose { token ->
+                        app.addListener(token, listener)
+                            .thenApply { token }
+                    }
+                    .thenCompose { token ->
+                        app.channelSend(token,
+                                        "#channel",
+                                        messageFactory.create(MediaType.TEXT,
+                                                              "calculate 20 * 2 + 2".toByteArray()).join())
+                    }
+            }.join()
+
+        verify {
+            listener.invoke("#channel@matan", any())
+            listener.invoke("#channel@Anna0",
+                            match { it.contents.toString(Charsets.UTF_8).toInt() == 42 })
         }
+    }
 
-        @Test
-        fun `Can list bots in a channel`() {
-            app.login("gal", "hunter2")
-                .thenCompose { adminToken ->
-                    app.channelJoin(adminToken, "#channel")
-                        .thenCompose { bots.bot().thenCompose { it.join("#channel") } }
-                }.join()
+    @Test
+    fun `A user in the channel can tip another user`() {
+        app.login("gal", "hunter2")
+            .thenCompose { adminToken ->
+                app.channelJoin(adminToken, "#channel")
+                    .thenCompose {
+                        bots.bot()
+                            .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
+                            .thenCompose { bot -> bot.setTipTrigger("tip") }
+                    }
+                    .thenCompose { app.login("matan", "s3kr3t") }
+                    .thenCompose { token ->
+                        app.channelJoin(token, "#channel")
+                            .thenApply { token }
+                    }
+                    .thenCompose { token ->
+                        app.channelSend(token,
+                                        "#channel",
+                                        messageFactory.create(MediaType.TEXT,
+                                                              "tip 10 gal".toByteArray()).join())
+                    }
+            }.join()
 
-            assertThat(runWithTimeout(ofSeconds(10)) {
-                bots.bots("#channel").join()
-            }, equalTo(listOf("Anna0")))
-        }
-
-        @Test
-        fun `A user in the channel can ask the bot to do calculation`() {
-            val listener = mockk<ListenerCallback>(relaxed = true)
-
-            every { listener(any(), any()) } returns CompletableFuture.completedFuture(Unit)
-
-            app.login("gal", "hunter2")
-                .thenCompose { adminToken ->
-                    app.channelJoin(adminToken, "#channel")
-                        .thenCompose {
-                            bots.bot().thenCompose { bot ->
-                                bot.join("#channel")
-                                    .thenApply { bot.setCalculationTrigger("calculate") }
-                            }
-                        }
-                        .thenCompose { app.login("matan", "s3kr3t") }
-                        .thenCompose { token ->
-                            app.channelJoin(token, "#channel")
-                                .thenApply { token }
-                        }
-                        .thenCompose { token ->
-                            app.addListener(token, listener)
-                                .thenApply { token }
-                        }
-                        .thenCompose { token ->
-                            app.channelSend(token,
-                                            "#channel",
-                                            messageFactory.create(MediaType.TEXT,
-                                                                  "calculate 20 * 2 + 2".toByteArray()).join())
-                        }
-                }.join()
-
-            verify {
-                listener.invoke("#channel@matan", any())
-                listener.invoke("#channel@Anna0",
-                                match { it.contents.toString(Charsets.UTF_8).toInt() == 42 })
-            }
-        }
-
-        @Test
-        fun `A user in the channel can tip another user`() {
-            app.login("gal", "hunter2")
-                .thenCompose { adminToken ->
-                    app.channelJoin(adminToken, "#channel")
-                        .thenCompose {
-                            bots.bot()
-                                .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
-                                .thenCompose { bot -> bot.setTipTrigger("tip") }
-                        }
-                        .thenCompose { app.login("matan", "s3kr3t") }
-                        .thenCompose { token ->
-                            app.channelJoin(token, "#channel")
-                                .thenApply { token }
-                        }
-                        .thenCompose { token ->
-                            app.channelSend(token,
-                                            "#channel",
-                                            messageFactory.create(MediaType.TEXT,
-                                                                  "tip 10 gal".toByteArray()).join())
-                        }
-                }.join()
-
-            assertThat(runWithTimeout(ofSeconds(10)) {
-                bots.bot("Anna0")
-                    .thenCompose { it.richestUser("#channel") }
-                    .join()
-            }, present(equalTo("gal")))
-        }
-
-        @Disabled // TODO
-        @Test
-        fun `The bot accurately tracks keywords`() {
-            app.login("gal", "hunter2")
-                .thenCompose { adminToken ->
-                    app.channelJoin(adminToken, "#channel")
-                        .thenCompose {
-                            bots.bot()
-                                .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
-                                .thenCompose { bot -> bot.beginCount(".*ello.*[wW]orl.*") }
-                        }
-                        .thenCompose { app.login("matan", "s3kr3t") }
-                        .thenCompose { token ->
-                            app.channelJoin(token, "#channel")
-                                .thenApply { token }
-                        }
-                        .thenCompose { token ->
-                            app.channelSend(token,
-                                            "#channel",
-                                            messageFactory.create(MediaType.TEXT,
-                                                                  "hello, world!".toByteArray()).join())
-                        }
-                }.join()
-
-            assertThat(runWithTimeout(ofSeconds(10)) {
-                // TODO different regex? we have to store messages?
-                bots.bot("Anna0").thenCompose { bot -> bot.count(null, ".*hell.*worl.*") }
-                    .join() // missing null for channel
-            }, equalTo(1L))
-        }
-
-        @Disabled // TODO
-        @Test
-        fun `A user in the channel can ask the bot to do a survey`() {
-            val adminToken = app.login("gal", "hunter2")
-                .thenCompose { token -> app.channelJoin(token, "#channel").thenApply { token } }
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            bots.bot("Anna0")
+                .thenCompose { it.richestUser("#channel") }
                 .join()
-            val regularUserToken = app.login("matan", "s3kr3t")
-                .thenCompose { token -> app.channelJoin(token, "#channel").thenApply { token } }
-                .join()
-            val bot = bots.bot()
-                .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
-                .join()
+        }, present(equalTo("gal")))
+    }
 
-            assertThat(runWithTimeout(ofSeconds(10)) {
-                val survey =
-                        bot.runSurvey("#channel", "What is your favorite flavour of ice-cream?",
-                                      listOf("Cranberry",
-                                             "Charcoal",
-                                             "Chocolate-chip Mint")).join()
-                app.channelSend(adminToken,
-                                "#channel",
-                                messageFactory.create(MediaType.TEXT,
-                                                      "Chocolate-chip Mint".toByteArray()).join())
-                app.channelSend(regularUserToken,
-                                "#channel",
-                                messageFactory.create(MediaType.TEXT,
-                                                      "Chocolate-chip Mint".toByteArray()).join())
-                app.channelSend(adminToken,
-                                "#channel",
-                                messageFactory.create(MediaType.TEXT,
-                                                      "Chocolate-chip Mint".toByteArray()).join())
-                bot.surveyResults(survey).join()
-            }, containsElementsInOrder(0L, 0L, 2L))
-        }
+    @Disabled // TODO
+    @Test
+    fun `The bot accurately tracks keywords`() {
+        app.login("gal", "hunter2")
+            .thenCompose { adminToken ->
+                app.channelJoin(adminToken, "#channel")
+                    .thenCompose {
+                        bots.bot()
+                            .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
+                            .thenCompose { bot -> bot.beginCount(".*ello.*[wW]orl.*") }
+                    }
+                    .thenCompose { app.login("matan", "s3kr3t") }
+                    .thenCompose { token ->
+                        app.channelJoin(token, "#channel")
+                            .thenApply { token }
+                    }
+                    .thenCompose { token ->
+                        app.channelSend(token,
+                                        "#channel",
+                                        messageFactory.create(MediaType.TEXT,
+                                                              "hello, world!".toByteArray()).join())
+                    }
+            }.join()
+
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            // TODO different regex? we have to store messages?
+            bots.bot("Anna0").thenCompose { bot -> bot.count(null, ".*hell.*worl.*") }
+                .join() // missing null for channel
+        }, equalTo(1L))
+    }
+
+    @Disabled // TODO
+    @Test
+    fun `A user in the channel can ask the bot to do a survey`() {
+        val adminToken = app.login("gal", "hunter2")
+            .thenCompose { token -> app.channelJoin(token, "#channel").thenApply { token } }
+            .join()
+        val regularUserToken = app.login("matan", "s3kr3t")
+            .thenCompose { token -> app.channelJoin(token, "#channel").thenApply { token } }
+            .join()
+        val bot = bots.bot()
+            .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
+            .join()
+
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            val survey =
+                    bot.runSurvey("#channel", "What is your favorite flavour of ice-cream?",
+                                  listOf("Cranberry",
+                                         "Charcoal",
+                                         "Chocolate-chip Mint")).join()
+            app.channelSend(adminToken,
+                            "#channel",
+                            messageFactory.create(MediaType.TEXT,
+                                                  "Chocolate-chip Mint".toByteArray()).join())
+            app.channelSend(regularUserToken,
+                            "#channel",
+                            messageFactory.create(MediaType.TEXT,
+                                                  "Chocolate-chip Mint".toByteArray()).join())
+            app.channelSend(adminToken,
+                            "#channel",
+                            messageFactory.create(MediaType.TEXT,
+                                                  "Chocolate-chip Mint".toByteArray()).join())
+            bot.surveyResults(survey).join()
+        }, containsElementsInOrder(0L, 0L, 2L))
     }
 }
