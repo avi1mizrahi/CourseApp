@@ -15,6 +15,7 @@ import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.time.Duration.ofSeconds
@@ -80,6 +81,36 @@ class CourseBotTest {
 
 
         bots.start()
+    }
+
+    @Nested
+    inner class Counter {
+
+    }
+
+    @Nested
+    inner class Calculator {
+
+    }
+
+    @Nested
+    inner class Tipping {
+
+    }
+
+    @Nested
+    inner class Stocker {
+
+    }
+
+    @Nested
+    inner class Survey {
+
+    }
+
+    @Test
+    fun `list bots`() {
+
     }
 
     @Nested
@@ -179,6 +210,7 @@ class CourseBotTest {
             }, present(equalTo("gal")))
         }
 
+        @Disabled // TODO
         @Test
         fun `The bot accurately tracks keywords`() {
             app.login("gal", "hunter2")
@@ -209,6 +241,7 @@ class CourseBotTest {
             }, equalTo(1L))
         }
 
+        @Disabled // TODO
         @Test
         fun `A user in the channel can ask the bot to do a survey`() {
             val adminToken = app.login("gal", "hunter2")
