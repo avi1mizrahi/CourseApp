@@ -326,7 +326,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 return CompletableFuture.supplyAsync {
                     if (regex == null && mediaType == null) throw IllegalArgumentException() // TODO
 
-                    if (channel != null && app.isUserInChannel(token, channel, name).join() != true) throw TODO()
+                    if (channel != null && !(getIsInChannel(channel).join())) throw TODO()
 
                     val channelname = channel ?: "All channels"
 
@@ -461,7 +461,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 if (tipTrigger == "") tipTrigger = null
             }
 
-            override fun onChannelPart(channel: String) = TipsOfChannel(channel).reset()
+            override fun onChannelPart(channelName: String) = TipsOfChannel(channelName).reset()
 
 
             override fun onMessage(source: String, message: Message) {
@@ -735,10 +735,9 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
         // Returns true if bot is in channel, otherwise false. Never throws.
         private fun getIsInChannel(channel : String) : CompletableFuture<Boolean> {
-            return app.isUserInChannel(token, channel, name)
-                    .exceptionally { false }
-                    .thenApply { it == true } // false and null will return false
-
+            return CompletableFuture.supplyAsync {
+                channels.contains(channel)
+            }
         }
     }
 
