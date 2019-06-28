@@ -11,13 +11,11 @@ import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
 import il.ac.technion.cs.softwaredesign.messages.MediaType
+import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
-import io.mockk.confirmVerified
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.*
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
@@ -27,8 +25,9 @@ import java.time.Duration.ofSeconds
 import java.util.concurrent.CompletableFuture
 
 
-inline fun <reified T> completedOf(t: T) = CompletableFuture.completedFuture(t)
-inline fun <reified T> failedOf(t: Throwable) = CompletableFuture.failedFuture<T>(t)
+fun completedOf(): CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)
+inline fun <reified T> completedOf(t: T): CompletableFuture<T> = CompletableFuture.completedFuture(t)
+inline fun <reified T> failedOf(t: Throwable): CompletableFuture<T> = CompletableFuture.failedFuture(t)
 
 class CourseBotTest {
     // We Inject a mocked KeyValueStore and not rely on a KeyValueStore that relies on another DB layer
@@ -88,7 +87,7 @@ class CourseBotTest {
         @Test
         fun `throws when can't join`() {
             every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.addListener(any(), any()) } returns completedOf()
             every { app.channelJoin(any(), any()) } returns failedOf(UserNotAuthorizedException())
 
             val bot = bots.bot().join()
@@ -99,7 +98,7 @@ class CourseBotTest {
         @Test
         fun `throws when can't part`() {
             every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.addListener(any(), any()) } returns completedOf()
             every { app.channelPart(any(), any()) } returns failedOf(NoSuchEntityException())
 
             val bot = bots.bot().join()
@@ -110,9 +109,9 @@ class CourseBotTest {
         @Test
         fun `join and part`() {
             every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf(Unit)
-            every { app.channelJoin(any(), any()) } returns completedOf(Unit)
-            every { app.channelPart(any(), any()) } returns completedOf(Unit)
+            every { app.addListener(any(), any()) } returns completedOf()
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.channelPart(any(), any()) } returns completedOf()
 
             val bot = bots.bot().join()
             bot.join("#c").join()
@@ -121,10 +120,34 @@ class CourseBotTest {
         }
 
         @Test
+        fun `join only the asked channels`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf()
+
+            every { app.channelJoin("1", "#c1"  ) } returns completedOf()
+            every { app.channelJoin("1", "#c7"  ) } returns completedOf()
+            every { app.channelJoin("1", "#koko") } returns completedOf()
+
+            bots.bot().thenCompose { bot ->
+                bot.join("#c1")
+                    .thenCompose { bot.join("#c7") }
+                    .thenCompose { bot.join("#koko") }
+            }.join()
+
+            verify(exactly = 1) {
+                app.channelJoin("1","#c1"  )
+                app.channelJoin("1","#c7"  )
+                app.channelJoin("1","#koko")
+            }
+
+            confirmVerified()
+        }
+
+        @Test
         fun `list channels`() {
             every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf(Unit)
-            every { app.channelJoin(any(), any()) } returns completedOf(Unit)
+            every { app.addListener(any(), any()) } returns completedOf()
+            every { app.channelJoin(any(), any()) } returns completedOf()
 
             val theBot = bots.bot().thenCompose { bot ->
                 bot.join("#c1")
@@ -155,7 +178,7 @@ class CourseBotTest {
         @Test
         fun `beginCount throws IllegalArgumentException on bad input`() {
             every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.addListener(any(), any()) } returns completedOf()
 
             val bot = bots.bot().join()
 
@@ -167,13 +190,81 @@ class CourseBotTest {
         @Test
         fun `count throws IllegalArgumentException without prior begin`() {
             every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf(Unit)
+            every { app.addListener(any(), any()) } returns completedOf()
 
             val bot = bots.bot().join()
 
             assertThrows<IllegalArgumentException> {
                 bot.count("#hh", null, null).joinException()
             }
+
+            //TODO: add the cases where there is begin but not with the same params
+        }
+
+        @Test
+        fun `count with exact specs`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin("1", "#ch") } returns completedOf()
+            every { app.addListener("1", capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot().join()
+            bot.join("#ch")
+                .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
+                .join()
+
+            val msg = mockk<Message>(relaxed = true)
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "there is מחט here".toByteArray()
+            listeners.forEach { it("#ch", msg) }
+
+            every { msg.id } returns 35
+            listeners.forEach { it("#ch", msg) }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.count("#ch", "מחט", MediaType.TEXT).join()
+            }, equalTo(2L))
+        }
+
+
+        @Test
+        fun `count with regex`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin("1", "#ch") } returns completedOf()
+            every { app.addListener("1", capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot().join()
+            bot.join("#ch")
+                .thenCompose { bot.beginCount("#ch", "take.*me", MediaType.TEXT) }
+                .join()
+
+            val msg = mockk<Message>(relaxed = true)
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "klj k take !!!!! me !!!".toByteArray()
+            listeners.forEach { it("#ch", msg) }
+
+            every { msg.id } returns 35
+            every { msg.contents } returns "klj k e !!!!! me take !!!".toByteArray()
+            listeners.forEach { it("#ch", msg) }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.count("#ch", "take.*me", MediaType.TEXT).join()
+            }, equalTo(1L))
         }
     }
 
@@ -206,13 +297,13 @@ class CourseBotTest {
             every { app.login("Anna1", any()) } returns completedOf("2")
             every { app.login("Anna2", any()) } returns completedOf("3")
 
-            every { app.addListener("1", any()) } returns completedOf(Unit)
-            every { app.addListener("2", any()) } returns completedOf(Unit)
-            every { app.addListener("3", any()) } returns completedOf(Unit)
+            every { app.addListener("1", any()) } returns completedOf()
+            every { app.addListener("2", any()) } returns completedOf()
+            every { app.addListener("3", any()) } returns completedOf()
 
-            every { app.channelJoin("1", any()) } returns completedOf(Unit)
-            every { app.channelJoin("2", any()) } returns completedOf(Unit)
-            every { app.channelJoin("3", any()) } returns completedOf(Unit)
+            every { app.channelJoin("1", any()) } returns completedOf()
+            every { app.channelJoin("2", any()) } returns completedOf()
+            every { app.channelJoin("3", any()) } returns completedOf()
 
             bots.bot().thenCompose { it.join("#c1") }.join()
             bots.bot().thenCompose { it.join("#c1") }.join()
@@ -236,8 +327,8 @@ class CourseBotTest {
         fun `custom name`() {
             every { app.login("beni sela", any()) } returns completedOf("1")
 
-            every { app.addListener("1", any()) } returns completedOf(Unit)
-            every { app.channelJoin("1", any()) } returns completedOf(Unit)
+            every { app.addListener("1", any()) } returns completedOf()
+            every { app.channelJoin("1", any()) } returns completedOf()
 
             bots.bot("beni sela").thenCompose { it.join("#c1") }.join()
 
@@ -262,8 +353,8 @@ class CourseBotTest {
             every { app.login("Anna2", any()) } returns completedOf("3")
             every { app.login("Anna3", any()) } returns completedOf("4")
 
-            every { app.addListener(any(), any()) } returns completedOf(Unit)
-            every { app.channelJoin(any(), any()) } returns completedOf(Unit)
+            every { app.addListener(any(), any()) } returns completedOf()
+            every { app.channelJoin(any(), any()) } returns completedOf()
 
             bots.bot().thenCompose { it.join("#c1") }.join()
             bots.bot().thenCompose { it.join("#c2") }.join()
