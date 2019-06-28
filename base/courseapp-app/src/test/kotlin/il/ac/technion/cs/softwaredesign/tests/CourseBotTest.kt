@@ -212,6 +212,8 @@ class CourseBotTest {
                 completedOf()
             }
 
+
+
             val bot = bots.bot().join()
             bot.join("#ch")
                 .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
@@ -222,10 +224,10 @@ class CourseBotTest {
             every { msg.id } returns 34
             every { msg.media } returns MediaType.TEXT
             every { msg.contents } returns "there is מחט here".toByteArray()
-            listeners.forEach { it("#ch", msg) }
+            listeners.forEach { it("#ch@someone", msg).join() }
 
             every { msg.id } returns 35
-            listeners.forEach { it("#ch", msg) }
+            listeners.forEach { it("#ch@someone", msg).join() }
 
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bot.count("#ch", "מחט", MediaType.TEXT).join()
@@ -255,11 +257,11 @@ class CourseBotTest {
             every { msg.id } returns 34
             every { msg.media } returns MediaType.TEXT
             every { msg.contents } returns "klj k take !!!!! me !!!".toByteArray()
-            listeners.forEach { it("#ch", msg) }
+            listeners.forEach { it("#ch@someone", msg).join() }
 
             every { msg.id } returns 35
             every { msg.contents } returns "klj k e !!!!! me take !!!".toByteArray()
-            listeners.forEach { it("#ch", msg) }
+            listeners.forEach { it("#ch@someone", msg).join() }
 
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bot.count("#ch", "take.*me", MediaType.TEXT).join()
