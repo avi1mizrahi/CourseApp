@@ -149,7 +149,6 @@ class CourseBotTest {
         }
     }
 
-    @Disabled // TODO
     @Nested
     inner class Counter {
         @Test
@@ -199,7 +198,7 @@ class CourseBotTest {
 
     @Nested
     inner class General {
-        @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
+        //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
         @Test
         fun `default name`() {
             every { app.login("Anna0", any()) } returns completedOf("1")
@@ -254,7 +253,6 @@ class CourseBotTest {
             confirmVerified()
         }
 
-        @Disabled //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
         @Test
         fun `list bots from all channels`() {
             every { app.login("Anna0", any()) } returns completedOf("1")
