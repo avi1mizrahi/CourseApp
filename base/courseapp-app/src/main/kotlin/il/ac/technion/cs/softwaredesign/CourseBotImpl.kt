@@ -156,10 +156,15 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
         private val onMessage : ListenerCallback = {
             source, message ->
 
-            val tasks = ArrayList<CompletableFuture<*>>()
-            botEventObservers.forEach {tasks.add(CompletableFuture.runAsync{ it.onMessage(source, message)})}
-            CompletableFuture.allOf(*tasks.toTypedArray())
-                    .thenApply { Unit }
+            if (!source.contains("@"))
+                CompletableFuture.completedFuture(Unit)
+            else
+            {
+                val tasks = ArrayList<CompletableFuture<*>>()
+                botEventObservers.forEach {tasks.add(CompletableFuture.runAsync{ it.onMessage(source, message)})}
+                CompletableFuture.allOf(*tasks.toTypedArray())
+                        .thenApply { Unit }
+            }
         }
 
         init {
@@ -219,6 +224,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
             // Channels that have counters. TODO need to know wheter channelPart deletes counters or resets them
             private val relevantChannels = getLinkedList(taskScope, "relevantChannels")
+            private val allChannelsDBString = "All channels"
 
             private inner class MessageCountersOfChannel(private val channel: String) {
 
@@ -250,6 +256,31 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 fun reset() {
                     set.forEach { // TODO im resetting the counter and not deleting it.
                         dict.write(it, "0")
+                    }
+                }
+
+                fun checkChannelLocally(message : Message) {
+                    val messagestr = message.contents.toString(Charsets.UTF_8)
+                    val counter = localMessageCounters[channel] ?: return
+
+
+                    counter.forEach {
+                        val regex = it.key.first
+                        val mediatype = it.key.second
+
+                        if (mediatype != null && mediatype != message.media)
+                            return@forEach
+
+                        if (regex != null && !Regex(regex).containsMatchIn(messagestr))
+                            return@forEach
+
+
+                        val current = it.value
+                        counter[it.key] = current + 1
+
+                        val key = serialize(it.key)
+
+                        MessageCountersOfChannel(channel).set(key, current + 1)
                     }
                 }
             }
@@ -295,27 +326,8 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
             override fun onMessage(source: String, message: Message) {
                 val channel = getChannelFromChannelMessageSource(source)
 
-                val messagestr = message.contents.toString(Charsets.UTF_8)
-
-                val counter = localMessageCounters[channel] ?: return
-                counter.forEach {
-                    val regex = it.key.first
-                    val mediatype = it.key.second
-
-                    if (mediatype != null && mediatype != message.media)
-                        return@forEach
-
-                    if (regex != null && !kotlin.text.Regex.fromLiteral(regex).matches(messagestr))
-                        return@forEach
-
-
-                    val current = it.value
-                    counter[it.key] = current + 1
-
-                    val key = serialize(it.key)
-
-                    MessageCountersOfChannel(channel).set(key, current + 1)
-                }
+                MessageCountersOfChannel(channel).checkChannelLocally(message)
+                MessageCountersOfChannel(allChannelsDBString).checkChannelLocally(message)
             }
 
 
@@ -328,7 +340,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
                     if (channel != null && !(getIsInChannel(channel).join())) throw TODO()
 
-                    val channelname = channel ?: "All channels"
+                    val channelname = channel ?: allChannelsDBString
 
                     // add locally
                     localMessageCounters.putIfAbsent(channelname, HashMap())
@@ -572,8 +584,8 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
             }
 
 
-            override fun onChannelPart(channel: String) {
-                ActiveUsersOfChannel(channel).reset()
+            override fun onChannelPart(channelName: String) {
+                ActiveUsersOfChannel(channelName).reset()
             }
 
             override fun onMessage(source: String, message: Message) {
