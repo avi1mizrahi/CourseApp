@@ -4,7 +4,6 @@ import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.calculator.calculate
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
-import il.ac.technion.cs.softwaredesign.extensions.toByteArray
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
@@ -25,7 +24,6 @@ private fun getSenderFromChannelMessageSource(source : String) : String {
 private fun getChannelFromChannelMessageSource(source : String) : String {
     return source.split("@")[0]
 }
-
 
 
 private class ScopedStorage(val storage: SecureStorage, private val scope : List<String>) : SecureStorage {
@@ -361,8 +359,9 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 return CompletableFuture.supplyAsync {
                     if (channel == null && regex == null && mediaType == null) throw IllegalArgumentException()
 
-                    val ret = localMessageCounters[channel]?.get(Pair(regex, mediaType))
-                            ?: throw IllegalArgumentException()
+                    val ret = localMessageCounters[channel?:allChannelsDBString]
+                                  ?.get(Pair(regex, mediaType))
+                              ?: throw IllegalArgumentException()
 
                     ret.toLong()
                 }
