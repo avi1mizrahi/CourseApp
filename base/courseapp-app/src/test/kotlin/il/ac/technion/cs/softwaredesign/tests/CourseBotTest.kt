@@ -231,8 +231,6 @@ class CourseBotTest {
                 completedOf()
             }
 
-
-
             val bot = bots.bot().join()
             bot.join("#ch")
                 .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
@@ -286,6 +284,7 @@ class CourseBotTest {
             }, equalTo(1L))
         }
 
+        @Disabled // TODO
         @Test
         fun `count with regex all channels`() {
             val listener = slot<ListenerCallback>()
@@ -308,20 +307,20 @@ class CourseBotTest {
 
             val msg = mockk<Message>(relaxed = true)
 
-            // count this
+            // count this - #1
             every { msg.id } returns 34
             every { msg.media } returns MediaType.TEXT
             every { msg.contents } returns "klj k take !!!!! me !!!".toByteArray()
-            listeners.forEach { it("#ch1", msg) }
+            listeners.forEach { it("#ch1@jjj", msg) }
 
-            // count this
+            // count this - #2
             every { msg.id } returns 35
-            listeners.forEach { it("#ch2", msg) }
+            listeners.forEach { it("#ch2@iii", msg) }
 
             // DON'T count this
             every { msg.id } returns 36
             every { msg.contents } returns "klj k e !!!!! me take !!!".toByteArray()
-            listeners.forEach { it("#ch1", msg) }
+            listeners.forEach { it("#ch1@kkk", msg) }
 
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bot.count(null, "take.*me", MediaType.TEXT).join()
