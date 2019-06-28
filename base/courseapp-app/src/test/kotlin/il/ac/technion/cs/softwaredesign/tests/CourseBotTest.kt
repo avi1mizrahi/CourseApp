@@ -184,6 +184,13 @@ class CourseBotTest {
             assertThrows<IllegalArgumentException> {
                 bot.beginCount("#hh", null, null).joinException()
             }
+
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            bot.join("#hh").join()
+
+            assertThrows<IllegalArgumentException> {
+                bot.beginCount("#hh", null, null).joinException()
+            }
         }
 
         @Test
@@ -194,10 +201,22 @@ class CourseBotTest {
             val bot = bots.bot().join()
 
             assertThrows<IllegalArgumentException> {
-                bot.count("#hh", null, null).joinException()
+                bot.count("#hh", "null", null).joinException()
             }
 
-            //TODO: add the cases where there is begin but not with the same params
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            bot.join("#hh").join()
+            bot.beginCount("#hh", "null", null).joinException()
+
+            assertThrows<IllegalArgumentException> {
+                bot.count("#hdh", "null", null).joinException()
+            }
+            assertThrows<IllegalArgumentException> {
+                bot.count("#hh", "null", MediaType.TEXT).joinException()
+            }
+            assertThrows<IllegalArgumentException> {
+                bot.count("#hh", null, MediaType.TEXT).joinException()
+            }
         }
 
         @Test
@@ -234,7 +253,6 @@ class CourseBotTest {
             }, equalTo(2L))
         }
 
-
         @Test
         fun `count with regex`() {
             val listener = slot<ListenerCallback>()
@@ -266,6 +284,48 @@ class CourseBotTest {
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bot.count("#ch", "take.*me", MediaType.TEXT).join()
             }, equalTo(1L))
+        }
+
+        @Test
+        fun `count with regex all channels`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin("1", any()) } returns completedOf()
+            every { app.addListener("1", capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot()
+                .thenCompose {bot ->
+                    bot.join("#ch1")
+                        .thenCompose { bot.join("#ch2") }
+                        .thenCompose { bot.beginCount(null, "take.*me", MediaType.TEXT) }
+                        .thenApply { bot }
+                }.join()
+
+            val msg = mockk<Message>(relaxed = true)
+
+            // count this
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "klj k take !!!!! me !!!".toByteArray()
+            listeners.forEach { it("#ch1", msg) }
+
+            // count this
+            every { msg.id } returns 35
+            listeners.forEach { it("#ch2", msg) }
+
+            // DON'T count this
+            every { msg.id } returns 36
+            every { msg.contents } returns "klj k e !!!!! me take !!!".toByteArray()
+            listeners.forEach { it("#ch1", msg) }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.count(null, "take.*me", MediaType.TEXT).join()
+            }, equalTo(2L))
         }
     }
 
