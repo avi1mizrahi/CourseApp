@@ -244,6 +244,9 @@ class CourseBotTest {
 
     @Nested
     inner class Counter {
+        private val listener = slot<ListenerCallback>()
+        private val listeners = mutableListOf<ListenerCallback>()
+
         @Test
         fun `beginCount throws IllegalArgumentException on bad input`() {
             every { app.login(any(), any()) } returns completedOf("1")
@@ -292,9 +295,6 @@ class CourseBotTest {
 
         @Test
         fun `count with exact specs`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", "#ch") } returns completedOf()
             every { app.addListener("1", capture(listener)) } answers {
@@ -324,8 +324,6 @@ class CourseBotTest {
 
         @Test
         fun `count works after restart`() {
-            val listener = slot<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", "#ch") } returns completedOf()
             every { app.addListener("1", capture(listener)) } answers {
@@ -366,9 +364,6 @@ class CourseBotTest {
 
         @Test
         fun `restart counter`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -397,9 +392,6 @@ class CourseBotTest {
 
         @Test
         fun `counter counts after reset`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -438,9 +430,6 @@ class CourseBotTest {
 
         @Test
         fun `count with regex`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", "#ch") } returns completedOf()
             every { app.addListener("1", capture(listener)) } answers {
@@ -471,9 +460,6 @@ class CourseBotTest {
 
         @Test
         fun `count with regex all channels`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", any()) } returns completedOf()
             every { app.addListener("1", capture(listener)) } answers {
@@ -514,11 +500,11 @@ class CourseBotTest {
 
     @Nested
     inner class Calculator {
+        private val listener = slot<ListenerCallback>()
+        private val listeners = mutableListOf<ListenerCallback>()
+
         @Test
         fun `calculates correctly`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("yalla")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -550,9 +536,6 @@ class CourseBotTest {
 
         @Test
         fun `don't die`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -576,9 +559,6 @@ class CourseBotTest {
 
         @Test
         fun `calculates correctly with complex expression`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("yalla")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -606,9 +586,6 @@ class CourseBotTest {
 
         @Test
         fun `calculates correctly with tricky trigger`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("yalla")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -636,9 +613,6 @@ class CourseBotTest {
 
         @Test
         fun `works after restart`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any() , any()) } returns completedOf("yalla")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -670,9 +644,6 @@ class CourseBotTest {
 
         @Test
         fun `can be turned off`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("yalla")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -706,9 +677,6 @@ class CourseBotTest {
 
         @Test
         fun `works after turning on again`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
@@ -743,9 +711,6 @@ class CourseBotTest {
 
         @Test
         fun `works in all channels`() {
-            val listener = slot<ListenerCallback>()
-            val listeners = mutableListOf<ListenerCallback>()
-
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
