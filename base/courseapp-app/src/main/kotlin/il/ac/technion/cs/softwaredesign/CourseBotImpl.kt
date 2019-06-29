@@ -92,6 +92,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
 
                 allBots[name] = CourseBotInstance(token, name)
+                allBots[name]!!.initialize().join()
             }
         }.thenApply { Unit }
     }
@@ -115,9 +116,11 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
         return app.login(username, MASTERPASSWORD).thenApply { token ->
             val bot = CourseBotInstance(token, username)
 
+
             allBotsTokensDB.write(username, token)
             allBotsDB.add(username)
             allBots[username] = bot
+            bot.initialize().join()
             bot
         }
 
@@ -182,13 +185,11 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
             }
         }
 
-        init {
+        public fun initialize() : CompletableFuture<Unit> {
             val tasks = ArrayList<CompletableFuture<*>>()
             botEventObservers.forEach {tasks.add(CompletableFuture.runAsync{ it.onInit()}) }
-            CompletableFuture.allOf(*tasks.toTypedArray())
-                    .thenApply { Unit }
-
-            app.addListener(token, onMessage)
+            return CompletableFuture.allOf(*tasks.toTypedArray())
+                    .thenCompose { app.addListener(token, onMessage) }
         }
 
 
@@ -237,7 +238,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
         private inner class MessageCounter : BotEventObserver("MessageCounter") {
 
 
-            // Channels that have counters. TODO need to know wheter channelPart deletes counters or resets them
+            // Channels that have counters. TODO need to know whether channelPart deletes counters or resets them
             private val relevantChannels = getLinkedList(taskScope, "relevantChannels")
             private val allChannelsDBString = "All channels"
 
@@ -261,10 +262,10 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 }
 
                 fun load() {
+                    localMessageCounters[channel] = HashMap()
                     set.forEach {
                         val key = deserialize(it)
                         val value = dict.read(it)!!
-                        localMessageCounters[channel] = HashMap()
                         localMessageCounters[channel]!![key] = value.toInt()
                     }
                 }

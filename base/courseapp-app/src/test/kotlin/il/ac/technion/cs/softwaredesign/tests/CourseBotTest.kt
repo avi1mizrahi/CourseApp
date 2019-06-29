@@ -245,9 +245,12 @@ class CourseBotTest {
     }
 
 
-    @Disabled // TODO does (#channel, NULL, NULL) count as illegal argument now?
+
     @Nested
     inner class Counter {
+
+
+        @Disabled // TODO does (#channel, NULL, NULL) count as illegal argument now?
         @Test
         fun `beginCount throws IllegalArgumentException on bad input`() {
             every { app.login(any(), any()) } returns completedOf("1")
@@ -323,6 +326,48 @@ class CourseBotTest {
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bot.count("#ch", "מחט", MediaType.TEXT).join()
             }, equalTo(2L))
+        }
+
+        @Test
+        fun `count works after restart`() {
+            val listener = slot<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin("1", "#ch") } returns completedOf()
+            every { app.addListener("1", capture(listener)) } answers {
+                completedOf()
+            }
+
+            var bot = bots.bot("bot1").join()
+            bot.join("#ch")
+                    .thenCompose { bot.beginCount("#ch", "take.*me", MediaType.TEXT) }
+                    .join()
+
+            // Send message to old bot that he will count
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 33
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "klj k take !!!!! me !!!".toByteArray()
+            listener.invoke("#ch@someone", msg).join()
+
+            // this should overwrite the listener
+            bot = newBots().bot("bot1").join()
+
+            // should be counted
+            every { msg.id } returns 34
+            every { msg.contents } returns "klj k take !!!2!! me !!!".toByteArray()
+            listener.invoke("#ch@someone", msg).join()
+
+            // should not be counted
+            every { msg.id } returns 35
+            every { msg.contents } returns "klj k e !!!!! me take !!!".toByteArray()
+            listener.invoke("#ch@someone", msg).join()
+
+            // one before new bot and one after new bot
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.count("#ch", "take.*me", MediaType.TEXT).join()
+            }, equalTo(2L))
+
         }
 
         @Test
