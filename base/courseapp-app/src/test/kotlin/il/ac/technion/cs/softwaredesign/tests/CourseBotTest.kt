@@ -245,12 +245,8 @@ class CourseBotTest {
     }
 
 
-
     @Nested
     inner class Counter {
-
-
-        @Disabled // TODO does (#channel, NULL, NULL) count as illegal argument now?
         @Test
         fun `beginCount throws IllegalArgumentException on bad input`() {
             every { app.login(any(), any()) } returns completedOf("1")
@@ -258,6 +254,7 @@ class CourseBotTest {
 
             val bot = bots.bot().join()
 
+            // TODO: should it throw?
             assertThrows<IllegalArgumentException> {
                 bot.beginCount("#hh", null, null).joinException()
             }
@@ -266,7 +263,7 @@ class CourseBotTest {
             bot.join("#hh").join()
 
             assertThrows<IllegalArgumentException> {
-                bot.beginCount("#hh", null, null).joinException()
+                bot.beginCount(null, null, null).joinException()
             }
         }
 
@@ -368,6 +365,78 @@ class CourseBotTest {
                 bot.count("#ch", "take.*me", MediaType.TEXT).join()
             }, equalTo(2L))
 
+        }
+
+        @Test
+        fun `restart counter`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot().join()
+            bot.join("#ch")
+                .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
+                .join()
+
+            val msg = mockk<Message>(relaxed = true)
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "there is מחט here".toByteArray()
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            bot.beginCount("#ch", "מחט", MediaType.TEXT).join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.count("#ch", "מחט", MediaType.TEXT).join()
+            }, equalTo(0L))
+        }
+
+        @Test
+        fun `counter counts after reset`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "there is מחט here".toByteArray()
+
+            val bot = bots.bot().join()
+            bot.join("#ch")
+                    // start counting
+                .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
+                    // send 3 messages
+                .thenApply { listeners.forEach { it("#ch@someone", msg).join() } }
+                .thenApply { every { msg.id } returns 111 }
+                .thenApply { listeners.forEach { it("#ch@someone", msg).join() } }
+                .thenApply { every { msg.id } returns 423 }
+                .thenApply { listeners.forEach { it("#ch@someone", msg).join() } }
+                    // reset counter
+                .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
+                    // send 2 messages
+                .thenApply { every { msg.id } returns 343 }
+                .thenApply { listeners.forEach { it("#ch@someoneElse", msg).join() } }
+                .thenApply { every { msg.id } returns 322 }
+                .thenApply { listeners.forEach { it("#ch@someoneWho", msg).join() } }
+                .join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.count("#ch", "מחט", MediaType.TEXT).join()
+            }, equalTo(2L))
         }
 
         @Test
