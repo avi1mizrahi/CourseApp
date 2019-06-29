@@ -1,6 +1,7 @@
 package il.ac.technion.cs.softwaredesign
 
 import com.google.inject.Inject
+import il.ac.technion.cs.softwaredesign.calculator.CalculatorException
 import il.ac.technion.cs.softwaredesign.calculator.calculate
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
@@ -410,10 +411,12 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
             override fun onMessage(source: String, message: Message) {
                 val messagestr = message.contents.toString(Charsets.UTF_8)
-                if (!messagestr.startsWith((calcTrigger ?: return) + " ")) {
+                if (!messagestr.startsWith((calcTrigger ?: return) + " ")) return
+                val res = try {
+                    calculate(messagestr.substring(calcTrigger!!.length + 1))
+                } catch (e: CalculatorException) {
                     return
                 }
-                val res = calculate(messagestr.substring(calcTrigger!!.length + 1))
 
                 messageFactory.create(MediaType.TEXT, res.toString().toByteArray()).thenApply {
                     app.channelSend(token, getChannelFromChannelMessageSource(source), it)

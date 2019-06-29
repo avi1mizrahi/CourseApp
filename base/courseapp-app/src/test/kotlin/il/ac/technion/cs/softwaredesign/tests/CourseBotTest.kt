@@ -549,6 +549,32 @@ class CourseBotTest {
         }
 
         @Test
+        fun `don't die`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "3+4 3+4 but this is not a valid expression!!!".toByteArray()
+
+            bots.bot().thenCompose { bot ->
+                bot.join("#ch").thenCompose { bot.setCalculationTrigger("3+4") }
+            }.join()
+
+            assertDoesNotThrow {
+                listeners.forEach { it("#ch@someoneElse", msg).join() }
+            }
+        }
+
+        @Test
         fun `calculates correctly with complex expression`() {
             val listener = slot<ListenerCallback>()
             val listeners = mutableListOf<ListenerCallback>()
