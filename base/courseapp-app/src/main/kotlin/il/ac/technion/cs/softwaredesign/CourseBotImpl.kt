@@ -3,7 +3,9 @@ package il.ac.technion.cs.softwaredesign
 import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.calculator.calculate
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
+import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
+import il.ac.technion.cs.softwaredesign.extensions.joinException
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
@@ -61,7 +63,10 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
     private lateinit var storage : ScopedStorage
 
 
+    // names
     private lateinit var allBotsDB : LinkedList
+    // name -> token
+    private lateinit var allBotsTokensDB : Dictionary
 
     override fun prepare(): CompletableFuture<Unit> {
         return CompletableFuture.completedFuture(Unit)
@@ -70,11 +75,22 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
     override fun start(): CompletableFuture<Unit> {
         storage = ScopedStorage(storageFactory.open("bots".toByteArray()).join(), "root")
         allBotsDB = getLinkedList(storage, "All bots")
+        allBotsTokensDB = getDict(storage, "All bots tokens")
 
 
         return CompletableFuture.runAsync {
             allBotsDB.forEach { name ->
-                val token = app.login(name, MASTERPASSWORD).join()
+
+                val token = try {
+                    val ret = app.login(name, MASTERPASSWORD).joinException()
+                    allBotsTokensDB.write(name, ret)
+                    ret
+                } catch (e: UserAlreadyLoggedInException) {
+                    allBotsTokensDB.read(name) ?: throw AssertionError("Bot already logged in but token not found")
+                }
+
+
+
                 allBots[name] = CourseBotInstance(token, name)
             }
         }.thenApply { Unit }
@@ -284,8 +300,8 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
             }
 
 
-            private val DELIMITER : String = "\u0000"
-            private val EMPTY : String = "\u0001"
+            private val DELIMITER : String = "\u0001"
+            private val EMPTY : String = "\u0002"
             private fun serialize(pair : Pair<String?, MediaType?>) : String {
                 return (pair.second?.name ?: EMPTY) + DELIMITER + (pair.first ?: EMPTY)
             }
@@ -334,7 +350,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                                     mediaType: MediaType?): CompletableFuture<Unit> {
 
                 return CompletableFuture.supplyAsync {
-                    if (regex == null && mediaType == null) throw IllegalArgumentException() // TODO
+                    if (channel == null && regex == null && mediaType == null) throw IllegalArgumentException() // TODO
 
                     if (channel != null && !(getIsInChannel(channel).join())) throw TODO()
 
@@ -706,7 +722,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
             fun runSurvey(channel: String, question: String, answers: List<String>): CompletableFuture<String> {
                 // Throw if bot not in channel
-                if (getIsInChannel(channel).join()) throw NoSuchEntityException()
+                if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
 
                 val uniqueSurveyID = surveyCounter
                 surveyCounter += 1

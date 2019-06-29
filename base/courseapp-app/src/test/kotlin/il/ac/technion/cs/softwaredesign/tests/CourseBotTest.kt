@@ -628,7 +628,6 @@ class CourseBotStaffTest {
         }, present(equalTo("gal")))
     }
 
-    @Disabled // TODO
     @Test
     fun `The bot accurately tracks keywords`() {
         app.login("gal", "hunter2")
@@ -637,7 +636,7 @@ class CourseBotStaffTest {
                     .thenCompose {
                         bots.bot()
                             .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
-                            .thenCompose { bot -> bot.beginCount(".*ello.*[wW]orl.*") }
+                            .thenCompose { bot -> bot.beginCount(null, ".*ello.*[wW]orl.*") }
                     }
                     .thenCompose { app.login("matan", "s3kr3t") }
                     .thenCompose { token ->
@@ -653,13 +652,11 @@ class CourseBotStaffTest {
             }.join()
 
         assertThat(runWithTimeout(ofSeconds(10)) {
-            // TODO different regex? we have to store messages?
-            bots.bot("Anna0").thenCompose { bot -> bot.count(null, ".*hell.*worl.*") }
+            bots.bot("Anna0").thenCompose { bot -> bot.count(null, ".*ello.*[wW]orl.*") }
                 .join() // missing null for channel
         }, equalTo(1L))
     }
 
-    @Disabled // TODO
     @Test
     fun `A user in the channel can ask the bot to do a survey`() {
         val adminToken = app.login("gal", "hunter2")
