@@ -19,7 +19,6 @@ import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import io.mockk.*
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -36,7 +35,7 @@ class CourseBotTest {
     private val injector: Injector
     private val app: CourseApp = mockk()
     private val statistics: CourseAppStatistics = mockk()
-    private val messageFactory: MessageFactory = mockk(relaxed = true)
+    private val messageFactory: MessageFactory = mockk()
     private var bots: CourseBots
 
     // for bots
@@ -126,8 +125,6 @@ class CourseBotTest {
         verify(exactly = 1) {
             app.channelJoin("token12345","#test")
         }
-
-
     }
 
 
@@ -420,18 +417,18 @@ class CourseBotTest {
                     // start counting
                 .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
                     // send 3 messages
-                .thenApply { listeners.forEach { it("#ch@someone", msg).join() } }
-                .thenApply { every { msg.id } returns 111 }
-                .thenApply { listeners.forEach { it("#ch@someone", msg).join() } }
-                .thenApply { every { msg.id } returns 423 }
-                .thenApply { listeners.forEach { it("#ch@someone", msg).join() } }
+                .thenAccept { listeners.forEach { it("#ch@someone", msg).join() } }
+                .thenAccept { every { msg.id } returns 111 }
+                .thenAccept { listeners.forEach { it("#ch@someone", msg).join() } }
+                .thenAccept { every { msg.id } returns 423 }
+                .thenAccept { listeners.forEach { it("#ch@someone", msg).join() } }
                     // reset counter
                 .thenCompose { bot.beginCount("#ch", "מחט", MediaType.TEXT) }
                     // send 2 messages
-                .thenApply { every { msg.id } returns 343 }
-                .thenApply { listeners.forEach { it("#ch@someoneElse", msg).join() } }
-                .thenApply { every { msg.id } returns 322 }
-                .thenApply { listeners.forEach { it("#ch@someoneWho", msg).join() } }
+                .thenAccept { every { msg.id } returns 343 }
+                .thenAccept { listeners.forEach { it("#ch@someoneElse", msg).join() } }
+                .thenAccept { every { msg.id } returns 322 }
+                .thenAccept { listeners.forEach { it("#ch@someoneWho", msg).join() } }
                 .join()
 
             assertThat(runWithTimeout(ofSeconds(10)) {
@@ -517,7 +514,251 @@ class CourseBotTest {
 
     @Nested
     inner class Calculator {
+        @Test
+        fun `calculates correctly`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
 
+            every { app.login(any(), any()) } returns completedOf("yalla")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot().join()
+            bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend("yalla", "#ch", msg) } returns completedOf()
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "pleaseCalc2me 3+4".toByteArray()
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            every { msg.id } returns 35
+            every { msg.contents } returns "3+4".toByteArray()
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            verify(exactly = 1) {
+                app.channelSend("yalla", "#ch", any())
+            }
+            confirmVerified()
+        }
+
+        @Test
+        fun `calculates correctly with complex expression`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("yalla")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot().join()
+            bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend("yalla", "#ch", msg) } returns completedOf()
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "pleaseCalc2me 3 + (2 * 2 + (9/3) * 0) * (1 + 12 / 12 - 1) + (-2 + 2) - (-14/-2 + -7)".toByteArray()
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            verify(exactly = 1) {
+                app.channelSend("yalla", "#ch", any())
+            }
+            confirmVerified()
+        }
+
+        @Test
+        fun `calculates correctly with tricky trigger`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("yalla")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot().join()
+            bot.join("#ch").thenCompose { bot.setCalculationTrigger("#ch") }.join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend("yalla", "#ch", msg) } returns completedOf()
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "#ch 3+4".toByteArray()
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            verify(exactly = 1) {
+                app.channelSend("yalla", "#ch", any())
+            }
+            confirmVerified()
+        }
+
+        @Test
+        fun `works after restart`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any() , any()) } returns completedOf("yalla")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot("kaka").join()
+            bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
+
+            listeners.clear()
+            // this should overwrite the listener
+            newBots().bot("kaka").join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend("yalla", "#ch", msg) } returns completedOf()
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "pleaseCalc2me 3+4".toByteArray()
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            verify(exactly = 1) {
+                app.channelSend("yalla", "#ch", any())
+            }
+            confirmVerified()
+        }
+
+        @Test
+        fun `can be turned off`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("yalla")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val bot = bots.bot().join()
+            bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend("yalla", "#ch", msg) } returns completedOf()
+
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "pleaseCalc2me 3+4".toByteArray()
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            // turn off
+            bot.setCalculationTrigger(null).join()
+            // don't count this
+            every { msg.id } returns 2424
+            listeners.forEach { it("#ch@someone", msg).join() }
+
+            verify(exactly = 1) {
+                app.channelSend("yalla", "#ch", any())
+            }
+            confirmVerified()
+        }
+
+        @Test
+        fun `works after turning on again`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "3+4 3+4".toByteArray()
+            every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend(any(), any(), msg) } returns completedOf()
+
+            bots.bot().thenCompose { bot ->
+                bot.join("#ch")
+                    // start
+                    .thenCompose { bot.setCalculationTrigger("3+4") }
+                    // turn off-on
+                    .thenCompose { bot.setCalculationTrigger(null) }
+                    .thenCompose { bot.setCalculationTrigger("3+4") }
+                    // calc
+                    .thenAccept { every { msg.id } returns 343 }
+                    .thenAccept { listeners.forEach { it("#ch@someoneElse", msg).join() } }
+            }.join()
+
+            verify(exactly = 1) {
+                app.channelSend("1", "#ch", any())
+            }
+            confirmVerified()
+        }
+
+        @Test
+        fun `works in all channels`() {
+            val listener = slot<ListenerCallback>()
+            val listeners = mutableListOf<ListenerCallback>()
+
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            bots.bot().thenCompose { bot ->
+                bot.join("#ch1")
+                    .thenCompose { bot.join("#ch2") }
+                    .thenCompose { bot.setCalculationTrigger("3+4") }
+                    .thenApply { bot }
+            }.join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.media } returns MediaType.TEXT
+            every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend(any(), any(), msg) } returns completedOf()
+
+            // calc this - #1
+            every { msg.id } returns 34
+            every { msg.contents } returns "3+4 3+4".toByteArray()
+            listeners.forEach { it("#ch1@jjj", msg).join() }
+
+            // calc this - #2
+            every { msg.id } returns 35
+            listeners.forEach { it("#ch2@iii", msg).join() }
+
+            // DON'T calc this
+            every { msg.id } returns 36
+            every { msg.contents } returns "3+ 4 3+4".toByteArray()
+            listeners.forEach { it("#ch1@kkk", msg).join() }
+
+            verify(exactly = 1) {
+                app.channelSend("1", "#ch1", any())
+                app.channelSend("1", "#ch2", any())
+            }
+            confirmVerified()
+        }
     }
 
     @Nested
