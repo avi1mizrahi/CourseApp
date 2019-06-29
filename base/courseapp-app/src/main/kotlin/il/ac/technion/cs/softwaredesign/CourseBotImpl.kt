@@ -74,8 +74,8 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
         return CompletableFuture.runAsync {
             allBotsDB.forEach { name ->
-                app.login(name, MASTERPASSWORD)
-                        .thenApply { token -> allBots[name] = CourseBotInstance(name, token)  }
+                val token = app.login(name, MASTERPASSWORD).join()
+                allBots[name] = CourseBotInstance(token, name)
             }
         }.thenApply { Unit }
     }

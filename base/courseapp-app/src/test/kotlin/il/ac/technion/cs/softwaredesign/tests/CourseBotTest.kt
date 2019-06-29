@@ -3,6 +3,7 @@ package il.ac.technion.cs.softwaredesign.tests
 import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
+import com.google.inject.Inject
 import com.google.inject.Injector
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
@@ -35,9 +36,33 @@ class CourseBotTest {
     private val app: CourseApp = mockk()
     private val statistics: CourseAppStatistics = mockk()
     private val messageFactory: MessageFactory = mockk(relaxed = true)
-    private val bots: CourseBots
+    private var bots: CourseBots
 
+    // for bots
+    class MockStorage : SecureStorage {
+        private val encoding = Charsets.UTF_8
+
+        private val keyvalDB = HashMap<String, ByteArray>()
+
+        override fun read(key: ByteArray): CompletableFuture<ByteArray?> {
+            val bytes = keyvalDB[key.toString(encoding)]
+            if (bytes != null)
+                Thread.sleep(bytes.size.toLong())
+            return CompletableFuture.completedFuture(bytes)
+        }
+
+        override fun write(key: ByteArray, value: ByteArray): CompletableFuture<Unit> {
+            keyvalDB[key.toString(encoding)] = value
+            return CompletableFuture.completedFuture(Unit)
+        }
+    }
+    class SecureStorageFactoryMock @Inject constructor(val retvalue : SecureStorage) : SecureStorageFactory {
+        override fun open(name : ByteArray) : CompletableFuture<SecureStorage> {
+            return CompletableFuture.completedFuture(retvalue) // note: name unused
+        }
+    }
     init {
+
         class CourseAppModuleMock : KotlinModule() {
             override fun configure() {
                 val keystoreinst = VolatileKeyValueStore()
@@ -47,30 +72,7 @@ class CourseBotTest {
                 bind<CourseAppStatistics>().toInstance(statistics)
                 bind<MessageFactory>().toInstance(messageFactory)
 
-                // Bots
-                class MockStorage : SecureStorage {
-                    private val encoding = Charsets.UTF_8
-
-                    private val keyvalDB = HashMap<String, ByteArray>()
-
-                    override fun read(key: ByteArray): CompletableFuture<ByteArray?> {
-                        val bytes = keyvalDB[key.toString(encoding)]
-                        if (bytes != null)
-                            Thread.sleep(bytes.size.toLong())
-                        return CompletableFuture.completedFuture(bytes)
-                    }
-
-                    override fun write(key: ByteArray, value: ByteArray): CompletableFuture<Unit> {
-                        keyvalDB[key.toString(encoding)] = value
-                        return CompletableFuture.completedFuture(Unit)
-                    }
-                }
-
-                class SecureStorageFactoryMock : SecureStorageFactory {
-                    override fun open(name : ByteArray) : CompletableFuture<SecureStorage> {
-                        return CompletableFuture.completedFuture(MockStorage())
-                    }
-                }
+                bind<SecureStorage>().toInstance(MockStorage())
                 bind<SecureStorageFactory>().to<SecureStorageFactoryMock>()
                 bind<CourseBots>().to<CourseBotManager>()
             }
@@ -78,9 +80,32 @@ class CourseBotTest {
 
         injector = Guice.createInjector(CourseAppModuleMock())
         bots = injector.getInstance()
-
-        bots.start()
+        bots.start().join()
     }
+
+
+
+    private fun newBots() : CourseBots {
+        val bots : CourseBots = injector.getInstance()
+        bots.start().join()
+        return bots
+    }
+
+    @Test
+    fun `bots exist after restarting`() {
+        every { app.login(any(), any()) } returns completedOf("1")
+        every { app.addListener(any(), any()) } returns completedOf()
+
+        bots.bot("bot1")
+        bots.bot("bot2")
+
+        val newbots = newBots()
+
+        assertThat(runWithTimeout(ofSeconds(10)) {
+            newbots.bots().join()
+        }, equalTo(listOf("bot1", "bot2")))
+    }
+
 
     @Nested
     inner class Channels {
@@ -170,6 +195,29 @@ class CourseBotTest {
                 theBot.channels().join()
             }, equalTo(listOf("#c1", "#c2", "#c22", "#c14")))
         }
+        @Test
+        fun `list channels after restart`() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener(any(), any()) } returns completedOf()
+            every { app.channelJoin(any(), any()) } returns completedOf()
+
+            val theBot = bots.bot("bot1").thenCompose { bot ->
+                bot.join("#c1")
+                        .thenCompose { bot.join("#c2") }
+                        .thenCompose { bot.join("#c22") }
+                        .thenCompose { bot.join("#c14") }
+                        .thenApply { bot }
+            }.join()
+
+
+            theBot.channels().join()
+
+            val samebot = newBots().bot("bot1").join()
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                samebot.channels().join()
+            }, equalTo(listOf("#c1", "#c2", "#c22", "#c14")))
+        }
+
     }
 
     @Nested
@@ -284,7 +332,6 @@ class CourseBotTest {
             }, equalTo(1L))
         }
 
-        @Disabled // TODO
         @Test
         fun `count with regex all channels`() {
             val listener = slot<ListenerCallback>()
@@ -311,16 +358,16 @@ class CourseBotTest {
             every { msg.id } returns 34
             every { msg.media } returns MediaType.TEXT
             every { msg.contents } returns "klj k take !!!!! me !!!".toByteArray()
-            listeners.forEach { it("#ch1@jjj", msg) }
+            listeners.forEach { it("#ch1@jjj", msg).join() }
 
             // count this - #2
             every { msg.id } returns 35
-            listeners.forEach { it("#ch2@iii", msg) }
+            listeners.forEach { it("#ch2@iii", msg).join() }
 
             // DON'T count this
             every { msg.id } returns 36
             every { msg.contents } returns "klj k e !!!!! me take !!!".toByteArray()
-            listeners.forEach { it("#ch1@kkk", msg) }
+            listeners.forEach { it("#ch1@kkk", msg).join() }
 
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bot.count(null, "take.*me", MediaType.TEXT).join()
