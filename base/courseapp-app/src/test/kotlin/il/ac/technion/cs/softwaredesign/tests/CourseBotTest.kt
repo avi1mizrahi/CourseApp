@@ -10,6 +10,7 @@ import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
+import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.Message
@@ -91,19 +92,42 @@ class CourseBotTest {
         return bots
     }
 
+
+
     @Test
     fun `bots exist after restarting`() {
         every { app.login(any(), any()) } returns completedOf("1")
         every { app.addListener(any(), any()) } returns completedOf()
 
-        bots.bot("bot1")
-        bots.bot("bot2")
+        bots.bot("bot1").join()
+        bots.bot("bot2").join()
 
         val newbots = newBots()
 
         assertThat(runWithTimeout(ofSeconds(10)) {
             newbots.bots().join()
         }, equalTo(listOf("bot1", "bot2")))
+    }
+
+    @Test
+    fun `bots reuse old tokens if already logged in`() {
+        every { app.login(any(), any()) } returns completedOf("token12345")
+        every { app.addListener(any(), any()) } returns completedOf()
+        every { app.channelJoin(any(), any()) } returns completedOf()
+
+        bots.bot("bot1").join()
+
+        every { app.login(any(), any()) } throws UserAlreadyLoggedInException()
+
+
+        val bot = newBots().bot("bot1").join()
+        bot.join("#test")
+
+        verify(exactly = 1) {
+            app.channelJoin("token12345","#test")
+        }
+
+
     }
 
 
@@ -220,6 +244,8 @@ class CourseBotTest {
 
     }
 
+
+    @Disabled // TODO does (#channel, NULL, NULL) count as illegal argument now?
     @Nested
     inner class Counter {
         @Test
@@ -669,7 +695,7 @@ class CourseBotStaffTest {
             .thenCompose { bot -> bot.join("#channel").thenApply { bot } }
             .join()
 
-        assertThat(runWithTimeout(ofSeconds(10)) {
+        assertThat(runWithTimeout(ofSeconds(100000)) {
             val survey =
                     bot.runSurvey("#channel", "What is your favorite flavour of ice-cream?",
                                   listOf("Cranberry",

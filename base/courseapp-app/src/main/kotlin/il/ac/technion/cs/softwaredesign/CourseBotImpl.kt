@@ -115,6 +115,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
         return app.login(username, MASTERPASSWORD).thenApply { token ->
             val bot = CourseBotInstance(token, username)
 
+            allBotsTokensDB.write(username, token)
             allBotsDB.add(username)
             allBots[username] = bot
             bot
@@ -350,9 +351,9 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                                     mediaType: MediaType?): CompletableFuture<Unit> {
 
                 return CompletableFuture.supplyAsync {
-                    if (channel == null && regex == null && mediaType == null) throw IllegalArgumentException() // TODO
+                    if (channel == null && regex == null && mediaType == null) throw IllegalArgumentException()
 
-                    if (channel != null && !(getIsInChannel(channel).join())) throw TODO()
+                    if (channel != null && !(getIsInChannel(channel).join())) throw IllegalArgumentException()
 
                     val channelname = channel ?: allChannelsDBString
 
