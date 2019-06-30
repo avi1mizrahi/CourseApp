@@ -6,7 +6,6 @@ import il.ac.technion.cs.softwaredesign.calculator.calculate
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
-import il.ac.technion.cs.softwaredesign.extensions.joinException
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
@@ -508,8 +507,9 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 val channel = getChannelFromChannelMessageSource(source)
                 val sender = getSenderFromChannelMessageSource(source)
 
-                val channelTips = TipsOfChannel(channel)
-                channelTips.payIfPossible(sender, target, amount)
+                if (app.isUserInChannel(token, channel, target).join() == false) return
+
+                TipsOfChannel(channel).payIfPossible(sender, target, amount)
             }
 
             fun setTipTrigger(trigger: String?): CompletableFuture<String?> {
