@@ -11,7 +11,7 @@ import java.util.LinkedList
  */
 class MaxHeapImpl(storage: SecureStorage, heapId: ByteArray): MaxHeap {
     companion object {
-        private const val MAX_SCORE = 1024
+        private const val MAX_SCORE = 1 shl 30
         private const val DALIM = '|'
     }
 
