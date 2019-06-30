@@ -54,15 +54,11 @@ private fun getDict(storage: SecureStorage, name: String) =
         DictionaryImpl(storage.scope(name), intToByteArray(0))
 
 
-
 private val MASTERPASSWORD = "password"
 class CourseBotManager @Inject constructor(private val app : CourseApp, private val messageFactory : MessageFactory,
                                            private var storageFactory : SecureStorageFactory) : CourseBots {
 
-
     private lateinit var storage : ScopedStorage
-
-
     // names
     private lateinit var allBotsDB : LinkedList
     // name -> token
@@ -76,7 +72,6 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
         storage = ScopedStorage(storageFactory.open("bots".toByteArray()).join(), "root")
         allBotsDB = getLinkedList(storage, "All bots")
         allBotsTokensDB = getDict(storage, "All bots tokens")
-
 
         return CompletableFuture.runAsync {
             allBotsDB.forEach { name ->
@@ -97,8 +92,6 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
         }.thenApply { Unit }
     }
 
-
-
     // After start is called, this will have all the bots. (Local, not on DB)
     val allBots = HashMap<String, CourseBotInstance>()
 
@@ -115,7 +108,6 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
         // New bot (and user for bot)
         return app.login(username, MASTERPASSWORD).thenApply { token ->
             val bot = CourseBotInstance(token, username)
-
 
             allBotsTokensDB.write(username, token)
             allBotsDB.add(username)
@@ -153,8 +145,6 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                 lastSeenComponent, activeUsersComponent, surviesComponent)
 
 
-
-
         private abstract inner class BotEventObserver(name: String) {
             open fun onInit() : Unit = Unit
             open fun onMessage(source : String, message : Message) : Unit = Unit
@@ -185,7 +175,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
             }
         }
 
-        public fun initialize() : CompletableFuture<Unit> {
+        fun initialize() : CompletableFuture<Unit> {
             val tasks = ArrayList<CompletableFuture<*>>()
             botEventObservers.forEach {tasks.add(CompletableFuture.runAsync{ it.onInit()}) }
             return CompletableFuture.allOf(*tasks.toTypedArray())
@@ -257,9 +247,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                     dict.write(key, "0")
                 }
 
-                fun set(key : String, amount : Int) {
-                    dict.write(key, amount.toString())
-                }
+                fun set(key : String, amount : Int) = dict.write(key, amount.toString())
 
                 fun load() {
                     localMessageCounters[channel] = HashMap()
@@ -269,11 +257,8 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                         localMessageCounters[channel]!![key] = value.toInt()
                     }
                 }
-                fun reset() {
-                    set.forEach { // TODO im resetting the counter and not deleting it.
-                        dict.write(it, "0")
-                    }
-                }
+                // TODO im resetting the counter and not deleting it.
+                fun reset() = set.forEach { dict.write(it, "0") }
 
                 fun checkChannelLocally(message : Message) {
                     val messagestr = message.contents.toString(Charsets.UTF_8)
@@ -326,7 +311,6 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
             }
 
 
-
             // (Channel || "All Channels") -> (Regex?, MediaType?) -> (Count)
             val localMessageCounters = HashMap<String, HashMap<Pair<String?, MediaType?>, Int> >()
             override fun onInit() {
@@ -348,12 +332,11 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
 
 
             fun beginCount(channel: String?,
-                                    regex: String?,
-                                    mediaType: MediaType?): CompletableFuture<Unit> {
+                           regex: String?,
+                           mediaType: MediaType?): CompletableFuture<Unit> {
 
                 return CompletableFuture.supplyAsync {
                     if (channel == null && regex == null && mediaType == null) throw IllegalArgumentException()
-
                     if (channel != null && !(getIsInChannel(channel).join())) throw IllegalArgumentException()
 
                     val channelname = channel ?: allChannelsDBString
@@ -370,7 +353,6 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
 
                     Unit
                 }
-
             }
 
             fun count(channel: String?, regex: String?, mediaType: MediaType?): CompletableFuture<Long> {
@@ -384,10 +366,8 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                     ret.toLong()
                 }
             }
-
-
-
         }
+
         override fun beginCount(channel: String?, regex: String?, mediaType: MediaType?): CompletableFuture<Unit> =
                 messageCounterComponent.beginCount(channel, regex, mediaType)
 
@@ -422,17 +402,16 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                 }.join()
             }
 
-            fun setCalculationTrigger(trigger: String?): CompletableFuture<String?> {
-                return CompletableFuture.supplyAsync {
-                    val old = this.calcTrigger
-                    this.calcTrigger = trigger
-                    writeField(calcTriggerDBString, trigger ?: "")
+            fun setCalculationTrigger(trigger: String?): CompletableFuture<String?> =
+                    CompletableFuture.supplyAsync {
+                        val old = this.calcTrigger
+                        this.calcTrigger = trigger
+                        writeField(calcTriggerDBString, trigger ?: "")
 
-                    old
-                }
-            }
-
+                        old
+                    }
         }
+
         override fun setCalculationTrigger(trigger: String?): CompletableFuture<String?> =
                 calculatorComponent.setCalculationTrigger(trigger)
 
@@ -486,10 +465,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                         heap.remove(it)
                     }
                 }
-                fun getTop() : String? {
-                    return getTopIfNoDraw(heap)
-                }
-
+                fun getTop() : String? = getTopIfNoDraw(heap)
             }
 
             private var tipTrigger : String? = null
@@ -520,23 +496,21 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                 TipsOfChannel(channel).payIfPossible(sender, target, amount)
             }
 
-            fun setTipTrigger(trigger: String?): CompletableFuture<String?> {
-                return CompletableFuture.supplyAsync {
-                    val old = this.tipTrigger
-                    this.tipTrigger = trigger
-                    writeField(tipTriggerDBString, trigger ?: "")
+            fun setTipTrigger(trigger: String?): CompletableFuture<String?> =
+                    CompletableFuture.supplyAsync {
+                        val old = this.tipTrigger
+                        this.tipTrigger = trigger
+                        writeField(tipTriggerDBString, trigger ?: "")
 
-                    old
-                }
-            }
+                        old
+                    }
 
-            fun richestUser(channel: String): CompletableFuture<String?> {
-                if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
+            fun richestUser(channel: String): CompletableFuture<String?> =
+                    CompletableFuture.supplyAsync {
+                        if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
 
-                return CompletableFuture.supplyAsync {
-                    TipsOfChannel(channel).getTop()
-                }
-            }
+                        TipsOfChannel(channel).getTop()
+                    }
         }
 
         override fun setTipTrigger(trigger: String?): CompletableFuture<String?> = tipsComponent.setTipTrigger(trigger)
@@ -569,12 +543,10 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                 lastSeenComponent.seenTime(user)
 
 
-
         private inner class ActiveUsers : BotEventObserver("ActiveUsers") {
             // on DB:
             // $channel/heap (username -> count)
             // $channel/set (usernames in above heap)
-
 
             private inner class ActiveUsersOfChannel(channel: String) {
                 private val channelScope = taskScope.scope(channel)
@@ -622,13 +594,10 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
 
                 ActiveUsersOfChannel(channel).incrementCounter(user)
             }
-            fun mostActiveUser(channel: String): CompletableFuture<String?> {
-                if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
-
-                return CompletableFuture.supplyAsync {
-                    ActiveUsersOfChannel(channel).getTop()
-                }
-            }
+            fun mostActiveUser(channel: String): CompletableFuture<String?> =
+                    getIsInChannel(channel)
+                        .thenAccept { if (!it) throw NoSuchEntityException() }
+                        .thenApply { ActiveUsersOfChannel(channel).getTop() }
         }
 
         override fun mostActiveUser(channel: String): CompletableFuture<String?> =
@@ -736,7 +705,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
             }
 
             fun runSurvey(channel: String, question: String, answers: List<String>): CompletableFuture<String> {
-                if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
+                if (!getIsInChannel(channel).join()) return CompletableFuture.failedFuture(NoSuchEntityException())
 
                 val uniqueSurveyID = surveyCounter
                 surveyCounter += 1
@@ -747,7 +716,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                 activeSurvies[uniqueSurveyID] = Survey(taskScope.scope("Survey $uniqueSurveyID"))
                 activeSurvies[uniqueSurveyID]!!.initialize(channel, answers)
 
-                    return messageFactory.create(MediaType.TEXT, question.toByteArray()).thenApply {
+                return messageFactory.create(MediaType.TEXT, question.toByteArray()).thenApply {
                     app.channelSend(token, channel, it)
                 }.thenApply {
                     uniqueSurveyID.toString()
@@ -782,7 +751,6 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
         }
     }
 
-
     private fun getTopIfNoDraw(heap : MaxHeap) : String? {
         val top10 = heap.topTen()
         if (top10.isEmpty() || top10.size >= 2 && heap.getScore(top10[0]) == heap.getScore(top10[1]))
@@ -791,5 +759,4 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
         return top10.first()
     }
 }
-
 
