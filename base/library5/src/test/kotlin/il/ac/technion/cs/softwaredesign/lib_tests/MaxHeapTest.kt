@@ -2,11 +2,14 @@ package il.ac.technion.cs.softwaredesign.lib_tests
 
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
-import il.ac.technion.cs.softwaredesign.*
-import org.junit.jupiter.api.*
-
-import org.junit.jupiter.api.Assertions.*
-import java.util.LinkedList
+import il.ac.technion.cs.softwaredesign.FakeStorage
+import il.ac.technion.cs.softwaredesign.FakeStorageModule
+import il.ac.technion.cs.softwaredesign.MaxHeapFactory
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import java.util.*
 
 internal class MaxHeapTest {
     private val injector = Guice.createInjector(FakeStorageModule())
@@ -15,7 +18,7 @@ internal class MaxHeapTest {
     val heap = factory.newMaxHeap()
 
     @BeforeEach
-    fun prepDb(){
+    fun prepDb() {
         heap.add("1")
         heap.changeScore("1", 3)
         heap.add("2")
@@ -36,7 +39,7 @@ internal class MaxHeapTest {
     }
 
     @AfterEach
-    fun clearDb(){
+    fun clearDb() {
         FakeStorage("".toByteArray()).clear()
     }
 
@@ -150,7 +153,7 @@ internal class MaxHeapTest {
 
     @Test
     fun `add a lot`() {
-        for( i in 13..100000 ){
+        for (i in 13..100000) {
             heap.add(i.toString())
         }
         val expected = LinkedList<String>()
@@ -183,10 +186,42 @@ internal class MaxHeapTest {
         assertEquals(heap.topTen(), expected)
     }
 
+
     @Test
-    fun `restoring list`(){
+    fun `big scores`() {
+        for (i in 3000..3020) {
+            heap.add(i.toString())
+        }
+        val expected = listOf(
+                "3004",
+                "3001",
+                "3009",
+                "3010",
+                "3002",
+                "3003",
+                "3005",
+                "3006",
+                "3007",
+                "3008")
+
+        heap.changeScore("3009", 10000000)
+        heap.changeScore("3005", 1000)
+        heap.changeScore("3001", 100000000)
+        heap.changeScore("3002", 100000)
+        heap.changeScore("3008", 9)
+        heap.changeScore("3010", 1000000)
+        heap.changeScore("3004", 1000000000)
+        heap.changeScore("3007", 10)
+        heap.changeScore("3003", 10000)
+        heap.changeScore("3006", 100)
+
+        assertEquals(expected, heap.topTen())
+    }
+
+    @Test
+    fun `restoring list`() {
         var id = ""
-        if (true){
+        if (true) {
             val lib = factory.newMaxHeap()
             id = lib.getId()
             lib.add("world")
