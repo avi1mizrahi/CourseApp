@@ -18,10 +18,8 @@ import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import il.ac.technion.cs.softwaredesign.storage.SecureStorageFactory
 import io.mockk.*
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.time.Duration.ofSeconds
 import java.util.concurrent.CompletableFuture
 
@@ -130,10 +128,14 @@ class CourseBotTest {
 
     @Nested
     inner class Channels {
-        @Test
-        fun `throws when can't join`() {
+        @BeforeEach
+        internal fun setUp() {
             every { app.login(any(), any()) } returns completedOf("1")
             every { app.addListener(any(), any()) } returns completedOf()
+        }
+
+        @Test
+        fun `throws when can't join`() {
             every { app.channelJoin(any(), any()) } returns failedOf(UserNotAuthorizedException())
 
             val bot = bots.bot().join()
@@ -143,8 +145,6 @@ class CourseBotTest {
 
         @Test
         fun `throws when can't part`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf()
             every { app.channelPart(any(), any()) } returns failedOf(NoSuchEntityException())
 
             val bot = bots.bot().join()
@@ -154,8 +154,6 @@ class CourseBotTest {
 
         @Test
         fun `join and part`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf()
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.channelPart(any(), any()) } returns completedOf()
 
@@ -167,9 +165,6 @@ class CourseBotTest {
 
         @Test
         fun `join only the asked channels`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf()
-
             every { app.channelJoin("1", "#c1"  ) } returns completedOf()
             every { app.channelJoin("1", "#c7"  ) } returns completedOf()
             every { app.channelJoin("1", "#koko") } returns completedOf()
@@ -191,8 +186,6 @@ class CourseBotTest {
 
         @Test
         fun `list channels`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf()
             every { app.channelJoin(any(), any()) } returns completedOf()
 
             val theBot = bots.bot().thenCompose { bot ->
@@ -216,10 +209,9 @@ class CourseBotTest {
                 theBot.channels().join()
             }, equalTo(listOf("#c1", "#c2", "#c22", "#c14")))
         }
+
         @Test
         fun `list channels after restart`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf()
             every { app.channelJoin(any(), any()) } returns completedOf()
 
             val theBot = bots.bot("bot1").thenCompose { bot ->
@@ -238,7 +230,6 @@ class CourseBotTest {
                 samebot.channels().join()
             }, equalTo(listOf("#c1", "#c2", "#c22", "#c14")))
         }
-
     }
 
 
@@ -247,11 +238,17 @@ class CourseBotTest {
         private val listener = slot<ListenerCallback>()
         private val listeners = mutableListOf<ListenerCallback>()
 
+        @BeforeEach
+        internal fun setUp() {
+            every { app.login(any(), any()) } returns completedOf("1")
+            every { app.addListener("1", capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+        }
+
         @Test
         fun `beginCount throws IllegalArgumentException on bad input`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf()
-
             val bot = bots.bot().join()
 
             // TODO: should it throw?
@@ -269,9 +266,6 @@ class CourseBotTest {
 
         @Test
         fun `count throws IllegalArgumentException without prior begin`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.addListener(any(), any()) } returns completedOf()
-
             val bot = bots.bot().join()
 
             assertThrows<IllegalArgumentException> {
@@ -295,12 +289,7 @@ class CourseBotTest {
 
         @Test
         fun `count with exact specs`() {
-            every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", "#ch") } returns completedOf()
-            every { app.addListener("1", capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
 
             val bot = bots.bot().join()
             bot.join("#ch")
@@ -324,7 +313,6 @@ class CourseBotTest {
 
         @Test
         fun `count works after restart`() {
-            every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", "#ch") } returns completedOf()
             every { app.addListener("1", capture(listener)) } answers {
                 completedOf()
@@ -364,12 +352,7 @@ class CourseBotTest {
 
         @Test
         fun `restart counter`() {
-            every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
 
             val bot = bots.bot().join()
             bot.join("#ch")
@@ -392,12 +375,7 @@ class CourseBotTest {
 
         @Test
         fun `counter counts after reset`() {
-            every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
 
             val msg = mockk<Message>(relaxed = true)
             every { msg.id } returns 34
@@ -430,12 +408,7 @@ class CourseBotTest {
 
         @Test
         fun `count with regex`() {
-            every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", "#ch") } returns completedOf()
-            every { app.addListener("1", capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
 
             val bot = bots.bot().join()
             bot.join("#ch")
@@ -460,12 +433,7 @@ class CourseBotTest {
 
         @Test
         fun `count with regex all channels`() {
-            every { app.login(any(), any()) } returns completedOf("1")
             every { app.channelJoin("1", any()) } returns completedOf()
-            every { app.addListener("1", capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
 
             val bot = bots.bot()
                 .thenCompose {bot ->
@@ -503,15 +471,18 @@ class CourseBotTest {
         private val listener = slot<ListenerCallback>()
         private val listeners = mutableListOf<ListenerCallback>()
 
-        @Test
-        fun `calculates correctly`() {
+        @BeforeEach
+        internal fun setUp() {
             every { app.login(any(), any()) } returns completedOf("yalla")
             every { app.channelJoin(any(), any()) } returns completedOf()
             every { app.addListener(any(), capture(listener)) } answers {
                 listeners.add(listener.captured)
                 completedOf()
             }
+        }
 
+        @Test
+        fun `calculates correctly`() {
             val bot = bots.bot().join()
             bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
 
@@ -536,13 +507,6 @@ class CourseBotTest {
 
         @Test
         fun `don't die`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
-
             val msg = mockk<Message>(relaxed = true)
             every { msg.id } returns 34
             every { msg.media } returns MediaType.TEXT
@@ -559,13 +523,6 @@ class CourseBotTest {
 
         @Test
         fun `calculates correctly with complex expression`() {
-            every { app.login(any(), any()) } returns completedOf("yalla")
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
-
             val bot = bots.bot().join()
             bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
 
@@ -586,13 +543,6 @@ class CourseBotTest {
 
         @Test
         fun `calculates correctly with tricky trigger`() {
-            every { app.login(any(), any()) } returns completedOf("yalla")
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
-
             val bot = bots.bot().join()
             bot.join("#ch").thenCompose { bot.setCalculationTrigger("#ch") }.join()
 
@@ -613,13 +563,6 @@ class CourseBotTest {
 
         @Test
         fun `works after restart`() {
-            every { app.login(any() , any()) } returns completedOf("yalla")
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
-
             val bot = bots.bot("kaka").join()
             bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
 
@@ -644,13 +587,6 @@ class CourseBotTest {
 
         @Test
         fun `can be turned off`() {
-            every { app.login(any(), any()) } returns completedOf("yalla")
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
-
             val bot = bots.bot().join()
             bot.join("#ch").thenCompose { bot.setCalculationTrigger("pleaseCalc2me") }.join()
 
@@ -677,19 +613,12 @@ class CourseBotTest {
 
         @Test
         fun `works after turning on again`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
-
             val msg = mockk<Message>(relaxed = true)
             every { msg.id } returns 34
             every { msg.media } returns MediaType.TEXT
             every { msg.contents } returns "3+4 3+4".toByteArray()
             every { messageFactory.create(MediaType.TEXT, "7".toByteArray()) } returns completedOf(msg)
-            every { app.channelSend(any(), any(), msg) } returns completedOf()
+            every { app.channelSend("yalla", "#ch", msg) } returns completedOf()
 
             bots.bot().thenCompose { bot ->
                 bot.join("#ch")
@@ -704,20 +633,13 @@ class CourseBotTest {
             }.join()
 
             verify(exactly = 1) {
-                app.channelSend("1", "#ch", any())
+                app.channelSend("yalla", "#ch", any())
             }
             confirmVerified()
         }
 
         @Test
         fun `works in all channels`() {
-            every { app.login(any(), any()) } returns completedOf("1")
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
-                listeners.add(listener.captured)
-                completedOf()
-            }
-
             bots.bot().thenCompose { bot ->
                 bot.join("#ch1")
                     .thenCompose { bot.join("#ch2") }
@@ -745,8 +667,8 @@ class CourseBotTest {
             listeners.forEach { it("#ch1@kkk", msg).join() }
 
             verify(exactly = 1) {
-                app.channelSend("1", "#ch1", any())
-                app.channelSend("1", "#ch2", any())
+                app.channelSend("yalla", "#ch1", any())
+                app.channelSend("yalla", "#ch2", any())
             }
             confirmVerified()
         }
