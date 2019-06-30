@@ -782,14 +782,11 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
 
 
     private fun getTopIfNoDraw(heap : MaxHeap) : String? {
-        if (heap.count() == 0)
-            return null
-
         val top10 = heap.topTen()
-        if (top10.size >= 2 && heap.getScore(top10[0]) == heap.getScore(top10[1]))
+        if (top10.isEmpty() || top10.size >= 2 && heap.getScore(top10[0]) == heap.getScore(top10[1]))
             return null
 
-        return top10[0]
+        return top10.first()
     }
 }
 

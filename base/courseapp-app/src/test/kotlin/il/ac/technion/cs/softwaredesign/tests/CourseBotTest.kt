@@ -712,7 +712,6 @@ class CourseBotTest {
             }, equalTo("richest"))
         }
 
-
         @Test
         fun `richestUser returns null on tie`() {
             bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
@@ -863,7 +862,6 @@ class CourseBotTest {
             }, equalTo("richest"))
         }
 
-
         @Test
         fun `can be turned off`() {
             bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
@@ -877,7 +875,6 @@ class CourseBotTest {
             listeners.forEach { it("#ch@poorest", msg).join() }
 
             bot.setTipTrigger(null).join()
-
 
             // rich cannot give back, tipping is disabled
             every { msg.id } returns 342
@@ -912,7 +909,6 @@ class CourseBotTest {
                 bot.richestUser("#ch").join()
             }, equalTo("new richest"))
         }
-
 
         @Test
         fun `can't send more then I have`() {
