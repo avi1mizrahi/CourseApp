@@ -713,6 +713,28 @@ class CourseBotTest {
         }
 
         @Test
+        fun `paying to someone the most makes him richest`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, any(), any()) } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.media } returns MediaType.TEXT
+
+            every { msg.id } returns 34
+            every { msg.contents } returns "gimmeTha$ 999 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            every { msg.id } returns 35
+            every { msg.contents } returns "gimmeTha$ 1 not richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, equalTo("richest"))
+        }
+
+        @Test
         fun `richestUser returns null on tie`() {
             bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
 
