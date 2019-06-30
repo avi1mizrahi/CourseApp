@@ -777,13 +777,13 @@ class CourseBotTest {
         @Test
         fun `richestUser throws NoSuchEntityException if bot not in channel`() {
             assertThrows<NoSuchEntityException> {
-                bot.richestUser("#ch").join()
+                bot.richestUser("#ch").joinException()
             }
 
             bot.setTipTrigger("gimmeTha$").join()
 
             assertThrows<NoSuchEntityException> {
-                bot.richestUser("#ch").join()
+                bot.richestUser("#ch").joinException()
             }
         }
 
@@ -1121,14 +1121,14 @@ class CourseBotTest {
 
         @Test
         fun `mostActiveUser throws NoSuchEntityException if not in any channel`() {
-            assertThrows<NoSuchEntityException> { bot.mostActiveUser("#ch413!").join() }
+            assertThrows<NoSuchEntityException> { bot.mostActiveUser("#ch413!").joinException() }
         }
 
         @Test
         fun `mostActiveUser throws NoSuchEntityException if not in the channel`() {
             bot.join("#ch4").join()
 
-            assertThrows<NoSuchEntityException> { bot.mostActiveUser("#ch413!").join() }
+            assertThrows<NoSuchEntityException> { bot.mostActiveUser("#ch413!").joinException() }
         }
 
         @Test
@@ -1168,7 +1168,123 @@ class CourseBotTest {
 
     @Nested
     inner class Survey {
+        private val listener = slot<ListenerCallback>()
+        private val listeners = mutableListOf<ListenerCallback>()
+        private lateinit var bot: CourseBot
 
+        private val theToken = "חלאס"
+
+        @BeforeEach
+        internal fun setUp() {
+            every { app.login(any(), any()) } returns completedOf(theToken)
+            every { app.channelJoin(theToken, any()) } returns completedOf()
+            every { app.addListener(theToken, capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            bot = bots.bot().join()
+        }
+
+        @Test
+        fun `runSurvey throws NoSuchEntityException if the bot is not in channel`() {
+            assertThrows<NoSuchEntityException> {
+                bot.runSurvey("#cah", "?", listOf("A", "B")).joinException()
+            }
+        }
+
+        @Test
+        fun `surveyResults throws NoSuchEntityException if unknown survey`() {
+            assertThrows<NoSuchEntityException> {
+                bot.surveyResults("asdff").joinException()
+            }
+        }
+
+        @Test
+        fun `runSurvey as surveys should be`() {
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.media } returns MediaType.TEXT
+            every { msg.id } returns 100
+            every { msg.contents } returns "בעד?".toByteArray()
+
+            every { messageFactory.create(MediaType.TEXT, "בעד?".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend(any(), any(), any()) } returns completedOf()
+
+            val sid = bot.join("#cha")
+                .thenCompose { bot.runSurvey("#cha", "בעד?", listOf("כן", "בעד", "סגר סגור")) }
+                .thenApply { identifier ->
+                    every { msg.id } returns 1001
+                    listeners.forEach { it("#cha@A", msg).join() } // not survey related
+
+                    every { msg.id } returns 1002
+                    every { msg.contents } returns "סגר סגור".toByteArray()
+                    listeners.forEach { it("#cha@A", msg).join() }
+
+                    every { msg.id } returns 1003
+                    every { msg.contents } returns "כן".toByteArray()
+                    listeners.forEach { it("#cha@B", msg).join() }
+
+                    every { msg.id } returns 1004
+                    every { msg.contents } returns "סגר סגור".toByteArray()
+                    listeners.forEach { it("#cha@C", msg).join() }
+
+                    every { msg.id } returns 10033
+                    every { msg.contents } returns "כן".toByteArray()
+                    listeners.forEach { it("#cha@D", msg).join() }
+
+                    identifier
+                }.join()
+
+            assertThat(bot.surveyResults(sid).join(), equalTo(listOf(2L, 0L, 2L)))
+
+            verify(exactly = 1) { app.channelSend(theToken, "#cha", msg) }
+            confirmVerified()
+        }
+
+        @Test
+        fun `user can override answer`() {
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.media } returns MediaType.TEXT
+            every { msg.id } returns 100
+            every { msg.contents } returns "בעד?".toByteArray()
+
+            every { messageFactory.create(MediaType.TEXT, "בעד?".toByteArray()) } returns completedOf(msg)
+            every { app.channelSend(any(), any(), any()) } returns completedOf()
+
+            val sid = bot.join("#cha")
+                .thenCompose { bot.runSurvey("#cha", "בעד?", listOf("כן", "בעד", "סגר סגור")) }
+                .thenApply { identifier ->
+                    every { msg.id } returns 1001
+                    listeners.forEach { it("#cha@A", msg).join() } // not survey related
+
+                    every { msg.id } returns 1002
+                    every { msg.contents } returns "סגר סגור".toByteArray()
+                    listeners.forEach { it("#cha@A", msg).join() }
+
+                    every { msg.id } returns 1003
+                    every { msg.contents } returns "כן".toByteArray()
+                    listeners.forEach { it("#cha@A", msg).join() }
+
+                    every { msg.id } returns 1004
+                    every { msg.contents } returns "סגר סגור".toByteArray()
+                    listeners.forEach { it("#cha@C", msg).join() }
+
+                    every { msg.id } returns 1009
+                    every { msg.contents } returns "סגר סגור".toByteArray()
+                    listeners.forEach { it("#cha@C", msg).join() }
+
+                    every { msg.id } returns 10033
+                    every { msg.contents } returns "כן".toByteArray()
+                    listeners.forEach { it("#cha@A", msg).join() }
+
+                    identifier
+                }.join()
+
+            assertThat(bot.surveyResults(sid).join(), equalTo(listOf(1L, 0L, 1L)))
+
+            verify(exactly = 1) { app.channelSend(theToken, "#cha", msg) }
+            confirmVerified()
+        }
     }
 
     @Nested
