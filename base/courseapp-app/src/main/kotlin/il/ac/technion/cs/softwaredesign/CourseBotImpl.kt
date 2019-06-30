@@ -56,10 +56,10 @@ private fun getDict(storage: SecureStorage, name: String) =
 
 
 private val MASTERPASSWORD = "password"
-class CourseBotManager @Inject constructor(val app : CourseApp, val messageFactory : MessageFactory) : CourseBots {
+class CourseBotManager @Inject constructor(private val app : CourseApp, private val messageFactory : MessageFactory,
+                                           private var storageFactory : SecureStorageFactory) : CourseBots {
 
-    @Inject
-    private lateinit var storageFactory : SecureStorageFactory
+
     private lateinit var storage : ScopedStorage
 
 
