@@ -456,10 +456,20 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                     }
                 }
                 fun payIfPossible(sender : String, target : String, amount : Int) {
+                    if (amount < 0) return // can't steal money.
+
+                    val current = if (set.contains(sender))
+                        heap.getScore(sender)
+                    else
+                        1000
+
+                    // don't initialize if transaction is bound to fail
+                    if (current - amount < 0 ) return
+
+
                     initializeUserIfDoesntExist(sender)
                     initializeUserIfDoesntExist(target)
 
-                    if (heap.getScore(sender) - amount < 0 ) return
 
                     heap.changeScore(target, amount)
                     heap.changeScore(sender, -amount)
@@ -477,9 +487,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                     }
                 }
                 fun getTop() : String? {
-                    if (heap.count() == 0)
-                        return null
-                    return heap.topTen()[0]
+                    return getTopIfNoDraw(heap)
                 }
 
             }
@@ -599,8 +607,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 }
 
                 fun getTop() : String? {
-                    if (heap.isEmpty()) return null
-                    return heap.topTen()[0]
+                    return getTopIfNoDraw(heap)
                 }
             }
 
@@ -773,6 +780,17 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
         }
     }
 
+
+    private fun getTopIfNoDraw(heap : MaxHeap) : String? {
+        if (heap.count() == 0)
+            return null
+
+        val top10 = heap.topTen()
+        if (top10.size >= 2 && heap.getScore(top10[0]) == heap.getScore(top10[1]))
+            return null
+
+        return top10[0]
+    }
 }
 
 

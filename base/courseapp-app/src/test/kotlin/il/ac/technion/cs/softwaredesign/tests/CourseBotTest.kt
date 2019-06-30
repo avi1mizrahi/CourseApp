@@ -712,7 +712,7 @@ class CourseBotTest {
             }, equalTo("richest"))
         }
 
-        @Disabled // TODO fix, maybe it is too complicated to implement
+
         @Test
         fun `richestUser returns null on tie`() {
             bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
@@ -863,12 +863,12 @@ class CourseBotTest {
             }, equalTo("richest"))
         }
 
-        @Disabled // TODO: fix
+
         @Test
         fun `can be turned off`() {
             bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
 
-            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+            every { app.isUserInChannel(theToken, "#ch", any()) } returns completedOf(true)
 
             val msg = mockk<Message>(relaxed = true)
             every { msg.id } returns 34
@@ -878,20 +878,22 @@ class CourseBotTest {
 
             bot.setTipTrigger(null).join()
 
+
+            // rich cannot give back, tipping is disabled
             every { msg.id } returns 342
-            listeners.forEach { it("#ch@poorest", msg).join() }
+            every { msg.contents } returns "gimmeTha$ 4 poorest".toByteArray()
+            listeners.forEach { it("#ch@richest", msg).join() }
 
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bot.richestUser("#ch").join()
-            }, absent())
+            }, equalTo("richest"))
         }
 
-        @Disabled // TODO: fix
         @Test
         fun `works after turning on again`() {
             bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
 
-            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+            every { app.isUserInChannel(theToken, "#ch", any()) } returns completedOf(true)
 
             val msg = mockk<Message>(relaxed = true)
             every { msg.id } returns 34
@@ -902,9 +904,8 @@ class CourseBotTest {
             bot.setTipTrigger(null).join()
             bot.setTipTrigger("triggered!!!!").join()
 
-            every { app.isUserInChannel(theToken, "#ch", "new richest") } returns completedOf(true)
             every { msg.id } returns 342
-            every { msg.contents } returns "triggered!!!! 1 new richest".toByteArray()
+            every { msg.contents } returns "triggered!!!! 3 new richest".toByteArray()
             listeners.forEach { it("#ch@poorest", msg).join() }
 
             assertThat(runWithTimeout(ofSeconds(10)) {
@@ -912,7 +913,7 @@ class CourseBotTest {
             }, equalTo("new richest"))
         }
 
-        @Disabled // TODO: fix
+
         @Test
         fun `can't send more then I have`() {
             bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
