@@ -1040,7 +1040,7 @@ class CourseBotTest {
 
     @Nested
     inner class General {
-        //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
+
         @Test
         fun `default name`() {
             every { app.login("Anna0", any()) } returns completedOf("1")
@@ -1112,6 +1112,32 @@ class CourseBotTest {
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bots.bots().join()
             }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
+        }
+
+        @Disabled
+        @Test
+        fun `can be kicked out from channels, statistics should handle`() {
+            every { app.login(any(), any()) } returns completedOf("7yhnm")
+            every { app.addListener(any(), any()) } returns completedOf()
+            every { app.channelJoin(any(), any()) } returns completedOf()
+
+            val bot = bots.bot("botox").join()
+            bot.join("cha-cha-cha").join()
+
+            // shabang!
+            every { app.isUserInChannel(any(), any(), any()) } returns completedOf(false)
+
+            assertThrows<NoSuchEntityException> {
+                bot.richestUser("cha-cha-cha").joinException()
+            }
+            assertThrows<NoSuchEntityException> {
+                bot.mostActiveUser("cha-cha-cha").joinException()
+            }
+            assertThrows<NoSuchEntityException> {
+                bot.runSurvey("cha-cha-cha",
+                              "cha-cha-cha",
+                              listOf("cha-cha-cha", "cha-pa-cha")).joinException()
+            }
         }
     }
 }
