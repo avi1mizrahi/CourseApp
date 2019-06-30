@@ -623,6 +623,8 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 ActiveUsersOfChannel(channel).incrementCounter(user)
             }
             fun mostActiveUser(channel: String): CompletableFuture<String?> {
+                if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
+
                 return CompletableFuture.supplyAsync {
                     ActiveUsersOfChannel(channel).getTop()
                 }

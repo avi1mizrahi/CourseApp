@@ -22,6 +22,7 @@ import io.mockk.*
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import java.time.Duration.ofSeconds
+import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
 
 
@@ -686,8 +687,8 @@ class CourseBotTest {
         @BeforeEach
         internal fun setUp() {
             every { app.login(any(), any()) } returns completedOf(theToken)
-            every { app.channelJoin(any(), any()) } returns completedOf()
-            every { app.addListener(any(), capture(listener)) } answers {
+            every { app.channelJoin(theToken, any()) } returns completedOf()
+            every { app.addListener(theToken, capture(listener)) } answers {
                 listeners.add(listener.captured)
                 completedOf()
             }
@@ -1029,8 +1030,140 @@ class CourseBotTest {
     }
 
     @Nested
-    inner class Stocker {
+    inner class Stalker {
+        private val listener = slot<ListenerCallback>()
+        private val listeners = mutableListOf<ListenerCallback>()
+        private lateinit var bot: CourseBot
 
+        private val theToken = "עד מתי תעשה שיגמר"
+
+        @BeforeEach
+        internal fun setUp() {
+            every { app.login(any(), any()) } returns completedOf(theToken)
+            every { app.channelJoin(theToken, any()) } returns completedOf()
+            every { app.addListener(theToken, capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            bot = bots.bot().join()
+        }
+
+        @Test
+        fun `seenTime from unseen user`() {
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "$ 1 B".toByteArray()
+
+            bot.join("#ch")
+                .thenAccept { listeners.forEach { it("#ch@A", msg).join() } }
+                .join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.seenTime("who is this user").join()
+            }, absent())
+        }
+
+        @Test
+        fun `seenTime reports correctly`() {
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "$ 1 B".toByteArray()
+            val time = LocalDateTime.of(1991, 11, 11, 11, 11)
+            every { msg.created } returns time
+
+            bot.join("#ch")
+                .thenAccept { listeners.forEach { it("#ch@A", msg).join() } }
+                .join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.seenTime("A").join()
+            }, equalTo(time))
+        }
+
+        @Test
+        fun `seenTime reports correctly with multiple channels`() {
+            bot.join("#ch4")
+                .thenCompose { bot.join("#ch1") }
+                .thenCompose { bot.join("#ch2") }
+                .thenCompose { bot.join("#ch3") }
+                .join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "$ 1 B".toByteArray()
+            every { msg.id } returns 34
+            every { msg.created } returns LocalDateTime.of(1991, 11, 11, 11, 11)
+
+            listeners.forEach { it("#ch1@A", msg).join() }
+            every { msg.id } returns 35
+            every { msg.created } returns LocalDateTime.of(1992, 11, 11, 11, 11)
+            listeners.forEach { it("#ch2@A", msg).join() }
+            every { msg.id } returns 36
+            every { msg.created } returns LocalDateTime.of(1993, 11, 11, 11, 11)
+            listeners.forEach { it("#ch1@A", msg).join() }
+            every { msg.id } returns 37
+            every { msg.created } returns LocalDateTime.of(1994, 11, 11, 11, 11)
+            listeners.forEach { it("#ch3@A", msg).join() }
+            every { msg.id } returns 38
+            every { msg.created } returns LocalDateTime.of(1995, 11, 11, 11, 11)
+            listeners.forEach { it("#ch2@F", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.seenTime("A").join()
+            }, equalTo(LocalDateTime.of(1994, 11, 11, 11, 11)))
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.seenTime("F").join()
+            }, equalTo(LocalDateTime.of(1995, 11, 11, 11, 11)))
+        }
+
+        @Test
+        fun `mostActiveUser throws NoSuchEntityException if not in any channel`() {
+            assertThrows<NoSuchEntityException> { bot.mostActiveUser("#ch413!").join() }
+        }
+
+        @Test
+        fun `mostActiveUser throws NoSuchEntityException if not in the channel`() {
+            bot.join("#ch4").join()
+
+            assertThrows<NoSuchEntityException> { bot.mostActiveUser("#ch413!").join() }
+        }
+
+        @Test
+        fun `mostActiveUser reports correctly with multiple channels`() {
+            bot.join("#ch4")
+                .thenCompose { bot.join("#ch3") }
+                .join()
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "$ 1 B".toByteArray()
+            every { msg.id } returns 34
+            every { msg.created } returns LocalDateTime.of(1991, 11, 11, 11, 11)
+
+            listeners.forEach { it("#ch4@F", msg).join() }
+            every { msg.id } returns 35
+            every { msg.created } returns LocalDateTime.of(1992, 11, 11, 11, 11)
+            listeners.forEach { it("#ch3@A", msg).join() }
+            every { msg.id } returns 36
+            every { msg.created } returns LocalDateTime.of(1993, 11, 11, 11, 11)
+            listeners.forEach { it("#ch4@A", msg).join() }
+            every { msg.id } returns 37
+            every { msg.created } returns LocalDateTime.of(1994, 11, 11, 11, 11)
+            listeners.forEach { it("#ch3@A", msg).join() }
+            every { msg.id } returns 38
+            every { msg.created } returns LocalDateTime.of(1995, 11, 11, 11, 11)
+            listeners.forEach { it("#ch4@F", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.mostActiveUser("#ch3").join()
+            }, equalTo("A"))
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.mostActiveUser("#ch4").join()
+            }, equalTo("F"))
+        }
     }
 
     @Nested
@@ -1040,7 +1173,7 @@ class CourseBotTest {
 
     @Nested
     inner class General {
-        //TODO: from bots.bots: @return List of bot names **in order of bot creation.**
+
         @Test
         fun `default name`() {
             every { app.login("Anna0", any()) } returns completedOf("1")
@@ -1112,6 +1245,32 @@ class CourseBotTest {
             assertThat(runWithTimeout(ofSeconds(10)) {
                 bots.bots().join()
             }, equalTo(listOf("Anna0", "Anna1", "Anna2")))
+        }
+
+        @Disabled
+        @Test
+        fun `can be kicked out from channels, statistics should handle`() {
+            every { app.login(any(), any()) } returns completedOf("7yhnm")
+            every { app.addListener(any(), any()) } returns completedOf()
+            every { app.channelJoin(any(), any()) } returns completedOf()
+
+            val bot = bots.bot("botox").join()
+            bot.join("cha-cha-cha").join()
+
+            // shabang!
+            every { app.isUserInChannel(any(), any(), any()) } returns completedOf(false)
+
+            assertThrows<NoSuchEntityException> {
+                bot.richestUser("cha-cha-cha").joinException()
+            }
+            assertThrows<NoSuchEntityException> {
+                bot.mostActiveUser("cha-cha-cha").joinException()
+            }
+            assertThrows<NoSuchEntityException> {
+                bot.runSurvey("cha-cha-cha",
+                              "cha-cha-cha",
+                              listOf("cha-cha-cha", "cha-pa-cha")).joinException()
+            }
         }
     }
 }
