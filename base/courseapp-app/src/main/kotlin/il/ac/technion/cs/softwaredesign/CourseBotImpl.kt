@@ -523,15 +523,16 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
             }
 
             fun richestUser(channel: String): CompletableFuture<String?> {
+                if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
+
                 return CompletableFuture.supplyAsync {
                     TipsOfChannel(channel).getTop()
                 }
             }
-
         }
+
         override fun setTipTrigger(trigger: String?): CompletableFuture<String?> = tipsComponent.setTipTrigger(trigger)
         override fun richestUser(channel: String): CompletableFuture<String?> = tipsComponent.richestUser(channel)
-
 
 
         private inner class LastSeen : BotEventObserver("LastSeen") {
@@ -726,7 +727,6 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
             }
 
             fun runSurvey(channel: String, question: String, answers: List<String>): CompletableFuture<String> {
-                // Throw if bot not in channel
                 if (!getIsInChannel(channel).join()) throw NoSuchEntityException()
 
                 val uniqueSurveyID = surveyCounter
