@@ -55,15 +55,15 @@ class MaxHeapImpl(storage: SecureStorage, heapId: ByteArray): MaxHeap {
         else if (by < 0) decScore(index, newScore)
     }
 
+
     override fun topTen(): List<String> {
         val res = LinkedList<String>()
         if (array.isEmpty()) return res
         val open = HashSet<Int>()
         open.add(1)
         while (open.isNotEmpty() && res.count() < 10) {
-            val next = open.maxBy { comperator(it) } ?: return res
+            val next = open.maxWith(Comparator { a, b -> compare(a,b)}) ?: return res
             open.remove(next)
-            if (comperator(next) == -1) return res
             res.add(getName(next))
             if (2 * next <= count()) open.add(2 * next)
             if (2 * next + 1 <= count()) open.add(2 * next + 1)
@@ -157,12 +157,6 @@ class MaxHeapImpl(storage: SecureStorage, heapId: ByteArray): MaxHeap {
         return -1
     }
 
-    private fun comperator(index: Int): Int {
-        val name = getName(index)
-        if (name == "") return -1
-        val ord = order.read(name)?.toInt() ?: return -1
-        return (getScoreByIndex(index) + 1) * 10 * order.count() - ord
-    }
 
     override fun count(): Int {
         return array.count()

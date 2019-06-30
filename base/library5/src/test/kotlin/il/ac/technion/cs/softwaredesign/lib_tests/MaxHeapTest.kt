@@ -215,6 +215,18 @@ internal class MaxHeapTest {
         heap.changeScore("3003", 10000)
         heap.changeScore("3006", 100)
 
+
+        assert(heap.getScore("3009") == 10000000)
+        assert(heap.getScore("3005") ==  1000)
+        assert(heap.getScore("3001") ==  100000000)
+        assert(heap.getScore("3002") ==  100000)
+        assert(heap.getScore("3008") ==  9)
+        assert(heap.getScore("3010") ==  1000000)
+        assert(heap.getScore("3004") ==  1000000000)
+        assert(heap.getScore("3007") ==  10)
+        assert(heap.getScore("3003") ==  10000)
+        assert(heap.getScore("3006") ==  100)
+
         assertEquals(expected, heap.topTen())
     }
 
