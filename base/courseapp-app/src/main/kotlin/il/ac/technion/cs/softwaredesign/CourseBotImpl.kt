@@ -515,7 +515,7 @@ class CourseBotManager @Inject constructor(val app : CourseApp, val messageFacto
                 val channel = getChannelFromChannelMessageSource(source)
                 val sender = getSenderFromChannelMessageSource(source)
 
-                if (app.isUserInChannel(token, channel, target).join() == false) return
+                if (app.isUserInChannel(token, channel, target).join() != true) return
 
                 TipsOfChannel(channel).payIfPossible(sender, target, amount)
             }
