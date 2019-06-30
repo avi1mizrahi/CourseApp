@@ -5,6 +5,7 @@ import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
 import com.google.inject.Inject
 import com.google.inject.Injector
+import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
@@ -676,7 +677,336 @@ class CourseBotTest {
 
     @Nested
     inner class Tipping {
+        private val listener = slot<ListenerCallback>()
+        private val listeners = mutableListOf<ListenerCallback>()
+        private lateinit var bot: CourseBot
 
+        private val theToken = "** !ya_habibi_yalla! **"
+
+        @BeforeEach
+        internal fun setUp() {
+            every { app.login(any(), any()) } returns completedOf(theToken)
+            every { app.channelJoin(any(), any()) } returns completedOf()
+            every { app.addListener(any(), capture(listener)) } answers {
+                listeners.add(listener.captured)
+                completedOf()
+            }
+
+            bot = bots.bot().join()
+        }
+
+        @Test
+        fun `get tip, become rich`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ 1 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, equalTo("richest"))
+        }
+
+        @Disabled // TODO fix, maybe it is too complicated to implement
+        @Test
+        fun `richestUser returns null on tie`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, any(), any()) } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ 150 richest1".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            every { msg.id } returns 3324
+            every { msg.contents } returns "gimmeTha$ 150 richest2".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, absent())
+        }
+
+        @Test
+        fun `at the beggining, communism`() {
+            bot.join("#ch").join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, absent())
+        }
+
+        @Test
+        fun `at the beggining, communism part 2`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, absent())
+        }
+
+        @Test
+        fun `richestUser throws NoSuchEntityException if bot not in channel`() {
+            assertThrows<NoSuchEntityException> {
+                bot.richestUser("#ch").join()
+            }
+
+            bot.setTipTrigger("gimmeTha$").join()
+
+            assertThrows<NoSuchEntityException> {
+                bot.richestUser("#ch").join()
+            }
+        }
+
+        @Test
+        fun `no user, no money`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, "#ch", "stranger") } returns completedOf(false)
+            every { app.isUserInChannel(theToken, "#ch", "who is this") } returns completedOf(null)
+            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ 100 stranger".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            every { msg.id } returns 3431
+            every { msg.contents } returns "gimmeTha$ 1 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            every { msg.id } returns 22222
+            every { msg.contents } returns "gimmeTha$ 100 who is this".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, equalTo("richest"))
+        }
+
+        @Test
+        fun `don't die`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ poorest 100".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            every { msg.id } returns 3431
+            every { msg.contents } returns "gimmeTha$ c1 poorest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            every { msg.id } returns 3433
+            every { msg.contents } returns "gimmeTha$ 1 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            every { msg.id } returns 22222
+            every { msg.contents } returns "gimmeTha$ 10c0 poorest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, equalTo("richest"))
+        }
+
+        @Test
+        fun `setTipTrigger returns previous trigger phrase`() {
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.setTipTrigger("gimmeTha$").join()
+            }, absent())
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.setTipTrigger("something else").join()
+            }, equalTo("gimmeTha$"))
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.setTipTrigger(null).join()
+            }, equalTo("something else"))
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.setTipTrigger("bye").join()
+            }, absent())
+        }
+
+        @Test
+        fun `works after restart`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+            every { app.isUserInChannel(theToken, "#ch", "ככה ככה") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ 2 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            listeners.clear()
+            // this should overwrite the listener
+            newBots().bot("kaka").join()
+
+            every { msg.id } returns 342
+            every { msg.contents } returns "gimmeTha$ 1 ככה ככה".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, equalTo("richest"))
+        }
+
+        @Disabled // TODO: fix
+        @Test
+        fun `can be turned off`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ 2 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            bot.setTipTrigger(null).join()
+
+            every { msg.id } returns 342
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, absent())
+        }
+
+        @Disabled // TODO: fix
+        @Test
+        fun `works after turning on again`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ 2 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            bot.setTipTrigger(null).join()
+            bot.setTipTrigger("triggered!!!!").join()
+
+            every { app.isUserInChannel(theToken, "#ch", "new richest") } returns completedOf(true)
+            every { msg.id } returns 342
+            every { msg.contents } returns "triggered!!!! 1 new richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, equalTo("new richest"))
+        }
+
+        @Disabled // TODO: fix
+        @Test
+        fun `can't send more then I have`() {
+            bot.join("#ch").thenCompose { bot.setTipTrigger("gimmeTha$") }.join()
+
+            every { app.isUserInChannel(theToken, "#ch", "richest") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+            every { msg.contents } returns "gimmeTha$ 1001 richest".toByteArray()
+            listeners.forEach { it("#ch@poorest", msg).join() }
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, absent())
+        }
+
+        @Test
+        fun `each channel has different ledger`() {
+            every { app.isUserInChannel(theToken, "#ch1", "A") } returns completedOf(true)
+            every { app.isUserInChannel(theToken, any(), "B") } returns completedOf(true)
+            every { app.isUserInChannel(theToken, "#ch2", "C") } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+
+            bot.setTipTrigger("$")
+                .thenCompose { bot.join("#ch1") }
+                .thenCompose { bot.join("#ch2") }
+                // Balances now:
+                // ch1: A=1000, B=1000
+                // ch2:         B=1000, C=1000
+                .thenAccept {
+                    every { msg.contents } returns "$ 1000 B".toByteArray()
+                    listeners.forEach { it("#ch1@A", msg).join() }
+                }
+                // Balances now:
+                // ch1: A=0, B=2000
+                // ch2:      B=1000, C=1000
+                .thenAccept {// this should do nothing
+                    every { msg.id } returns 3253
+                    every { msg.contents } returns "$ 2000 C".toByteArray()
+                    listeners.forEach { it("#ch2@B", msg).join() }
+                }.thenAccept {
+                    every { msg.id } returns 3253
+                    every { msg.contents } returns "$ 1 B".toByteArray()
+                    listeners.forEach { it("#ch2@C", msg).join() }
+                }
+                // Balances now:
+                // ch1: A=0, B=2000
+                // ch2:      B=1001, C=999
+                .join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch1").join()
+            }, equalTo("B"))
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch2").join()
+            }, equalTo("B"))
+        }
+
+        @Test
+        fun `transfers between few`() {
+            every { app.isUserInChannel(theToken, any(), any()) } returns completedOf(true)
+
+            val msg = mockk<Message>(relaxed = true)
+            every { msg.id } returns 34
+            every { msg.media } returns MediaType.TEXT
+
+            bot.join("#ch")
+                .thenCompose { bot.setTipTrigger("$") }
+                // Balances now: A=1000, B=1000, C=1000, D=1000
+                .thenAccept {
+                    every { msg.contents } returns "$ 1 B".toByteArray()
+                    listeners.forEach { it("#ch@A", msg).join() }
+                }
+                // Balances now: A=999, B=1001, C=1000, D=1000
+                .thenAccept {// should fail
+                    every { msg.contents } returns "$ 1001 B".toByteArray()
+                    listeners.forEach { it("#ch@D", msg).join() }
+                }
+                // Balances now: A=999, B=1001, C=1000, D=1000
+                .thenAccept {
+                    every { msg.contents } returns "$ 2 C".toByteArray()
+                    listeners.forEach { it("#ch@D", msg).join() }
+                }
+                // Balances now: A=999, B=1001, C=1002, D=998
+                .join()
+
+            assertThat(runWithTimeout(ofSeconds(10)) {
+                bot.richestUser("#ch").join()
+            }, equalTo("C"))
+        }
     }
 
     @Nested
