@@ -5,11 +5,13 @@ import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
 import com.google.inject.Inject
 import com.google.inject.Injector
+import com.google.inject.Singleton
 import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
@@ -1288,9 +1290,9 @@ class CourseBotStaffTest {
             override fun configure() {
                 val keystoreinst = VolatileKeyValueStore()
 
-                val managers = Managers(keystoreinst)
-                bind<Managers>().toInstance(managers)
-                bind<MessageFactory>().toInstance(managers.messages)
+
+                bind<MessageFactory>().to<MessageManager>().`in`<Singleton>()
+
 
                 bind<KeyValueStore>().toInstance(keystoreinst)
                 bind<CourseApp>().to<CourseAppImpl>()

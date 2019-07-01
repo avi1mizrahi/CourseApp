@@ -1,10 +1,7 @@
 package il.ac.technion.cs.softwaredesign
 
 import com.google.inject.Inject
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.ChannelManager
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.MessageManager
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager
-import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
 import il.ac.technion.cs.softwaredesign.exceptions.InvalidTokenException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
@@ -34,35 +31,8 @@ fun <T> CompletableFuture<T>.joinException(): T {
  * + User authentication.
  */
 
-class CourseAppImplInitializer @Inject constructor(private val storageFactory: SecureStorageFactory) :
-        CourseAppInitializer {
-    companion object {
-        lateinit var storage: SecureStorage
-        lateinit var managers: Managers
-    }
 
-    override fun setup(): CompletableFuture<Unit> {
-        storage = storageFactory.open("main".toByteArray()).join()
-        managers = Managers(KeyValueStoreImpl(AsyncStorageAdapter(CourseAppImplInitializer.storage)))
-
-
-        return completedOf(Unit)
-    }
-}
-
-class Managers @Inject constructor(db: KeyValueStore) {
-
-    val users = UserManager(db.scope("users"))
-    val tokens = TokenManager(db.scope("tokens"))
-    val channels = ChannelManager(db.scope("channels"))
-    val messages = MessageManager(db.scope("messages"))
-
-
-    val messageListenerManager = messages.MessageListenerManager()
-
-}
-
-private fun <T> completedOf(t: T) : CompletableFuture<T> {
+fun <T> completedOf(t: T) : CompletableFuture<T> {
     return CompletableFuture.completedFuture(t)
 }
 
@@ -72,14 +42,14 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
     override fun addListener(token: String, callback: ListenerCallback): CompletableFuture<Unit> {
         return getUserByTokenOrThrow(token).thenApply { u ->
-            managers.messageListenerManager.addcallback(u, callback)
+            managers.messages.messageListner.addcallback(u, callback)
         }
     }
 
     override fun removeListener(token: String,
                                 callback: ListenerCallback): CompletableFuture<Unit> {
         return getUserByTokenOrThrow(token).thenApply { u->
-            managers.messageListenerManager.removeCallback(u, callback)
+            managers.messages.messageListner.removeCallback(u, callback)
         }
     }
 
@@ -94,8 +64,8 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         (message as MessageManager.MessageImpl).setSource(source)
 
 
-        return managers.messageListenerManager.sendToChannel(c, managers.users, source, message)
-                .thenApply { managers.messages.statistics_addToTotalChannelMessagesCount()  }
+        return managers.messages.messageListner.sendToChannel(c, managers.users, source, message)
+                .thenApply { managers.messages.statistics.addToTotalChannelMessagesCount()  }
                 .thenApply { c.addToMessagesCount() }
     }
 
@@ -108,7 +78,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         (message as MessageManager.MessageImpl).setSource(source)
         managers.messages.addBroadcastToList(message)
 
-        return managers.messageListenerManager.deliverBroadcastToAllListeners(message, managers.users)
+        return managers.messages.messageListner.deliverBroadcastToAllListeners(message, managers.users)
     }
 
     override fun privateSend(token: String,
@@ -121,7 +91,7 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
         val source = "@" + sender.getName()
         (message as MessageManager.MessageImpl).setSource(source)
 
-        managers.messageListenerManager.deliverToUserOrEnqueuePending(receiver, source, message)
+        managers.messages.messageListner.deliverToUserOrEnqueuePending(receiver, source, message)
 
         return completedOf(Unit)
     }
@@ -313,28 +283,3 @@ class CourseAppImpl @Inject constructor(private val managers: Managers) :
 
 }
 
-
-class CourseAppStatisticsImpl @Inject constructor(private val managers: Managers): CourseAppStatistics {
-    override fun pendingMessages(): CompletableFuture<Long> {
-        return CompletableFuture.completedFuture(managers.messageListenerManager.statistics_getTotalPrivatePending())
-    }
-
-    override fun channelMessages(): CompletableFuture<Long> {
-        return CompletableFuture.completedFuture(managers.messages.statistics_getTotalChannelMessages())
-    }
-
-    override fun top10ChannelsByMessages(): CompletableFuture<List<String>> {
-        return CompletableFuture.completedFuture(managers.channels.statistics_getTop10ChannelsByMessageCount())
-
-    }
-
-    override fun totalUsers(): CompletableFuture<Long> = completedOf(managers.users.statistics_getUserCount().toLong())
-
-    override fun loggedInUsers(): CompletableFuture<Long> = completedOf(managers.users.statistics_getActiveCount().toLong())
-
-    override fun top10ChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.statistics_getTop10ChannelsByUserCount())
-
-    override fun top10ActiveChannelsByUsers(): CompletableFuture<List<String>> = completedOf(managers.channels.statistics_getTop10ChannelsByActiveUserCount())
-
-    override fun top10UsersByChannels(): CompletableFuture<List<String>> = completedOf(managers.users.statistics_getTop10UsersByChannel())
-}

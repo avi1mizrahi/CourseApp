@@ -4,10 +4,12 @@ import com.authzee.kotlinguice4.KotlinModule
 import com.authzee.kotlinguice4.getInstance
 import com.google.inject.Guice
 import com.google.inject.Injector
+import com.google.inject.Singleton
 import com.natpryce.hamkrest.absent
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.present
 import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.exceptions.*
 import il.ac.technion.cs.softwaredesign.messages.MediaType
 import il.ac.technion.cs.softwaredesign.messages.Message
@@ -38,10 +40,13 @@ class CourseAppTest {
             override fun configure() {
                 val keystoreinst = VolatileKeyValueStore()
 
-                val managers = Managers(keystoreinst)
-                bind<Managers>().toInstance(managers)
-                bind<MessageFactory>().toInstance(managers.messages)
 
+                bind<MessageFactory>().to<MessageManager>().`in`<Singleton>()
+                bind<ChannelManager>().`in`<Singleton>()
+                bind<UserManager>().`in`<Singleton>()
+                bind<TokenManager>().`in`<Singleton>()
+                bind<MessageManager>().`in`<Singleton>()
+                bind<Managers>().`in`<Singleton>()
 
                 bind<KeyValueStore>().toInstance(keystoreinst)
                 bind<CourseApp>().to<CourseAppImpl>()
@@ -56,6 +61,8 @@ class CourseAppTest {
     }
 
 
+
+    // For testing GUICE initialization
     @Test
     fun `Empty test`() = Unit
 
