@@ -21,33 +21,37 @@ private fun isSourcePrivate(source : String) = !isSourceChannel(source) && !isSo
 /**
  * A manager handling message related logic.
  */
-class MessageManager @Inject constructor(private val DB: KeyValueStore) : MessageFactory {
-
+class MessageManager @Inject constructor(private val _db: KeyValueStore) : MessageFactory {
+    private val DB = _db.scope("messages")
 
     private val messages = Array(DB.scope("allmessages"))
 
     // ordered list of index -> messageID
     private val broadcasts = ArrayInt(DB.scope("broadcasts"))
 
-    // Channel messages counter
-    private val statistics_totalChannelMessages = DB.getIntReference("totalChannelMessages")
+    val statistics = Statistics()
+    inner class Statistics {
+        // Channel messages counter
+        private val totalChannelMessages = DB.getIntReference("totalChannelMessages")
+
+        /**
+         * Statistics: Return total channel message count
+         */
+        fun getTotalChannelMessages() = (totalChannelMessages.read() ?: 0).toLong()
+
+        /**
+         * Statistics: Increment the total message count
+         */
+        fun addToTotalChannelMessagesCount() = totalChannelMessages.write(getTotalChannelMessages().toInt() + 1)
+
+    }
+
 
 
     override fun create(media: MediaType, contents: ByteArray) : CompletableFuture<Message> {
         val (messageDB, index) = this.messages.newSlot()
         return CompletableFuture.completedFuture(MessageImpl(messageDB, index.toLong(), media, contents))
     }
-
-    /**
-     * Statistics: Return total channel message count
-     */
-    fun statistics_getTotalChannelMessages() = (statistics_totalChannelMessages.read() ?: 0).toLong()
-
-    /**
-     * Statistics: Increment the total message count
-     */
-    fun statistics_addToTotalChannelMessagesCount() = statistics_totalChannelMessages.write(statistics_getTotalChannelMessages().toInt() + 1)
-
 
     /**
      * Read a message from the DB and return an object encapsulating the Message inteface
@@ -78,30 +82,39 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
     }
 
 
+
+    val messageListner = MessageListenerManager()
     /**
      * A manager handling message listenrs
      */
     inner class MessageListenerManager {
 
-        // TODO this could be cached.
-        // Private and broadcast messages
-        private val statistics_totalPendingPrivateMessages = DB.getIntReference("totalPendingMessages")
+
+        val statistics = Statistics()
+        inner class Statistics {
+            // Private and broadcast messages
+            private val totalPendingPrivateMessages = DB.getIntReference("totalPendingMessages")
+
+            /**
+             * Statistics: Get total pending private messages.
+             */
+            fun getTotalPrivatePending() = (totalPendingPrivateMessages.read() ?: 0).toLong()
+
+
+            // Synchronized allows only one thread at a time access run this function
+            @Synchronized
+            fun addToPendingPrivateAndBroadcastMessages(i : Int) {
+                val count = totalPendingPrivateMessages.read()
+                totalPendingPrivateMessages.write(count?.let { it + i }?: i)
+            }
+
+        }
+
+
 
         // Map of UserID -> his callbacks
         private val messageListeners = ConcurrentHashMap<Int, ArrayList<ListenerCallback>>()
 
-        /**
-         * Statistics: Get total pending private messages.
-         */
-        fun statistics_getTotalPrivatePending() = (statistics_totalPendingPrivateMessages.read() ?: 0).toLong()
-
-
-        // Synchronized allows only one thread at a time access run this function
-        @Synchronized
-        private fun statistics_addToPendingPrivateAndBroadcastMessages(i : Int) {
-            val count = statistics_totalPendingPrivateMessages.read()
-            statistics_totalPendingPrivateMessages.write(count?.let { it + i }?: i)
-        }
 
 
         /**
@@ -114,7 +127,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
         fun deliverBroadcastToAllListeners(message : Message, userManager: UserManager) : CompletableFuture<Unit> {
             // Statistics stuff
             val totalUnread = userManager.getUserCount() - messageListeners.size
-            statistics_addToPendingPrivateAndBroadcastMessages(totalUnread)
+            statistics.addToPendingPrivateAndBroadcastMessages(totalUnread)
             //
 
             val futures = ArrayList<CompletableFuture<*>>()
@@ -181,7 +194,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
                 }
 
                 if (isSourcePrivate(source) || isSourceBroadcast(source)) {
-                    statistics_addToPendingPrivateAndBroadcastMessages(1)
+                    statistics.addToPendingPrivateAndBroadcastMessages(1)
                 }
             }
         }
@@ -212,7 +225,7 @@ class MessageManager @Inject constructor(private val DB: KeyValueStore) : Messag
                     CompletableFuture.allOf(*deliver(source, message, listOf(callback)).toTypedArray()).join()
 
                     if (isSourcePrivate(source) || isSourceBroadcast(source)) {
-                        statistics_addToPendingPrivateAndBroadcastMessages(-1)
+                        statistics.addToPendingPrivateAndBroadcastMessages(-1)
                     }
                 }
 

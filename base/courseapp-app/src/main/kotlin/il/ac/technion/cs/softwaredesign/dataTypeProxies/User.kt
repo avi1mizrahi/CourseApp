@@ -1,5 +1,6 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
+import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.Set
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
@@ -12,21 +13,31 @@ import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
  *     @constructor creates new UserManager.
  *
  */
-class UserManager(DB: KeyValueStore) {
+class UserManager @Inject constructor (_db: KeyValueStore) {
+    private val DB = _db.scope("users")
+
     private val nameToIdMap = DB.getIntMapReference(listOf("nametoid"))
 
     private var activeCountCache = -1
     private val activeCount = DB.getIntReference(listOf("activecount"))
-    private val statistics_allUsersByChannelCount =
-            Heap(ScopedKeyValueStore(DB, listOf("usersbychannels")),
-                 { id -> getUserByID(id).getChannelCount() },
-                 { id -> -id })
-
 
     private val allUsers = Array(ScopedKeyValueStore(DB, listOf("allusers")))
 
-    fun statistics_getTop10UsersByChannel(): List<String> =
-            statistics_allUsersByChannelCount.getTop10().map { id -> getUserByID(id).getName() }
+
+    val statistics = Statistics()
+    inner class Statistics {
+        val allUsersByChannelCount =
+                Heap(ScopedKeyValueStore(DB, listOf("usersbychannels")),
+                        { id -> getUserByID(id).getChannelCount() },
+                        { id -> -id })
+
+
+
+        fun getTop10UsersByChannel(): List<String> =
+                allUsersByChannelCount.getTop10().map { id -> getUserByID(id).getName() }
+    }
+
+
 
 
     /**
@@ -46,7 +57,7 @@ class UserManager(DB: KeyValueStore) {
         if (id == 0) ret.setAdmin()
 
         addUserID(name, id)
-        statistics_allUsersByChannelCount.addMinimum(id)
+        statistics.allUsersByChannelCount.addMinimum(id)
         return ret
     }
 
@@ -89,22 +100,6 @@ class UserManager(DB: KeyValueStore) {
     private fun addUserID(name: String, id: Int) = nameToIdMap.write(name, id)
 
 
-    /**
-     * Refresh the cache and get the user count.
-     */
-    fun statistics_getUserCount() : Int {
-        allUsers.forceCacheRefresh()
-        return getUserCount()
-    }
-
-    /**
-     * Refresh the cache and get the cache the active user count
-     */
-    fun statistics_getActiveCount() : Int {
-        activeCountCache = -1
-        return getActiveCount()
-    }
-
 
     /**
      * a class representing a proxy to a user's info on the DB.
@@ -146,7 +141,7 @@ class UserManager(DB: KeyValueStore) {
         fun addToChannelList(channel: ChannelManager.Channel) {
             channelList.add(channel.getID())
 
-            statistics_allUsersByChannelCount.idIncremented(id)
+            statistics.allUsersByChannelCount.idIncremented(id)
         }
 
         /**
@@ -155,7 +150,7 @@ class UserManager(DB: KeyValueStore) {
         fun removeFromChannelList(channel: ChannelManager.Channel) {
             channelList.remove(channel.getID())
 
-            statistics_allUsersByChannelCount.idDecremented(id)
+            statistics.allUsersByChannelCount.idDecremented(id)
         }
 
         /**

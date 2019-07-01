@@ -1,5 +1,6 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
+import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.*
 import il.ac.technion.cs.softwaredesign.Set
 import il.ac.technion.cs.softwaredesign.exceptions.NameFormatException
@@ -26,44 +27,55 @@ private fun isBadChannelName(name : String) : Boolean {
  * A manager handling channel logic.
  */
 
-class ChannelManager(DB: KeyValueStore) {
+class ChannelManager @Inject constructor(private val _db: KeyValueStore) {
+    private val DB = _db.scope("channels")
+
 
     private val allChannels = Array(ScopedKeyValueStore(DB, listOf("allChannels")))
     private val nameToId = DB.getIntMapReference(listOf("nameToId"))
 
-    private val statistics_allChannelsByUserCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByUserCount")),
-            {id -> getChannelById(id).getUserCount()},
-            {id -> -id})
+    val statistics = Statistics()
+    inner class Statistics{
+        val allChannelsByUserCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByUserCount")),
+                {id -> getChannelById(id).getUserCount()},
+                {id -> -id})
 
-    private val statistics_allChannelsByActiveCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByActiveUserCount")),
-            {id -> getChannelById(id).getActiveCount()},
-            {id -> -id})
+        val allChannelsByActiveCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByActiveUserCount")),
+                {id -> getChannelById(id).getActiveCount()},
+                {id -> -id})
 
-    private val statistics_allChannelsByMessageCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByMessageCount")),
-            {id -> getChannelById(id).getMessageCount()},
-            {id -> -id})
+        val allChannelsByMessageCount = Heap(ScopedKeyValueStore(DB, listOf("ChannelsByMessageCount")),
+                {id -> getChannelById(id).getMessageCount()},
+                {id -> -id})
 
+        /**
+         * Statistics: Returns top 10 channels by user count
+         */
+        fun getTop10ChannelsByUserCount() : List<String> {
+            return allChannelsByUserCount.getTop10().map { id -> getChannelById(id).getName() }
+        }
 
-    /**
-     * Statistics: Returns top 10 channels by user count
-     */
-    fun statistics_getTop10ChannelsByUserCount() : List<String> {
-        return statistics_allChannelsByUserCount.getTop10().map { id -> getChannelById(id).getName() }
+        /**
+         * Statistics: Returns top 10 channels by active user count
+         */
+        fun getTop10ChannelsByActiveUserCount() : List<String> {
+            return allChannelsByActiveCount.getTop10().map { id -> getChannelById(id).getName() }
+        }
+
+        /**
+         * Statistics: Returns top 10 channels by message count
+         */
+        fun getTop10ChannelsByMessageCount() : List<String> {
+            return allChannelsByMessageCount.getTop10().map { id -> getChannelById(id).getName() }
+        }
     }
 
-    /**
-     * Statistics: Returns top 10 channels by active user count
-     */
-    fun statistics_getTop10ChannelsByActiveUserCount() : List<String> {
-        return statistics_allChannelsByActiveCount.getTop10().map { id -> getChannelById(id).getName() }
-    }
 
-    /**
-     * Statistics: Returns top 10 channels by message count
-     */
-    fun statistics_getTop10ChannelsByMessageCount() : List<String> {
-        return statistics_allChannelsByMessageCount.getTop10().map { id -> getChannelById(id).getName() }
-    }
+
+
+
+
+
 
     /**
      * Create a new channel
@@ -80,9 +92,9 @@ class ChannelManager(DB: KeyValueStore) {
         channel.initialize(name)
 
         nameToId.write(name, id)
-        statistics_allChannelsByUserCount.addMinimum(id)
-        statistics_allChannelsByActiveCount.add(id)
-        statistics_allChannelsByMessageCount.addMinimum(id)
+        statistics.allChannelsByUserCount.addMinimum(id)
+        statistics.allChannelsByActiveCount.add(id)
+        statistics.allChannelsByMessageCount.addMinimum(id)
 
         return channel
     }
@@ -132,9 +144,9 @@ class ChannelManager(DB: KeyValueStore) {
 
         CompletableFuture.allOf(
                 CompletableFuture.runAsync {nameToId.delete(c.getName())},
-                CompletableFuture.runAsync {statistics_allChannelsByUserCount.remove(c.getID())},
-                CompletableFuture.runAsync {statistics_allChannelsByActiveCount.remove(c.getID())},
-                CompletableFuture.runAsync {statistics_allChannelsByMessageCount.remove(c.getID())}
+                CompletableFuture.runAsync {statistics.allChannelsByUserCount.remove(c.getID())},
+                CompletableFuture.runAsync {statistics.allChannelsByActiveCount.remove(c.getID())},
+                CompletableFuture.runAsync {statistics.allChannelsByMessageCount.remove(c.getID())}
 
         ).join()
     }
@@ -162,7 +174,7 @@ class ChannelManager(DB: KeyValueStore) {
          */
         fun addToMessagesCount() {
             messageCount.write(getMessageCount() + 1)
-            statistics_allChannelsByMessageCount.idIncremented(id)
+            statistics.allChannelsByMessageCount.idIncremented(id)
         }
 
         /**
@@ -219,7 +231,7 @@ class ChannelManager(DB: KeyValueStore) {
          */
         fun addActive(user : User) {
             activeList.add(user.id())
-            statistics_allChannelsByActiveCount.idIncremented(id)
+            statistics.allChannelsByActiveCount.idIncremented(id)
         }
 
         /**
@@ -228,7 +240,7 @@ class ChannelManager(DB: KeyValueStore) {
          */
         fun removeActive(user : User) {
             activeList.remove(user.id())
-            statistics_allChannelsByActiveCount.idDecremented(id)
+            statistics.allChannelsByActiveCount.idDecremented(id)
         }
 
 
@@ -243,7 +255,7 @@ class ChannelManager(DB: KeyValueStore) {
             CompletableFuture.allOf(
                     CompletableFuture.runAsync {
                         userList.add(userid)
-                        statistics_allChannelsByUserCount.idIncremented(id)
+                        statistics.allChannelsByUserCount.idIncremented(id)
                     },
                     CompletableFuture.runAsync {
                         if (user.isLoggedIn())
@@ -262,7 +274,7 @@ class ChannelManager(DB: KeyValueStore) {
             CompletableFuture.allOf(
                     CompletableFuture.runAsync {
                         userList.remove(userid)
-                        statistics_allChannelsByUserCount.idDecremented(id)
+                        statistics.allChannelsByUserCount.idDecremented(id)
                     },
                     CompletableFuture.runAsync {
                         if (operatorList.exists(userid))
@@ -270,7 +282,7 @@ class ChannelManager(DB: KeyValueStore) {
                     },
                     CompletableFuture.runAsync {
                         activeList.remove(userid)
-                        statistics_allChannelsByActiveCount.idDecremented(id)
+                        statistics.allChannelsByActiveCount.idDecremented(id)
                     }
 
             ).join()

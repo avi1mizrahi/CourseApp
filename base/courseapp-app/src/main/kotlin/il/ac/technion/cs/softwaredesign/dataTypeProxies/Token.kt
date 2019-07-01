@@ -1,16 +1,21 @@
 package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
+import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.KeyValueStore
 import il.ac.technion.cs.softwaredesign.ScopedKeyValueStore
 import il.ac.technion.cs.softwaredesign.getIntReference
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
+import il.ac.technion.cs.softwaredesign.scope
 import kotlin.random.Random
 
 
 /**
  * A manager that handles creation and assigning of tokens.
  */
-class TokenManager(private val DB: KeyValueStore) {
+class TokenManager @Inject constructor(private val _db: KeyValueStore) {
+
+    private val DB = _db.scope("tokens")
+
     private fun generateToken() : String {
         var out = ""
         repeat(32) {
