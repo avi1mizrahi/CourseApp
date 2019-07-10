@@ -4,7 +4,6 @@ import com.authzee.kotlinguice4.KotlinModule
 import com.google.inject.Singleton
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.*
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
-import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 
 
 class CourseAppModule : KotlinModule() {

@@ -21,7 +21,7 @@ private fun isSourcePrivate(source : String) = !isSourceChannel(source) && !isSo
 /**
  * A manager handling message related logic.
  */
-class MessageManager @Inject constructor(private val _db: KeyValueStore) : MessageFactory {
+class MessageManager @Inject constructor(_db: KeyValueStore) : MessageFactory {
     private val DB = _db.scope("messages")
 
     private val messages = Array(DB.scope("allmessages"))

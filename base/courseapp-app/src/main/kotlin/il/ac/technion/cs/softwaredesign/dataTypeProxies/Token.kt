@@ -12,7 +12,7 @@ import kotlin.random.Random
 /**
  * A manager that handles creation and assigning of tokens.
  */
-class TokenManager @Inject constructor(private val _db: KeyValueStore) {
+class TokenManager @Inject constructor(_db: KeyValueStore) {
 
     private val DB = _db.scope("tokens")
 

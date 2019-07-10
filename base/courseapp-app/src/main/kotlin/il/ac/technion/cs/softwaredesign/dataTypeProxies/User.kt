@@ -2,6 +2,7 @@ package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.Array
 import il.ac.technion.cs.softwaredesign.Set
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.TokenManager.Token
 

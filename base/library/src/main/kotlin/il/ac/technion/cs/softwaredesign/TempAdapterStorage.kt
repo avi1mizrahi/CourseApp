@@ -12,8 +12,8 @@ interface SyncStorage {
     fun write(key: ByteArray, value: ByteArray)
 }
 
-class AsyncStorageAdapter @Inject constructor(private val secureStorageFactory: SecureStorageFactory) : SyncStorage {
-    val secureStorage = secureStorageFactory.open("main".toByteArray()).join()
+class AsyncStorageAdapter @Inject constructor(secureStorageFactory: SecureStorageFactory) : SyncStorage {
+    private val secureStorage = secureStorageFactory.open("main".toByteArray()).join()
 
     override fun read(key: ByteArray): ByteArray? =
             secureStorage.read(key).join()

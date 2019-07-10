@@ -2,10 +2,10 @@ package il.ac.technion.cs.softwaredesign.dataTypeProxies
 
 import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.*
+import il.ac.technion.cs.softwaredesign.Array
 import il.ac.technion.cs.softwaredesign.Set
-import il.ac.technion.cs.softwaredesign.exceptions.NameFormatException
 import il.ac.technion.cs.softwaredesign.dataTypeProxies.UserManager.User
-import org.junit.jupiter.api.Assertions.assertEquals
+import il.ac.technion.cs.softwaredesign.exceptions.NameFormatException
 import java.util.concurrent.CompletableFuture
 
 
@@ -27,7 +27,7 @@ private fun isBadChannelName(name : String) : Boolean {
  * A manager handling channel logic.
  */
 
-class ChannelManager @Inject constructor(private val _db: KeyValueStore) {
+class ChannelManager @Inject constructor(_db: KeyValueStore) {
     private val DB = _db.scope("channels")
 
 
