@@ -35,7 +35,7 @@ class AsyncStorageAdapter @Inject constructor(private val secureStorageFactory: 
 
 
 
-    private val CACHE_SIZE = 700
+    private val CACHE_SIZE = 5000
     private val cache = HashMap<String, ByteArray?>()
     private val cacheKeys = LinkedList<String>()
 
@@ -61,8 +61,7 @@ class AsyncStorageAdapter @Inject constructor(private val secureStorageFactory: 
         if (cache.containsKey(keyS)) {
             cacheKeys.remove(keyS) // This is O(N)
         }
-        cacheKeys.add(keyS)
-
+        cacheKeys.addLast(keyS)
 
         cache[keyS] = value ?: ByteArray(0)
     }
