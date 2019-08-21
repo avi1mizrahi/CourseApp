@@ -9,6 +9,8 @@ import il.ac.technion.cs.softwaredesign.messages.Message
 import il.ac.technion.cs.softwaredesign.messages.MessageFactory
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalUnit
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 
@@ -286,7 +288,7 @@ class MessageManager @Inject constructor(private val _db: KeyValueStore) : Messa
             this.id = id
             this.media = media
             this.contents = contents
-            this.created = LocalDateTime.now()!!
+            this.created = LocalDateTime.now()!!.truncatedTo(ChronoUnit.SECONDS)
             this.received = null
             this.write()
         }
