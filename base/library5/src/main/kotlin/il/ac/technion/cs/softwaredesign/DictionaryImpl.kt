@@ -2,6 +2,8 @@ package il.ac.technion.cs.softwaredesign
 
 import il.ac.technion.cs.softwaredesign.storage.SecureStorage
 import java.nio.charset.Charset
+import java.util.HashMap
+import java.util.LinkedList
 
 /**
  * Implements [Dictionary] using [SecureStorage].
@@ -23,11 +25,52 @@ class DictionaryImpl(private val storage: SecureStorage, private val dictionaryI
     private var counter = storage.read(dictionaryId + 2.toByte()).join()?.toString(Charset.defaultCharset())?.toInt()?: 0
 
     override fun read(key: String): String? {
-        return storage.read(dictionaryId + 0.toByte() + key.toByteArray()).join()?.toString(Charset.defaultCharset())
+        val k = (dictionaryId + 0.toByte() + key.toByteArray()).toString(Charsets.UTF_8)
+        var value = readFromCache(k)
+        if (value == null) {
+            value = storage.read(k.toByteArray()).join()?.toString(Charset.defaultCharset())
+            updateCache(k, value)
+        }
+
+
+        return value
     }
 
     override fun write(key: String, value: String) {
-        storage.write(dictionaryId + 0.toByte() + key.toByteArray(), value.toByteArray()).join()
+        val k = (dictionaryId + 0.toByte() + key.toByteArray()).toString(Charsets.UTF_8)
+        updateCache(k, value)
+
+        storage.write(k.toByteArray(), value.toByteArray()).join()
+    }
+
+    private val CACHE_SIZE = 350
+    private val cache = HashMap<String, String?>()
+    private val cacheKeys = LinkedList<String>()
+
+
+    @Synchronized
+    private fun readFromCache(key: String) : String? {
+        if (cache.contains(key)) {
+            return cache[key]
+        }
+        return null
+    }
+
+    @Synchronized
+    private fun updateCache(key: String, value: String?) {
+        value ?: return
+
+        if (cache.size >= CACHE_SIZE) {
+            val keyToRemove = cacheKeys.poll()
+            cache.keys.remove(keyToRemove)
+        }
+
+        if (cache.containsKey(key)) {
+            cacheKeys.remove(key) // This is O(N)
+        }
+        cacheKeys.addLast(key)
+
+        cache[key] = value
     }
 
     override fun contains(key: String): Boolean {
