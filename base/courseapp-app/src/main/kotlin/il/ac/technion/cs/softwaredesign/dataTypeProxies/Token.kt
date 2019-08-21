@@ -18,7 +18,7 @@ class TokenManager @Inject constructor(private val _db: KeyValueStore) {
 
     private fun generateToken() : String {
         var out = ""
-        repeat(32) {
+        repeat(16) {
             out += Random.nextInt('a'.toInt(), 'z'.toInt() + 1).toChar()
         }
         return out

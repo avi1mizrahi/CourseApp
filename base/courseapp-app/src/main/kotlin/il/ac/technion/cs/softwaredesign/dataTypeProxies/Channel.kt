@@ -252,16 +252,11 @@ class ChannelManager @Inject constructor(private val _db: KeyValueStore) {
          */
         fun addUser(user : User) {
             val userid = user.id()
-            CompletableFuture.allOf(
-                    CompletableFuture.runAsync {
-                        userList.add(userid)
-                        statistics.allChannelsByUserCount.idIncremented(id)
-                    },
-                    CompletableFuture.runAsync {
-                        if (user.isLoggedIn())
-                            addActive(user)
-                    }
-            ).join()
+            userList.add(userid)
+            statistics.allChannelsByUserCount.idIncremented(id)
+            if (user.isLoggedIn())
+                addActive(user)
+
         }
 
         /**

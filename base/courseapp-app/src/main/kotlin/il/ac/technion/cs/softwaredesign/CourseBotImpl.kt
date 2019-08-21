@@ -199,8 +199,9 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                                 tasks.add(CompletableFuture.runAsync{ it.onChannelJoin(channelName)})
                             }
 
-                            CompletableFuture.allOf(*tasks.toTypedArray())
-                        }.thenApply {  Unit }
+                            tasks}
+                        .thenCompose { CompletableFuture.allOf(*it.toTypedArray()) }
+                        .thenApply {  Unit }
             } catch (e: NameFormatException) {
                 throw UserNotAuthorizedException()
             }
@@ -221,8 +222,9 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                             tasks.add(CompletableFuture.runAsync{ it.onChannelPart(channelName)})
                         }
 
-                        CompletableFuture.allOf(*tasks.toTypedArray())
-                    }.thenApply {  Unit }
+                        tasks}
+                    .thenCompose { CompletableFuture.allOf(*it.toTypedArray()) }
+                    .thenApply {  Unit }
         }
 
 
@@ -562,7 +564,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                 private val heap = getHeap(channelScope, "heap")
                 private val set = getLinkedList(channelScope, "set")
 
-                fun addIfDoesntExist(user : String) {
+                private fun addIfDoesntExist(user : String) {
                     if (!set.contains(user)) {
                         set.add(user)
                         heap.add(user)
