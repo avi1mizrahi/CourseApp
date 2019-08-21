@@ -3,6 +3,7 @@ package il.ac.technion.cs.softwaredesign
 import com.google.inject.Inject
 import il.ac.technion.cs.softwaredesign.calculator.CalculatorException
 import il.ac.technion.cs.softwaredesign.calculator.calculate
+import il.ac.technion.cs.softwaredesign.exceptions.NameFormatException
 import il.ac.technion.cs.softwaredesign.exceptions.NoSuchEntityException
 import il.ac.technion.cs.softwaredesign.exceptions.UserAlreadyLoggedInException
 import il.ac.technion.cs.softwaredesign.exceptions.UserNotAuthorizedException
@@ -186,18 +187,26 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
         val channels = getLinkedList(botScope, "channels")
 
         override fun join(channelName: String): CompletableFuture<Unit> {
-            return app.channelJoin(token, channelName)
-                    .exceptionally { throw UserNotAuthorizedException() }
-                    .thenApply {
-                        channels.add(channelName)
 
-                        val tasks = ArrayList<CompletableFuture<*>>()
-                        botEventObservers.forEach {
-                            tasks.add(CompletableFuture.runAsync{ it.onChannelJoin(channelName)})
-                        }
+            try {
+                return app.channelJoin(token, channelName)
+                        .exceptionally { throw UserNotAuthorizedException() }
+                        .thenApply {
+                            channels.add(channelName)
 
-                        CompletableFuture.allOf(*tasks.toTypedArray())
-                    }.thenApply {  Unit }
+                            val tasks = ArrayList<CompletableFuture<*>>()
+                            botEventObservers.forEach {
+                                tasks.add(CompletableFuture.runAsync{ it.onChannelJoin(channelName)})
+                            }
+
+                            CompletableFuture.allOf(*tasks.toTypedArray())
+                        }.thenApply {  Unit }
+            } catch (e: NameFormatException) {
+                throw UserNotAuthorizedException()
+            }
+
+
+
         }
 
         override fun part(channelName: String): CompletableFuture<Unit> {
@@ -336,7 +345,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                            mediaType: MediaType?): CompletableFuture<Unit> {
 
                 return CompletableFuture.supplyAsync {
-                    if (channel == null && regex == null && mediaType == null) throw IllegalArgumentException()
+                    if (regex == null && mediaType == null) throw IllegalArgumentException()
                     if (channel != null && !(getIsInChannel(channel).join())) throw IllegalArgumentException()
 
                     val channelname = channel ?: allChannelsDBString
@@ -357,7 +366,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
 
             fun count(channel: String?, regex: String?, mediaType: MediaType?): CompletableFuture<Long> {
                 return CompletableFuture.supplyAsync {
-                    if (channel == null && regex == null && mediaType == null) throw IllegalArgumentException()
+                    if (regex == null && mediaType == null) throw IllegalArgumentException()
 
                     val ret = localMessageCounters[channel?:allChannelsDBString]
                                   ?.get(Pair(regex, mediaType))
