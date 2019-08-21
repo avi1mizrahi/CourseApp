@@ -690,7 +690,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
                     val channel = getChannelFromChannelMessageSource(source)
                     if (channel != this.channel) return
 
-                    val answer = answers.find { message.contents.toString(Charsets.UTF_8).contains(it)  } ?: return
+                    val answer = answers.find { message.contents.toString(Charsets.UTF_8) == it  } ?: return
                     val username = getSenderFromChannelMessageSource(source)
 
                     // Remove old vote
