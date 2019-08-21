@@ -36,32 +36,35 @@ class AsyncStorageAdapter @Inject constructor(private val secureStorageFactory: 
 
 
     private val CACHE_SIZE = 700
-    private val cache = HashMap<ByteArray, ByteArray?>()
-    private val cacheKeys = LinkedList<ByteArray>()
+    private val cache = HashMap<String, ByteArray?>()
+    private val cacheKeys = LinkedList<String>()
 
 
     @Synchronized
     private fun readFromCache(key: ByteArray) : ByteArray? {
-        if (cache.contains(key)) {
-            return cache[key]
+        val keyS = key.toString(Charsets.UTF_8)
+        if (cache.contains(keyS)) {
+            return cache[keyS]
         }
         return null
     }
 
     @Synchronized
     private fun updateCache(key: ByteArray, value: ByteArray?) {
+        val keyS = key.toString(Charsets.UTF_8)
+
         if (cache.size >= CACHE_SIZE) {
             val keyToRemove = cacheKeys.poll()
             cache.keys.remove(keyToRemove)
         }
 
-        if (cache.containsKey(key)) {
-            cacheKeys.remove(key) // This is O(N)
+        if (cache.containsKey(keyS)) {
+            cacheKeys.remove(keyS) // This is O(N)
         }
-        cacheKeys.add(key)
+        cacheKeys.add(keyS)
 
 
-        cache[key] = value ?: ByteArray(0)
+        cache[keyS] = value ?: ByteArray(0)
     }
 
 }
