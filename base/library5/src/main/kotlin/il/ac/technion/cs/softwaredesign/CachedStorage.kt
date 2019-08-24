@@ -7,43 +7,36 @@ import java.util.concurrent.CompletableFuture
 
 class CachedStorage(private val secureStorage : SecureStorage) : SecureStorage by secureStorage {
 
+    @Synchronized
     override fun read(key: ByteArray): CompletableFuture<ByteArray?> {
-        val bytes = readFromCache(key)
+        var bytes = readFromCache(key)
         if (bytes == null) {
-            return secureStorage.read(key).thenApply {
-                it?.let { updateCache(key, it) }
-
-                it
-            }
-
+            bytes = secureStorage.read(key).join()
+            bytes?.let { updateCache(key, it) }
         }
-        else {
-            return CompletableFuture.completedFuture(bytes)
-        }
+
+        return CompletableFuture.completedFuture(bytes)
+
 
     }
 
+    @Synchronized
     override fun write(key: ByteArray, value: ByteArray): CompletableFuture<Unit> {
-        return secureStorage.write(key, value).thenApply {
-            updateCache(key, value)
+        secureStorage.write(key, value).join()
+        updateCache(key, value)
 
-            Unit
-        }
+        return CompletableFuture.completedFuture(Unit)
     }
 
 
     private val CACHE_SIZE = 2000
-    private val cache = HashMap<String, ByteArray?>()
+    private val cache = HashMap<String, ByteArray>()
     private val cacheKeys = LinkedList<String>()
 
 
-    @Synchronized
     private fun readFromCache(key: ByteArray) : ByteArray? {
         val keyS = key.toString(Charsets.UTF_8)
-        if (cache.contains(keyS)) {
-            return cache[keyS]
-        }
-        return null
+        return cache[keyS]
     }
 
     @Synchronized
