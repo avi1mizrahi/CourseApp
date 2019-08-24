@@ -70,7 +70,7 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
     }
 
     override fun start(): CompletableFuture<Unit> {
-        storage = ScopedStorage(storageFactory.open("bots".toByteArray()).join(), "root")
+        storage = ScopedStorage(CachedStorage(storageFactory.open("bots".toByteArray()).join()), "root")
         allBotsDB = getLinkedList(storage, "All bots")
         allBotsTokensDB = getDict(storage, "All bots tokens")
 
@@ -534,18 +534,17 @@ class CourseBotManager @Inject constructor(private val app : CourseApp, private 
 
             override fun onMessage(source: String, message: Message) {
                 val sender = getSenderFromChannelMessageSource(source)
-                val fromEpoch = message.created.toEpochSecond(ZoneOffset.UTC)
-                getDict(taskScope, "LastSeen").write(sender, fromEpoch.toString()) // TODO can be serialized better
+                getDict(taskScope, "LastSeen").write(sender, message.created.toString()) // TODO can be serialized better
             }
 
             fun seenTime(user: String): CompletableFuture<LocalDateTime?> {
                 return CompletableFuture.supplyAsync {
-                    val lastSeen = getDict(taskScope, "LastSeen").read(user)?.toIntOrNull()
+                    val lastSeen = getDict(taskScope, "LastSeen").read(user)
 
                     if (lastSeen == null)
                         null
                     else
-                        LocalDateTime.ofEpochSecond(lastSeen.toLong(), 0, ZoneOffset.UTC)
+                        LocalDateTime.parse(lastSeen)
                 }
             }
 
